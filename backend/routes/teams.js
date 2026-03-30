@@ -13,14 +13,20 @@ router.get('/', (req, res) => {
     FROM team_staff ts JOIN players p ON ts.player_id = p.id
     WHERE ts.role = 'captain'
   `).all();
+  const strengthScores = db.prepare(`
+    SELECT team_id, SUM(COALESCE(rating_score, 0)) as strength
+    FROM players WHERE status = 'active' AND team_id IS NOT NULL GROUP BY team_id
+  `).all();
 
-  const countMap = Object.fromEntries(playerCounts.map(r => [r.team_id, r.c]));
-  const captainMap = Object.fromEntries(captains.map(r => [r.team_id, r]));
+  const countMap    = Object.fromEntries(playerCounts.map(r => [r.team_id, r.c]));
+  const captainMap  = Object.fromEntries(captains.map(r => [r.team_id, r]));
+  const strengthMap = Object.fromEntries(strengthScores.map(r => [r.team_id, r.strength]));
 
   const result = teams.map(team => ({
     ...team,
-    player_count: countMap[team.id] || 0,
-    captain: captainMap[team.id] || null
+    player_count:   countMap[team.id]    || 0,
+    captain:        captainMap[team.id]  || null,
+    strength_score: strengthMap[team.id] || 0,
   }));
 
   res.json(result);

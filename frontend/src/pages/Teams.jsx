@@ -104,12 +104,18 @@ export default function Teams() {
                 )}
               </div>
 
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2 text-sm text-gray-400">
                   <Users size={14} />
                   <span>{team.player_count} joueur{team.player_count !== 1 ? 's' : ''}</span>
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: team.color }} />
                 </div>
-                <div className="w-4 h-4 rounded-full border-2 border-gray-700" style={{ backgroundColor: team.color }} title={team.color} />
+                {team.strength_score > 0 && (
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold"
+                    style={{ backgroundColor: team.color + '20', color: team.color }}>
+                    ⚡ {team.strength_score}
+                  </div>
+                )}
               </div>
 
               <Link to={`/teams/${team.id}`}
