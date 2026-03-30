@@ -91,7 +91,7 @@ function GoalRow({ goal, index, homeTeam, awayTeam, allPlayers, onChange, onRemo
 export default function GameSheet() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { isAdmin, canEditGamesheet } = useAuth();
   const [teams, setTeams] = useState([]);
   const [allPlayers, setAllPlayers] = useState([]);
   const [matches, setMatches] = useState([]);
@@ -108,7 +108,7 @@ export default function GameSheet() {
       .then(([tr, pr, mr, sr]) => {
         setTeams(tr.data);
         setAllPlayers(pr.data);
-        setMatches(isAdmin ? mr.data : mr.data.filter(m => !m.validated));
+        setMatches(canEditGamesheet ? mr.data : mr.data.filter(m => !m.validated));
         if (sr.data) setForm(f => ({ ...f, season_id: sr.data.id }));
       }).finally(() => setLoading(false));
   }, []);
@@ -341,7 +341,7 @@ export default function GameSheet() {
             <button onClick={saveSheet} disabled={saving} className="btn-secondary">
               {saving ? 'Sauvegarde...' : 'Sauvegarder'}
             </button>
-            {isAdmin && (
+            {canEditGamesheet && (
               <button onClick={validateMatch} disabled={saving} className="btn-success">
                 <Check size={15} /> Valider et publier
               </button>

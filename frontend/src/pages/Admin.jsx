@@ -34,6 +34,7 @@ function UserModal({ players, teams, onClose, onSave }) {
               <select className="select" value={form.role} onChange={e => set('role', e.target.value)}>
                 <option value="player">Joueur</option>
                 <option value="captain">Capitaine</option>
+                <option value="marqueur">Marqueur (feuille de match)</option>
                 <option value="admin">Administrateur</option>
               </select>
             </div>

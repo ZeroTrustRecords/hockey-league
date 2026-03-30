@@ -29,4 +29,12 @@ function requireCaptainOrAdmin(req, res, next) {
   next();
 }
 
-module.exports = { authenticate, requireAdmin, requireCaptainOrAdmin, JWT_SECRET };
+// Marqueur (scorekeeper) + captain + admin can submit/validate game sheets
+function requireGamesheetAccess(req, res, next) {
+  if (!['admin', 'captain', 'marqueur'].includes(req.user?.role)) {
+    return res.status(403).json({ error: 'Accès refusé' });
+  }
+  next();
+}
+
+module.exports = { authenticate, requireAdmin, requireCaptainOrAdmin, requireGamesheetAccess, JWT_SECRET };

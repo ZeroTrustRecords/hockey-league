@@ -38,10 +38,12 @@ export function AuthProvider({ children }) {
 
   const isAdmin = user?.role === 'admin';
   const isCaptain = user?.role === 'captain';
+  const isMarqueur = user?.role === 'marqueur';
   const isAdminOrCaptain = isAdmin || isCaptain;
+  const canEditGamesheet = isAdmin || isCaptain || isMarqueur;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin, isCaptain, isAdminOrCaptain }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin, isCaptain, isMarqueur, isAdminOrCaptain, canEditGamesheet }}>
       {children}
     </AuthContext.Provider>
   );

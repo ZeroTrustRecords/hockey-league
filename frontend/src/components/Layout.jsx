@@ -57,8 +57,8 @@ export default function Layout() {
     return () => clearInterval(interval);
   }, []);
 
-  const roleLabel = { admin: 'Administrateur', captain: 'Capitaine', player: 'Joueur' };
-  const roleColor = { admin: 'text-yellow-400', captain: 'text-blue-400', player: 'text-gray-400' };
+  const roleLabel = { admin: 'Administrateur', captain: 'Capitaine', marqueur: 'Marqueur', player: 'Joueur' };
+  const roleColor = { admin: 'text-yellow-400', captain: 'text-blue-400', marqueur: 'text-emerald-400', player: 'text-gray-400' };
 
   const sidebar = (
     <div className="flex flex-col h-full bg-gray-900 border-r border-gray-800" style={{ borderTop: '4px solid #3b82f6' }}>

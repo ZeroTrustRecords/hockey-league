@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getDB } = require('../db');
-const { authenticate, requireAdmin, requireCaptainOrAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin, requireCaptainOrAdmin, requireGamesheetAccess } = require('../middleware/auth');
 
 const matchQuery = `
   SELECT m.*,
@@ -81,7 +81,7 @@ router.put('/:id', authenticate, requireCaptainOrAdmin, (req, res) => {
 });
 
 // Submit game sheet (goals + scores)
-router.post('/:id/gamesheet', authenticate, requireCaptainOrAdmin, (req, res) => {
+router.post('/:id/gamesheet', authenticate, requireGamesheetAccess, (req, res) => {
   const db = getDB();
   const { goals, home_score, away_score, notes } = req.body;
   const matchId = req.params.id;
@@ -115,7 +115,7 @@ router.post('/:id/gamesheet', authenticate, requireCaptainOrAdmin, (req, res) =>
 });
 
 // Validate match (updates stats)
-router.post('/:id/validate', authenticate, requireAdmin, (req, res) => {
+router.post('/:id/validate', authenticate, requireGamesheetAccess, (req, res) => {
   const db = getDB();
   const matchId = req.params.id;
 
