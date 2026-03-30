@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -482,7 +482,29 @@ export default function Draft() {
 
   // Lineups: { [teamId]: { [slotId]: playerObj } }
   const [lineups, setLineups] = useState({});
-  const lineupRestored = useRef(false);
+  const [allPlayers, setAllPlayers] = useState([]);
+
+  // Build lineup slots from player team_id assignments
+  const buildLineupsFromPlayers = (players) => {
+    const byTeam = {};
+    for (const p of players) {
+      if (!p.team_id || p.status !== 'active') continue;
+      if (!byTeam[p.team_id]) byTeam[p.team_id] = { A: [], D: [], G: [] };
+      const grp = p.position === 'G' ? 'G' : p.position === 'D' ? 'D' : 'A';
+      byTeam[p.team_id][grp].push(p);
+    }
+    const offSlots = OFFENSE_LINES.flat().map(s => s.id);
+    const defSlots = DEFENSE_PAIRS.flat().map(s => s.id);
+    const result = {};
+    for (const [teamId, groups] of Object.entries(byTeam)) {
+      const lineup = {};
+      groups.A.forEach((p, i) => { if (offSlots[i]) lineup[offSlots[i]] = p; });
+      groups.D.forEach((p, i) => { if (defSlots[i]) lineup[defSlots[i]] = p; });
+      if (groups.G[0]) lineup[GOALIE_SLOT.id] = groups.G[0];
+      result[parseInt(teamId)] = lineup;
+    }
+    return result;
+  };
 
   // Player bank filters & sort
   const [search, setSearch]       = useState('');
@@ -500,23 +522,19 @@ export default function Draft() {
   const loadData = async () => {
     try {
       const sr = await api.get('/seasons/active');
-      if (!sr.data) return;
+      if (!sr.data) { setLoading(false); return; }
       const sid = sr.data.id;
       setSeasonId(sid);
 
-      const [dr, tr] = await Promise.all([
+      const [dr, tr, pr] = await Promise.all([
         api.get(`/draft/season/${sid}`),
         api.get('/teams'),
+        api.get('/players'),
       ]);
       setData(dr.data);
       setTeams(tr.data);
-
-      // Restore lineups from localStorage only once on initial mount
-      if (!lineupRestored.current) {
-        const saved = localStorage.getItem(`lineup_season_${sid}`);
-        if (saved) setLineups(JSON.parse(saved));
-        lineupRestored.current = true;
-      }
+      setAllPlayers(pr.data);
+      setLineups(buildLineupsFromPlayers(pr.data));
     } finally {
       setLoading(false);
     }
@@ -530,21 +548,18 @@ export default function Draft() {
     setDragOverSlot(null);
   }, [viewTeamId]);
 
-  const persistLineups = nl => {
-    setLineups(nl);
-    if (seasonId) localStorage.setItem(`lineup_season_${seasonId}`, JSON.stringify(nl));
-  };
-
   // ── Derived values ────────────────────────────────────────────────────────
 
-  const settings  = data?.settings;
-  const allPicks  = data?.picks || [];
-  const available = data?.availablePlayers || [];
-  const nextPick  = allPicks.find(p => !p.player_id && !p.picked_at);
+  const settings   = data?.settings;
+  const allPicks   = data?.picks || [];
+  // Available = unassigned active players (team_id is null)
+  const available  = allPlayers.filter(p => !p.team_id && p.status === 'active');
+  const nextPick   = allPicks.find(p => !p.player_id && !p.picked_at);
   const activeTeam = nextPick ? teams.find(t => t.id === nextPick.team_id) : null;
 
   const isMyTurn = isCaptain && nextPick?.team_id === user?.team_id;
-  const canInteract = (isAdmin || isMyTurn) && settings?.status === 'active' && !viewTeamId;
+  // Admins can always interact; captains only on their formal draft turn
+  const canInteract = isAdmin || (isCaptain && isMyTurn && settings?.status === 'active' && !viewTeamId);
 
   const displayTeam = viewTeamId
     ? teams.find(t => t.id === viewTeamId)
@@ -555,50 +570,45 @@ export default function Draft() {
   const handleDrop = async (slotId, player) => {
     setDragOverSlot(null);
     setDraggedPlayer(null);
-
-    if (!canInteract || !nextPick) {
-      toast.error('Ce n\'est pas le moment de repêcher');
-      return;
-    }
-
     if (picking) return;
+
+    const targetTeam = displayTeam || teams[0];
+    if (!targetTeam) return;
+    if (!isAdmin && !isMyTurn) { toast.error('Accès refusé'); return; }
+
     setPicking(true);
-
     try {
-      await api.post(`/draft/season/${seasonId}/pick`, { player_id: player.id });
-
-      const teamId = nextPick.team_id;
-      const newLineups = {
-        ...lineups,
-        [teamId]: { ...(lineups[teamId] || {}), [slotId]: player },
-      };
-      persistLineups(newLineups);
-
-      toast.success(
-        `${player.first_name} ${player.last_name} → ${nextPick.team_name}`,
-        { icon: '🏒' }
-      );
+      // Formal draft pick: active draft, active team's turn, not in view mode
+      if (settings?.status === 'active' && targetTeam.id === activeTeam?.id && !viewTeamId) {
+        await api.post(`/draft/season/${seasonId}/pick`, { player_id: player.id });
+        toast.success(`${player.first_name} ${player.last_name} → ${targetTeam.name}`, { icon: '🏒' });
+      } else if (isAdmin) {
+        // Direct assignment outside formal draft
+        await api.patch(`/players/${player.id}/team`, { team_id: targetTeam.id });
+        toast.success(`${player.first_name} ${player.last_name} → ${targetTeam.name}`);
+      }
       await loadData();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Erreur lors du choix');
+      toast.error(err.response?.data?.error || 'Erreur lors du placement');
     } finally {
       setPicking(false);
     }
   };
 
-  const handleRemoveFromSlot = (teamId, slotId) => {
-    const newLineups = {
-      ...lineups,
-      [teamId]: { ...(lineups[teamId] || {}), [slotId]: null },
-    };
-    persistLineups(newLineups);
+  const handleRemoveFromSlot = async (teamId, slotId) => {
+    const player = lineups[teamId]?.[slotId];
+    if (!player || !isAdmin) return;
+    try {
+      await api.patch(`/players/${player.id}/team`, { team_id: null });
+      toast.success(`${player.first_name} ${player.last_name} retiré de l'équipe`);
+      await loadData();
+    } catch { toast.error('Erreur lors du retrait'); }
   };
 
   const handleReset = async () => {
-    if (!confirm('Réinitialiser le repêchage complet et tous les alignements ?')) return;
+    if (!confirm('Réinitialiser le repêchage complet ? Les joueurs seront désassignés des équipes.')) return;
     try {
       await api.post(`/draft/season/${seasonId}/reset`);
-      persistLineups({});
       toast.success('Repêchage réinitialisé');
       await loadData();
     } catch { toast.error('Erreur'); }
@@ -699,11 +709,11 @@ export default function Draft() {
       <div className="p-4 space-y-4">
 
       {/* ── No draft ── */}
-      {!settings ? (
+      {!settings && !teams.some(t => lineups[t.id] && Object.values(lineups[t.id]).some(Boolean)) ? (
         <div className="card text-center py-16">
           <div className="text-5xl mb-4">⚡</div>
-          <p className="text-xl font-bold text-gray-300 mb-2">Aucun repêchage actif</p>
-          <p className="text-gray-600 text-sm mb-6">Configurez le repêchage pour permettre aux capitaines de choisir leurs joueurs</p>
+          <p className="text-xl font-bold text-gray-300 mb-2">Alignements vides</p>
+          <p className="text-gray-600 text-sm mb-6">Importez un CSV dans Administration pour assigner les joueurs, ou configurez un repêchage formel</p>
           {isAdmin && (
             <button onClick={() => setShowInit(true)} className="btn-primary mx-auto">
               <Settings size={15} /> Configurer le repêchage
@@ -713,8 +723,22 @@ export default function Draft() {
       ) : (
         <div className="space-y-4">
 
+          {/* ── No formal draft / team management mode ── */}
+          {!settings && isAdmin && (
+            <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 flex items-center gap-3">
+              <Settings size={16} className="text-blue-400 flex-shrink-0" />
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-white">Mode gestion des équipes</div>
+                <div className="text-xs text-gray-500">Glissez les joueurs de la banque vers un alignement pour les assigner. Cliquez × pour retirer un joueur.</div>
+              </div>
+              <button onClick={() => setShowInit(true)} className="btn-secondary py-1 text-xs flex-shrink-0">
+                <Zap size={12} /> Repêchage formel
+              </button>
+            </div>
+          )}
+
           {/* ── Status banner ── */}
-          {settings.status === 'active' && nextPick ? (
+          {settings?.status === 'active' && nextPick ? (
             <div
               className="rounded-xl border p-4 flex items-center gap-4 flex-wrap"
               style={{ borderColor: activeTeam?.color + '50', backgroundColor: activeTeam?.color + '08' }}
@@ -744,7 +768,7 @@ export default function Draft() {
                 </div>
               </div>
             </div>
-          ) : settings.status === 'completed' ? (
+          ) : settings?.status === 'completed' ? (
             <div className="card border-emerald-500/20 bg-emerald-500/5 flex items-center gap-3 py-4">
               <span className="text-2xl">🏆</span>
               <div>
@@ -811,7 +835,7 @@ export default function Draft() {
                 {filteredPlayers.length === 0 ? (
                   <div className="text-center py-8 text-gray-600 text-sm">
                     {available.length === 0
-                      ? '✅ Tous les joueurs ont été repêchés'
+                      ? '✅ Tous les joueurs sont assignés à une équipe'
                       : 'Aucun joueur trouvé'}
                   </div>
                 ) : (
@@ -845,7 +869,7 @@ export default function Draft() {
               </div>
 
               {/* Hint */}
-              {canInteract && filteredPlayers.length > 0 && (
+              {(canInteract || isAdmin) && filteredPlayers.length > 0 && (
                 <p className="text-[10px] text-gray-700 text-center mt-3 border-t border-gray-800 pt-3">
                   Glissez un joueur vers un poste dans l'alignement →
                 </p>
@@ -909,7 +933,7 @@ export default function Draft() {
                       key={team.id}
                       team={team}
                       lineup={lineups[team.id] || {}}
-                      isActive={team.id === activeTeam?.id && settings.status === 'active'}
+                      isActive={team.id === activeTeam?.id && settings?.status === 'active'}
                       strength={teamStrength[team.id] || 0}
                     />
                   ))}
@@ -918,8 +942,8 @@ export default function Draft() {
             </div>
           </div>
 
-          {/* ── Draft history (collapsible) ── */}
-          <div className="card">
+          {/* ── Draft history (collapsible, only when formal draft exists) ── */}
+          {settings && <div className="card">
             <button
               onClick={() => setShowHistory(!showHistory)}
               className="flex items-center justify-between w-full text-left"
@@ -995,7 +1019,7 @@ export default function Draft() {
                 </table>
               </div>
             )}
-          </div>
+          </div>}
 
         </div>
       )}

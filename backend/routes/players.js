@@ -106,6 +106,14 @@ router.put('/:id', authenticate, requireCaptainOrAdmin, (req, res) => {
   res.json({ message: 'Joueur mis à jour' });
 });
 
+// Quick team assignment (just update team_id)
+router.patch('/:id/team', authenticate, requireAdmin, (req, res) => {
+  const { team_id } = req.body;
+  const db = getDB();
+  db.prepare('UPDATE players SET team_id = ? WHERE id = ?').run(team_id || null, req.params.id);
+  res.json({ message: 'Équipe mise à jour' });
+});
+
 // Delete player
 router.delete('/:id', authenticate, requireAdmin, (req, res) => {
   const db = getDB();

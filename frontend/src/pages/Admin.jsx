@@ -137,22 +137,24 @@ export default function Admin() {
   const [newSeasonForm, setNewSeasonForm] = useState({ name: '', start_date: '' });
   const [showNewSeasonForm, setShowNewSeasonForm] = useState(false);
   const [csvPreview, setCsvPreview] = useState(null); // { assignments, grouped }
+  const [standings, setStandings] = useState([]);
 
   const load = () => {
     setLoading(true);
     Promise.all([
       api.get('/dashboard'),
       api.get('/teams'),
-      api.get('/players', { params: { status: 'active' } }),
+      api.get('/players'),
       api.get('/seasons'),
       api.get('/matches'),
-    ]).then(([dr, tr, pr, sr, mr]) => {
+      api.get('/standings'),
+    ]).then(([dr, tr, pr, sr, mr, stdr]) => {
       setStats(dr.data.counts);
       setTeams(tr.data);
       setPlayers(pr.data);
       setSeasons(sr.data);
       setMatches(mr.data);
-      // Find current season (active or playoffs)
+      setStandings(stdr.data);
       const current = sr.data.find(s => s.status === 'active' || s.status === 'playoffs') || sr.data[0] || null;
       setActiveSeason(current);
     }).finally(() => setLoading(false));
@@ -618,30 +620,46 @@ export default function Admin() {
                   <th>Équipe</th>
                   <th className="text-center">Joueurs</th>
                   <th>Capitaine</th>
-                  <th className="text-center">Couleur</th>
+                  <th className="text-center">PJ</th>
+                  <th className="text-center">V</th>
+                  <th className="text-center">D</th>
+                  <th className="text-center">BF</th>
+                  <th className="text-center">BC</th>
+                  <th className="text-center">DIFF</th>
+                  <th className="text-center font-bold text-yellow-400">PTS</th>
                 </tr>
               </thead>
               <tbody>
-                {teams.map(t => (
-                  <tr key={t.id}>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: t.color }} />
-                        <span className="text-white font-medium">{t.name}</span>
-                      </div>
-                    </td>
-                    <td className="text-center text-gray-400">{t.player_count}</td>
-                    <td className="text-gray-300">
-                      {t.captain ? `${t.captain.first_name} ${t.captain.last_name}` : <span className="text-gray-600">—</span>}
-                    </td>
-                    <td className="text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-6 h-6 rounded-lg border border-gray-700" style={{ backgroundColor: t.color }} />
-                        <code className="text-xs text-gray-500">{t.color}</code>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {teams.map(t => {
+                  const s = standings.find(st => st.team_id === t.id) || {};
+                  return (
+                    <tr key={t.id}>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: t.color }} />
+                          <span className="text-white font-medium">{t.name}</span>
+                        </div>
+                      </td>
+                      <td className="text-center text-gray-400">{t.player_count ?? '—'}</td>
+                      <td className="text-gray-300 text-sm">
+                        {t.captain ? `${t.captain.first_name} ${t.captain.last_name}` : <span className="text-gray-600">—</span>}
+                      </td>
+                      <td className="text-center text-gray-400">{s.gp ?? '—'}</td>
+                      <td className="text-center text-emerald-400 font-semibold">{s.w ?? '—'}</td>
+                      <td className="text-center text-red-400 font-semibold">{s.l ?? '—'}</td>
+                      <td className="text-center text-gray-400">{s.gf ?? '—'}</td>
+                      <td className="text-center text-gray-400">{s.ga ?? '—'}</td>
+                      <td className="text-center">
+                        {s.diff != null ? (
+                          <span className={s.diff > 0 ? 'text-emerald-400' : s.diff < 0 ? 'text-red-400' : 'text-gray-500'}>
+                            {s.diff > 0 ? '+' : ''}{s.diff}
+                          </span>
+                        ) : <span className="text-gray-600">—</span>}
+                      </td>
+                      <td className="text-center font-black text-yellow-400">{s.pts ?? '—'}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
