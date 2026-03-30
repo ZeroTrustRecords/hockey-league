@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import {
   LayoutDashboard, Users, Shield, Trophy, BarChart3, MessageSquare,
-  Zap, FileText, Settings, Menu, X, LogOut, ChevronRight, Bell, Star
+  Zap, FileText, Settings, Menu, X, LogOut, ChevronRight, Bell, Star, CalendarDays
 } from 'lucide-react';
 
 const navItems = [
@@ -13,6 +13,7 @@ const navItems = [
   { to: '/teams', icon: Shield, label: 'Équipes' },
   { to: '/standings', icon: Trophy, label: 'Classement' },
   { to: '/stats', icon: BarChart3, label: 'Statistiques' },
+  { to: '/schedule', icon: CalendarDays, label: 'Calendrier' },
   { to: '/messages', icon: MessageSquare, label: 'Messagerie', badge: true },
   { to: '/draft', icon: Zap, label: 'Repêchage' },
   { to: '/playoffs', icon: Star, label: 'Éliminatoires' },
@@ -28,6 +29,7 @@ function SidebarLink({ item, unreadCount, onClick }) {
       to={item.to}
       onClick={onClick}
       className={isActive ? 'nav-link-active' : 'nav-link-inactive'}
+      style={isActive ? { borderLeft: '3px solid #60a5fa', paddingLeft: 'calc(0.625rem - 3px)' } : { borderLeft: '3px solid transparent', paddingLeft: 'calc(0.625rem - 3px)' }}
     >
       <item.icon size={18} className="flex-shrink-0" />
       <span className="flex-1">{item.label}</span>
@@ -59,14 +61,22 @@ export default function Layout() {
   const roleColor = { admin: 'text-yellow-400', captain: 'text-blue-400', player: 'text-gray-400' };
 
   const sidebar = (
-    <div className="flex flex-col h-full bg-gray-900 border-r border-gray-800">
+    <div className="flex flex-col h-full bg-gray-900 border-r border-gray-800" style={{ borderTop: '4px solid #3b82f6' }}>
       {/* Logo */}
       <div className="p-4 border-b border-gray-800">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl flex-shrink-0">🏒</div>
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 shadow-lg"
+            style={{
+              background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)',
+              boxShadow: '0 4px 14px 0 rgba(30, 64, 175, 0.5)',
+            }}
+          >
+            🏒
+          </div>
           <div className="min-w-0">
-            <div className="font-bold text-white text-sm leading-tight">LHMA</div>
-            <div className="text-gray-500 text-xs">Ligue de Hockey</div>
+            <div className="font-bold text-white text-sm leading-tight tracking-wide">LHMA</div>
+            <div className="text-blue-400 text-xs font-medium uppercase tracking-wider">Ligue de Hockey</div>
           </div>
         </div>
       </div>
@@ -89,8 +99,12 @@ export default function Layout() {
 
       {/* User */}
       <div className="p-3 border-t border-gray-800">
-        <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-800/50">
-          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
+        <div
+          className="flex items-center gap-3 p-2 rounded-lg"
+          style={{ background: 'linear-gradient(135deg, rgba(37,99,235,0.15) 0%, rgba(17,24,39,0.8) 100%)' }}
+        >
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)' }}>
             {user?.username?.[0]?.toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">

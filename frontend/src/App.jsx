@@ -13,6 +13,7 @@ import Messages from './pages/Messages';
 import Draft from './pages/Draft';
 import Playoffs from './pages/Playoffs';
 import GameSheet from './pages/GameSheet';
+import Schedule from './pages/Schedule';
 import Admin from './pages/Admin';
 
 function ProtectedRoute({ children }) {
@@ -50,6 +51,7 @@ function AppRoutes() {
         <Route path="stats" element={<Stats />} />
         <Route path="messages" element={<Messages />} />
         <Route path="playoffs" element={<Playoffs />} />
+        <Route path="schedule" element={<Schedule />} />
         <Route path="gamesheet" element={<GameSheet />} />
         <Route path="gamesheet/:id" element={<GameSheet />} />
         <Route path="admin" element={<AdminRoute><Admin /></AdminRoute>} />
