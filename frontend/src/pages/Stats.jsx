@@ -224,10 +224,10 @@ export default function Stats() {
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">PJ</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">V</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">D</th>
-                <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">BF</th>
+                <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">BP</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">BC</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-14">DIFF</th>
-                <th className="text-center py-3 text-xs text-gray-600 font-medium w-16 hidden sm:table-cell">Moy BF</th>
+                <th className="text-center py-3 text-xs text-gray-600 font-medium w-16 hidden sm:table-cell">Moy BP</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-16 hidden sm:table-cell">Moy BC</th>
                 <th className="text-center py-3 pr-5 text-xs text-gray-600 font-medium hidden md:table-cell">5 derniers</th>
               </tr>

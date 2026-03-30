@@ -60,7 +60,7 @@ export default function Standings() {
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">PJ</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">V</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">D</th>
-                <th className="text-center py-3 text-xs text-gray-600 font-medium w-12 hidden sm:table-cell">BF</th>
+                <th className="text-center py-3 text-xs text-gray-600 font-medium w-12 hidden sm:table-cell">BP</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-12 hidden sm:table-cell">BC</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-14 hidden md:table-cell">DIFF</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-14 hidden md:table-cell">%V</th>
@@ -124,7 +124,7 @@ export default function Standings() {
         <span>PJ = Parties jouées</span>
         <span>V = Victoires</span>
         <span>D = Défaites</span>
-        <span>BF = Buts pour</span>
+        <span>BP = Buts pour</span>
         <span>BC = Buts contre</span>
         <span>DIFF = Différentiel</span>
         <span>%V = % victoires</span>

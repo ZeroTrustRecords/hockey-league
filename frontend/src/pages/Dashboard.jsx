@@ -124,7 +124,7 @@ export default function Dashboard() {
                   <th className="text-center py-3 text-xs text-gray-600 font-medium w-10">PJ</th>
                   <th className="text-center py-3 text-xs text-gray-600 font-medium w-10">V</th>
                   <th className="text-center py-3 text-xs text-gray-600 font-medium w-10">D</th>
-                  <th className="text-center py-3 text-xs text-gray-600 font-medium w-10 hidden sm:table-cell">BF</th>
+                  <th className="text-center py-3 text-xs text-gray-600 font-medium w-10 hidden sm:table-cell">BP</th>
                   <th className="text-center py-3 text-xs text-gray-600 font-medium w-10 hidden sm:table-cell">BC</th>
                   <th className="text-center py-3 pr-5 text-xs text-gray-500 font-semibold w-12">PTS</th>
                 </tr>
