@@ -136,6 +136,7 @@ export default function Admin() {
   const [playoffStarting, setPlayoffStarting] = useState(false);
   const [newSeasonForm, setNewSeasonForm] = useState({ name: '', start_date: '' });
   const [showNewSeasonForm, setShowNewSeasonForm] = useState(false);
+  const [csvPreview, setCsvPreview] = useState(null); // { assignments, grouped }
 
   const load = () => {
     setLoading(true);
@@ -183,18 +184,33 @@ export default function Admin() {
     URL.revokeObjectURL(url);
   };
 
-  // Parse and import CSV file
+  // Parse CSV row into columns (handles quoted fields)
+  const parseCSVLine = line => {
+    const cols = [];
+    let cur = '', inQuote = false;
+    for (const ch of line) {
+      if (ch === '"') { inQuote = !inQuote; }
+      else if (ch === ',' && !inQuote) { cols.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+    cols.push(cur.trim());
+    return cols;
+  };
+
+  // Strip "(Captain Name)" from team names like "Canadiens (Martin Verville)"
+  const cleanTeamName = name => name.replace(/\s*\(.*\)$/, '').trim();
+
+  // Read CSV file and show preview modal
   const handleCSVImport = async e => {
     const file = e.target.files[0];
     if (!file) return;
     e.target.value = '';
     try {
       const text = await file.text();
-      const lines = text.split(/\r?\n/);
-      // Find header line
+      const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/);
       const headerIdx = lines.findIndex(l => /prénom|prenom|first.name/i.test(l));
       if (headerIdx === -1) { toast.error('Format CSV invalide — colonne Prénom introuvable'); return; }
-      const headers = lines[headerIdx].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+      const headers = parseCSVLine(lines[headerIdx]).map(h => h.toLowerCase());
       const fnIdx   = headers.findIndex(h => /prénom|prenom|first.name/i.test(h));
       const lnIdx   = headers.findIndex(h => /^nom$|last.name/i.test(h));
       const teamIdx = headers.findIndex(h => /équipe|equipe|team/i.test(h));
@@ -204,32 +220,43 @@ export default function Admin() {
       const assignments = lines.slice(headerIdx + 1)
         .filter(l => l.trim())
         .map(l => {
-          // Simple CSV split respecting quoted fields
-          const cols = [];
-          let cur = '', inQuote = false;
-          for (const ch of l) {
-            if (ch === '"') { inQuote = !inQuote; }
-            else if (ch === ',' && !inQuote) { cols.push(cur.trim()); cur = ''; }
-            else cur += ch;
-          }
-          cols.push(cur.trim());
+          const cols = parseCSVLine(l);
           return {
-            first_name: cols[fnIdx]   || '',
-            last_name:  cols[lnIdx]   || '',
-            team_name:  cols[teamIdx] || '',
+            first_name: (cols[fnIdx]   || '').trim(),
+            last_name:  (cols[lnIdx]   || '').trim(),
+            team_name:  cleanTeamName(cols[teamIdx] || ''),
           };
         })
         .filter(r => r.first_name && r.last_name);
 
       if (assignments.length === 0) { toast.error('Aucun joueur trouvé dans le fichier'); return; }
 
-      const r = await api.post('/seasons/import-csv', { assignments });
+      // Group by team for preview
+      const grouped = assignments.reduce((acc, a) => {
+        const key = a.team_name || '— Sans équipe';
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(a);
+        return acc;
+      }, {});
+
+      setCsvPreview({ assignments, grouped });
+    } catch (err) {
+      toast.error('Erreur lors de la lecture du fichier');
+    }
+  };
+
+  // Apply the previewed assignments
+  const applyCSVImport = async () => {
+    if (!csvPreview) return;
+    try {
+      const r = await api.post('/seasons/import-csv', { assignments: csvPreview.assignments });
       const { updated, not_found_players, not_found_teams } = r.data;
-      toast.success(`${updated} joueur(s) assigné(s)`);
+      toast.success(`${updated} joueur(s) assigné(s) avec succès`);
       if (not_found_players.length > 0)
-        toast.error(`Joueurs introuvables: ${not_found_players.join(', ')}`, { duration: 8000 });
+        toast.error(`Joueurs introuvables:\n${not_found_players.join(', ')}`, { duration: 8000 });
       if (not_found_teams.length > 0)
-        toast.error(`Équipes introuvables: ${[...new Set(not_found_teams)].join(', ')}`, { duration: 8000 });
+        toast.error(`Équipes introuvables:\n${[...new Set(not_found_teams)].join(', ')}`, { duration: 8000 });
+      setCsvPreview(null);
       load();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Erreur lors de l\'importation');
@@ -618,6 +645,42 @@ export default function Admin() {
 
       {showUserModal && <UserModal players={players} teams={teams} onClose={() => setShowUserModal(false)} onSave={() => { setShowUserModal(false); load(); }} />}
       {showMatchModal && <ScheduleMatchModal teams={teams} seasons={seasons} onClose={() => setShowMatchModal(false)} onSave={() => { setShowMatchModal(false); load(); }} />}
+
+      {/* CSV Preview Modal */}
+      {csvPreview && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setCsvPreview(null)}>
+          <div className="modal max-w-2xl w-full">
+            <div className="modal-header">
+              <h3 className="text-lg font-bold text-white">Confirmer l'importation CSV</h3>
+              <button onClick={() => setCsvPreview(null)} className="text-gray-500 hover:text-white"><X size={20} /></button>
+            </div>
+            <div className="modal-body max-h-[60vh] overflow-y-auto space-y-4">
+              <p className="text-sm text-gray-400">
+                <span className="font-semibold text-white">{csvPreview.assignments.length} joueurs</span> détectés dans le fichier.
+                Vérifiez les assignations ci-dessous avant d'appliquer.
+              </p>
+              {Object.entries(csvPreview.grouped).map(([team, players]) => (
+                <div key={team}>
+                  <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">{team} — {players.length} joueurs</div>
+                  <div className="grid grid-cols-2 gap-1">
+                    {players.map((p, i) => (
+                      <div key={i} className="text-sm text-gray-300 bg-gray-800/50 rounded px-2 py-1">
+                        {p.first_name} {p.last_name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="modal-footer">
+              <button onClick={() => setCsvPreview(null)} className="btn-secondary">Annuler</button>
+              <button onClick={applyCSVImport} className="btn-primary">
+                <Check size={15} /> Appliquer les assignations
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
