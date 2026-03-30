@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api/client';
 import toast from 'react-hot-toast';
-import { Settings, Plus, X, Users, Shield, Calendar, RefreshCw, Check, Trash2, UserCheck, Trophy, Zap, AlertTriangle } from 'lucide-react';
+import { Settings, Plus, X, Users, Shield, Calendar, RefreshCw, Check, Trash2, UserCheck, Trophy, Zap, AlertTriangle, Upload, Download } from 'lucide-react';
 
 function UserModal({ players, teams, onClose, onSave }) {
   const [form, setForm] = useState({ username: '', password: '', role: 'player', player_id: '', team_id: '' });
@@ -169,13 +169,71 @@ export default function Admin() {
     finally { setPlayoffStarting(false); }
   };
 
-  const handleAssignTeams = async () => {
-    if (!confirm('Assigner tous les joueurs à leurs équipes selon la liste CSV? Les assignations existantes seront écrasées.')) return;
+  // Download CSV template with current player list
+  const downloadTemplate = () => {
+    const header = 'Prénom,Nom,Équipe\n';
+    const rows = players
+      .sort((a, b) => a.last_name.localeCompare(b.last_name))
+      .map(p => `"${p.first_name}","${p.last_name}","${p.team_name || ''}"`)
+      .join('\n');
+    const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'modele_assignation_joueurs.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Parse and import CSV file
+  const handleCSVImport = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = '';
     try {
-      const r = await api.post('/seasons/assign-teams');
-      toast.success(r.data.message);
+      const text = await file.text();
+      const lines = text.split(/\r?\n/);
+      // Find header line
+      const headerIdx = lines.findIndex(l => /prénom|prenom|first.name/i.test(l));
+      if (headerIdx === -1) { toast.error('Format CSV invalide — colonne Prénom introuvable'); return; }
+      const headers = lines[headerIdx].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+      const fnIdx   = headers.findIndex(h => /prénom|prenom|first.name/i.test(h));
+      const lnIdx   = headers.findIndex(h => /^nom$|last.name/i.test(h));
+      const teamIdx = headers.findIndex(h => /équipe|equipe|team/i.test(h));
+      if (fnIdx === -1 || lnIdx === -1 || teamIdx === -1) {
+        toast.error('Colonnes requises: Prénom, Nom, Équipe'); return;
+      }
+      const assignments = lines.slice(headerIdx + 1)
+        .filter(l => l.trim())
+        .map(l => {
+          // Simple CSV split respecting quoted fields
+          const cols = [];
+          let cur = '', inQuote = false;
+          for (const ch of l) {
+            if (ch === '"') { inQuote = !inQuote; }
+            else if (ch === ',' && !inQuote) { cols.push(cur.trim()); cur = ''; }
+            else cur += ch;
+          }
+          cols.push(cur.trim());
+          return {
+            first_name: cols[fnIdx]   || '',
+            last_name:  cols[lnIdx]   || '',
+            team_name:  cols[teamIdx] || '',
+          };
+        })
+        .filter(r => r.first_name && r.last_name);
+
+      if (assignments.length === 0) { toast.error('Aucun joueur trouvé dans le fichier'); return; }
+
+      const r = await api.post('/seasons/import-csv', { assignments });
+      const { updated, not_found_players, not_found_teams } = r.data;
+      toast.success(`${updated} joueur(s) assigné(s)`);
+      if (not_found_players.length > 0)
+        toast.error(`Joueurs introuvables: ${not_found_players.join(', ')}`, { duration: 8000 });
+      if (not_found_teams.length > 0)
+        toast.error(`Équipes introuvables: ${[...new Set(not_found_teams)].join(', ')}`, { duration: 8000 });
       load();
-    } catch { toast.error('Erreur'); }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur lors de l\'importation');
+    }
   };
 
   const handleReset = async () => {
@@ -294,9 +352,16 @@ export default function Admin() {
                 <RefreshCw size={16} /> Actualiser les données
               </button>
               <div className="pt-2 border-t border-gray-800 space-y-2">
-                <button onClick={handleAssignTeams} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-blue-400 hover:bg-blue-500/10 border border-blue-500/20 transition-colors">
-                  <Users size={16} /> Assigner joueurs aux équipes
+                <div className="text-xs text-gray-500 font-medium uppercase tracking-wide px-1 pt-1">Importation CSV</div>
+                <button onClick={downloadTemplate} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 border border-gray-700 transition-colors">
+                  <Download size={16} /> Télécharger le modèle
                 </button>
+                <label className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-blue-400 hover:bg-blue-500/10 border border-blue-500/20 transition-colors cursor-pointer">
+                  <Upload size={16} /> Importer CSV (équipes)
+                  <input type="file" accept=".csv" className="hidden" onChange={handleCSVImport} />
+                </label>
+              </div>
+              <div className="pt-1 border-t border-gray-800">
                 <button onClick={handleReset} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors">
                   <AlertTriangle size={16} /> Réinitialiser la ligue
                 </button>
