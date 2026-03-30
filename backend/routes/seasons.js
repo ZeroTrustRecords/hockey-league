@@ -41,7 +41,7 @@ router.post('/reset', authenticate, requireAdmin, (req, res) => {
     db.prepare('DELETE FROM matches').run();
     db.prepare('DELETE FROM playoff_series').run();
     db.prepare('DELETE FROM draft_picks').run();
-    db.prepare('DELETE FROM draft_sessions').run();
+    db.prepare("UPDATE draft_settings SET status='pending', current_round=1, current_pick=1").run();
     db.prepare('DELETE FROM player_season_stats').run();
     db.prepare('UPDATE players SET team_id = NULL').run();
     db.prepare('DELETE FROM team_staff').run();
