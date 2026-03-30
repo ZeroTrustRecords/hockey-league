@@ -89,23 +89,6 @@ export default function Login() {
           </form>
         </div>
 
-        {/* Demo credentials */}
-        <div className="mt-4 p-4 bg-gray-900/50 border border-gray-800 rounded-xl text-xs text-gray-500">
-          <p className="font-semibold text-gray-400 mb-2">Comptes de démo (mot de passe: <span className="text-blue-400">password123</span>)</p>
-          <div className="grid grid-cols-2 gap-1">
-            {[
-              ['admin', 'Administrateur'],
-              ['cap_nordiques', 'Capitaine'],
-              ['joueur_nordiques', 'Joueur'],
-            ].map(([u, r]) => (
-              <button key={u} onClick={() => { setUsername(u); setPassword('password123'); }}
-                className="text-left p-2 rounded-lg hover:bg-gray-800 transition-colors">
-                <span className="text-blue-400 font-mono">{u}</span>
-                <span className="text-gray-600 ml-1">({r})</span>
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
