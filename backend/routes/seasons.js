@@ -45,7 +45,7 @@ router.post('/reset', authenticate, requireAdmin, (req, res) => {
     db.prepare('DELETE FROM player_season_stats').run();
     db.prepare('UPDATE players SET team_id = NULL').run();
     db.prepare('DELETE FROM team_staff').run();
-    db.prepare("UPDATE seasons SET status = 'completed' WHERE status IN ('active','playoffs')").run();
+    db.prepare("UPDATE seasons SET status = 'active', champion_team_id = NULL WHERE status IN ('playoffs','completed')").run();
   })();
   db.pragma('foreign_keys = ON');
   res.json({ message: 'Réinitialisation complète effectuée' });
