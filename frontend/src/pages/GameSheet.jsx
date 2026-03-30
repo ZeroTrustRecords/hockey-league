@@ -10,6 +10,7 @@ const PERIODS = [
   { value: '2', label: '2e' },
   { value: '3', label: '3e' },
   { value: '4', label: 'Prol.' },
+  { value: '5', label: 'Fusil.' },
 ];
 
 function GoalRow({ goal, index, homeTeam, awayTeam, allPlayers, onChange, onRemove }) {
@@ -165,6 +166,10 @@ export default function GameSheet() {
   };
 
   const validateMatch = async () => {
+    if (homeScore === awayScore) {
+      toast.error('Un match ne peut pas se terminer à égalité. Ajoutez un but en prolongation ou en fusillade.');
+      return;
+    }
     if (!confirm('Valider ce match ? Les statistiques seront mises à jour.')) return;
     setSaving(true);
     try {
@@ -263,7 +268,12 @@ export default function GameSheet() {
                 <span className="text-5xl font-black text-white tabular-nums">{awayScore}</span>
               </div>
             </div>
-            <p className="text-center text-xs text-gray-600 mt-3">Score calculé automatiquement depuis les buts enregistrés</p>
+            {homeScore === awayScore && homeScore > 0 && (
+              <p className="text-center text-xs text-yellow-500 mt-3 font-medium">⚠️ Égalité — ajoutez un but en prolongation ou fusillade</p>
+            )}
+            {!(homeScore === awayScore && homeScore > 0) && (
+              <p className="text-center text-xs text-gray-600 mt-3">Score calculé automatiquement depuis les buts enregistrés</p>
+            )}
           </div>
 
           {/* Goals for stats */}
