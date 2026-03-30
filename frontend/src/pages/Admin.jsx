@@ -171,13 +171,18 @@ export default function Admin() {
   };
 
   // Download CSV template with current player list
-  const downloadTemplate = () => {
-    const header = 'Prénom,Nom,Équipe\n';
-    const rows = players
+  const downloadTemplate = async () => {
+    // Fetch fresh player data with team assignments
+    const res = await api.get('/players');
+    const allPlayers = res.data;
+    const teamNames = teams.map(t => t.name).join(' / ');
+    const comment = `# Modèle d'assignation — Équipes disponibles: ${teamNames}\n`;
+    const header  = 'Prénom,Nom,Équipe\n';
+    const rows = allPlayers
       .sort((a, b) => a.last_name.localeCompare(b.last_name))
       .map(p => `"${p.first_name}","${p.last_name}","${p.team_name || ''}"`)
       .join('\n');
-    const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['\uFEFF' + comment + header + rows], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'modele_assignation_joueurs.csv'; a.click();
@@ -207,7 +212,7 @@ export default function Admin() {
     e.target.value = '';
     try {
       const text = await file.text();
-      const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/);
+      const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => !l.startsWith('#'));
       const headerIdx = lines.findIndex(l => /prénom|prenom|first.name/i.test(l));
       if (headerIdx === -1) { toast.error('Format CSV invalide — colonne Prénom introuvable'); return; }
       const headers = parseCSVLine(lines[headerIdx]).map(h => h.toLowerCase());
