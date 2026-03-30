@@ -102,20 +102,6 @@ export default function Dashboard() {
         </Link>
       )}
 
-      {/* Announcements */}
-      {announcements.length > 0 && (
-        <div className="space-y-2">
-          {announcements.map(ann => (
-            <div key={ann.id} className="flex items-start gap-3 p-4 rounded-2xl border border-gray-800 bg-gray-900">
-              <MessageSquare size={16} className="text-gray-500 flex-shrink-0 mt-0.5" />
-              <div>
-                {ann.title && <div className="font-semibold text-white text-sm mb-0.5">{ann.title}</div>}
-                <div className="text-sm text-gray-400">{ann.content}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* ROW 1: Classement + Leaders */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
