@@ -37,8 +37,8 @@ router.post('/reset', authenticate, requireAdmin, (req, res) => {
   const db = getDB();
   db.pragma('foreign_keys = OFF');
   db.transaction(() => {
-    db.prepare('DELETE FROM goals').run();
-    db.prepare('DELETE FROM matches').run();
+    db.prepare('DELETE FROM goals WHERE match_id IN (SELECT id FROM matches WHERE status = \'completed\')').run();
+    db.prepare('DELETE FROM matches WHERE status = \'completed\'').run();
     db.prepare('DELETE FROM playoff_series').run();
     db.prepare('DELETE FROM draft_picks').run();
     db.prepare("UPDATE draft_settings SET status='pending', current_round=1, current_pick=1").run();
