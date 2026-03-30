@@ -5,6 +5,7 @@ import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Trophy, Users, Zap, FileText, Target, TrendingUp, Calendar, MessageSquare, CheckCircle, Star, ArrowRight, CalendarDays } from 'lucide-react';
 
+// ─── Stat card ────────────────────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, color = 'blue' }) {
   const colors = { blue: 'text-blue-400', green: 'text-emerald-400', yellow: 'text-yellow-400', purple: 'text-purple-400' };
   return (
@@ -16,27 +17,28 @@ function StatCard({ icon: Icon, label, value, color = 'blue' }) {
   );
 }
 
-function MatchCard({ match, showResult }) {
+// ─── Match row (results + upcoming) ───────────────────────────────────────────
+function MatchRow({ match, showResult }) {
   const date = parseISO(match.date);
   return (
-    <div className="py-3 border-b border-gray-800/60 last:border-0">
-      <div className="text-xs text-gray-600 mb-2">{format(date, 'EEE d MMM · HH:mm', { locale: fr })}</div>
-      <div className="flex items-center gap-3">
-        <div className="flex-1 flex items-center gap-2 justify-end min-w-0">
+    <div className="py-2.5 border-b border-gray-800/60 last:border-0">
+      <div className="text-xs text-gray-600 mb-1.5">{format(date, 'EEE d MMM · HH:mm', { locale: fr })}</div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 flex items-center gap-1.5 justify-end min-w-0">
           <span className="text-sm font-medium text-white truncate text-right">{match.home_team_name}</span>
-          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: match.home_color }} />
+          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: match.home_color }} />
         </div>
         {showResult ? (
-          <div className="flex items-center gap-1 flex-shrink-0 bg-gray-800 rounded-lg px-3 py-1">
-            <span className="text-base font-black text-white w-5 text-center">{match.home_score}</span>
-            <span className="text-gray-600 text-xs mx-0.5">—</span>
-            <span className="text-base font-black text-white w-5 text-center">{match.away_score}</span>
+          <div className="flex items-center gap-1 flex-shrink-0 bg-gray-800 rounded-lg px-2.5 py-1">
+            <span className="text-sm font-black text-white w-4 text-center">{match.home_score}</span>
+            <span className="text-gray-600 text-xs">—</span>
+            <span className="text-sm font-black text-white w-4 text-center">{match.away_score}</span>
           </div>
         ) : (
-          <div className="flex-shrink-0 text-xs text-gray-600 font-medium w-10 text-center">vs</div>
+          <div className="flex-shrink-0 text-xs text-gray-600 font-medium w-8 text-center">vs</div>
         )}
-        <div className="flex-1 flex items-center gap-2 min-w-0">
-          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: match.away_color }} />
+        <div className="flex-1 flex items-center gap-1.5 min-w-0">
+          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: match.away_color }} />
           <span className="text-sm text-gray-400 truncate">{match.away_team_name}</span>
         </div>
       </div>
@@ -44,6 +46,43 @@ function MatchCard({ match, showResult }) {
   );
 }
 
+// ─── Leader list column ────────────────────────────────────────────────────────
+function LeaderList({ title, players, valueKey, valueLabel, icon: Icon }) {
+  const max = players[0]?.[valueKey] || 1;
+  return (
+    <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
+      <div className="flex items-center gap-2 mb-4">
+        <Icon size={15} className="text-gray-500" />
+        <span className="text-sm font-semibold text-white">{title}</span>
+      </div>
+      <div className="space-y-3">
+        {players.slice(0, 5).map((p, i) => (
+          <Link to={`/players/${p.id}`} key={p.id} className="block group">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs text-gray-600 w-4 text-right">{i + 1}</span>
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.team_color }} />
+              <span className="text-sm text-gray-300 group-hover:text-white transition-colors flex-1 truncate">
+                {p.first_name} {p.last_name}
+              </span>
+              <span className="text-sm font-bold text-white">
+                {p[valueKey]} <span className="text-gray-600 font-normal text-xs">{valueLabel}</span>
+              </span>
+            </div>
+            <div className="ml-6 h-1 bg-gray-800 rounded-full overflow-hidden">
+              <div className="h-full bg-gray-500 rounded-full group-hover:bg-gray-400 transition-colors"
+                style={{ width: `${(p[valueKey] / max) * 100}%` }} />
+            </div>
+          </Link>
+        ))}
+        {players.length === 0 && (
+          <p className="text-gray-600 text-sm text-center py-3">Aucune statistique</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -58,11 +97,15 @@ export default function Dashboard() {
     </div>
   );
 
-  const { upcoming = [], recentResults = [], topScorers = [], standings = [], announcements = [], counts = {}, activeSeason } = data || {};
-  const maxPoints = topScorers[0]?.points || 1;
+  const {
+    upcoming = [], recentResults = [],
+    topScorers = [], topGoals = [], topAssists = [],
+    standings = [], announcements = [],
+    counts = {}, activeSeason,
+  } = data || {};
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-6 max-w-5xl">
 
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -102,12 +145,11 @@ export default function Dashboard() {
         </Link>
       )}
 
+      {/* ── ROW 1: Classement + Derniers résultats + Prochains matchs ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr] gap-5">
 
-      {/* ROW 1: Classement + Leaders */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* Standings — 2/3 width */}
-        <div className="lg:col-span-2 bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+        {/* Classement */}
+        <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
             <div className="flex items-center gap-2">
               <Trophy size={15} className="text-gray-500" />
@@ -116,35 +158,31 @@ export default function Dashboard() {
             <Link to="/standings" className="text-xs text-gray-500 hover:text-white transition-colors">Voir complet →</Link>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[360px]">
+            <table className="w-full text-sm min-w-[320px]">
               <thead>
                 <tr className="border-b border-gray-800">
-                  <th className="text-left py-3 px-5 text-xs text-gray-600 font-medium w-8">#</th>
-                  <th className="text-left py-3 text-xs text-gray-600 font-medium">Équipe</th>
-                  <th className="text-center py-3 text-xs text-gray-600 font-medium w-10">PJ</th>
-                  <th className="text-center py-3 text-xs text-gray-600 font-medium w-10">V</th>
-                  <th className="text-center py-3 text-xs text-gray-600 font-medium w-10">D</th>
-                  <th className="text-center py-3 text-xs text-gray-600 font-medium w-10 hidden sm:table-cell">BP</th>
-                  <th className="text-center py-3 text-xs text-gray-600 font-medium w-10 hidden sm:table-cell">BC</th>
-                  <th className="text-center py-3 pr-5 text-xs text-gray-500 font-semibold w-12">PTS</th>
+                  <th className="text-left py-2.5 px-5 text-xs text-gray-600 font-medium w-7">#</th>
+                  <th className="text-left py-2.5 text-xs text-gray-600 font-medium">Équipe</th>
+                  <th className="text-center py-2.5 text-xs text-gray-600 font-medium w-9">PJ</th>
+                  <th className="text-center py-2.5 text-xs text-gray-600 font-medium w-9">V</th>
+                  <th className="text-center py-2.5 text-xs text-gray-600 font-medium w-9">D</th>
+                  <th className="text-center py-2.5 pr-5 text-xs text-gray-500 font-semibold w-11">PTS</th>
                 </tr>
               </thead>
               <tbody>
                 {standings.map((s, i) => (
                   <tr key={s.team_id} className="border-b border-gray-800/40 hover:bg-gray-800/30 transition-colors last:border-0">
-                    <td className="py-3 px-5 text-gray-600 text-xs">{i + 1}</td>
-                    <td className="py-3">
+                    <td className="py-2.5 px-5 text-gray-600 text-xs">{i + 1}</td>
+                    <td className="py-2.5">
                       <div className="flex items-center gap-2">
                         <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.team_color }} />
-                        <Link to={`/teams/${s.team_id}`} className="text-gray-300 hover:text-white transition-colors font-medium">{s.team_name}</Link>
+                        <Link to={`/teams/${s.team_id}`} className="text-gray-300 hover:text-white transition-colors font-medium text-sm">{s.team_name}</Link>
                       </div>
                     </td>
-                    <td className="py-3 text-center text-gray-600 text-xs">{s.gp}</td>
-                    <td className="py-3 text-center text-gray-300">{s.w}</td>
-                    <td className="py-3 text-center text-gray-500">{s.l}</td>
-                    <td className="py-3 text-center text-gray-500 text-xs hidden sm:table-cell">{s.gf}</td>
-                    <td className="py-3 text-center text-gray-500 text-xs hidden sm:table-cell">{s.ga}</td>
-                    <td className="py-3 pr-5 text-center font-black text-white">{s.pts}</td>
+                    <td className="py-2.5 text-center text-gray-600 text-xs">{s.gp}</td>
+                    <td className="py-2.5 text-center text-gray-300 text-sm">{s.w}</td>
+                    <td className="py-2.5 text-center text-gray-500 text-sm">{s.l}</td>
+                    <td className="py-2.5 pr-5 text-center font-black text-white">{s.pts}</td>
                   </tr>
                 ))}
               </tbody>
@@ -152,90 +190,66 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Leaders — 1/3 width */}
-        <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp size={15} className="text-gray-500" />
-              <span className="text-sm font-semibold text-white">Leaders</span>
-            </div>
-            <Link to="/stats" className="text-xs text-gray-500 hover:text-white transition-colors">Voir tout →</Link>
-          </div>
-          <div className="space-y-3">
-            {topScorers.slice(0, 6).map((p, i) => (
-              <Link to={`/players/${p.id}`} key={p.id} className="block group">
-                <div className="flex items-center gap-2.5 mb-1">
-                  <span className="text-xs text-gray-600 w-4 text-right">{i + 1}</span>
-                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.team_color }} />
-                  <span className="text-sm text-gray-300 group-hover:text-white transition-colors flex-1 truncate">{p.first_name} {p.last_name}</span>
-                  <span className="text-sm font-bold text-white">{p.points} <span className="text-gray-600 font-normal text-xs">pts</span></span>
-                </div>
-                <div className="ml-6 h-1 bg-gray-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-gray-500 rounded-full group-hover:bg-gray-400 transition-colors"
-                    style={{ width: `${(p.points / maxPoints) * 100}%` }} />
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ROW 2: Prochains matchs + Derniers résultats + Messages */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* Upcoming */}
-        <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Calendar size={15} className="text-gray-500" />
-              <span className="text-sm font-semibold text-white">Prochains matchs</span>
-            </div>
-            <Link to="/schedule" className="text-xs text-gray-500 hover:text-white transition-colors">Calendrier →</Link>
-          </div>
-          {upcoming.length === 0
-            ? <p className="text-gray-600 text-sm py-4 text-center">Aucun match à venir</p>
-            : upcoming.map(m => <MatchCard key={m.id} match={m} showResult={false} />)}
-        </div>
-
-        {/* Results */}
+        {/* Derniers résultats */}
         <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <CheckCircle size={15} className="text-gray-500" />
               <span className="text-sm font-semibold text-white">Derniers résultats</span>
             </div>
-            <Link to="/standings" className="text-xs text-gray-500 hover:text-white transition-colors">Classement →</Link>
+            <Link to="/schedule?status=completed" className="text-xs text-gray-500 hover:text-white transition-colors">Tous →</Link>
           </div>
           {recentResults.length === 0
             ? <p className="text-gray-600 text-sm py-4 text-center">Aucun résultat</p>
-            : recentResults.map(m => <MatchCard key={m.id} match={m} showResult={true} />)}
+            : recentResults.map(m => <MatchRow key={m.id} match={m} showResult={true} />)}
         </div>
 
-        {/* Messages */}
+        {/* Prochains matchs */}
         <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <MessageSquare size={15} className="text-gray-500" />
-              <span className="text-sm font-semibold text-white">Messages</span>
+              <CalendarDays size={15} className="text-gray-500" />
+              <span className="text-sm font-semibold text-white">Match à venir</span>
             </div>
-            <Link to="/messages" className="text-xs text-gray-500 hover:text-white transition-colors">Voir tout →</Link>
+            <Link to="/schedule" className="text-xs text-gray-500 hover:text-white transition-colors">Calendrier →</Link>
           </div>
-          {announcements.length === 0 ? (
-            <p className="text-gray-600 text-sm py-4 text-center">Aucun message</p>
-          ) : (
-            <div className="space-y-3">
-              {announcements.slice(0, 4).map(ann => (
-                <div key={ann.id} className="py-2 border-b border-gray-800/60 last:border-0">
-                  {ann.title && <div className="text-sm font-semibold text-white mb-0.5">{ann.title}</div>}
-                  <div className="text-xs text-gray-500 line-clamp-2">{ann.content}</div>
-                </div>
-              ))}
-            </div>
-          )}
+          {upcoming.length === 0
+            ? <p className="text-gray-600 text-sm py-4 text-center">Aucun match à venir</p>
+            : upcoming.map(m => <MatchRow key={m.id} match={m} showResult={false} />)}
         </div>
       </div>
 
-      {/* Stat numbers */}
+      {/* ── ROW 2: Leaders PTS + Buts + Passes ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <LeaderList title="Leaders PTS"   players={topScorers} valueKey="points"  valueLabel="pts"  icon={TrendingUp} />
+        <LeaderList title="Leaders Buts"  players={topGoals}   valueKey="goals"   valueLabel="B"    icon={Target} />
+        <LeaderList title="Leaders Passes" players={topAssists} valueKey="assists" valueLabel="A"    icon={Star} />
+      </div>
+
+      {/* ── ROW 3: Messages ── */}
+      <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <MessageSquare size={15} className="text-gray-500" />
+            <span className="text-sm font-semibold text-white">Messages</span>
+          </div>
+          <Link to="/messages" className="text-xs text-gray-500 hover:text-white transition-colors">Voir tout →</Link>
+        </div>
+        {announcements.length === 0 ? (
+          <p className="text-gray-600 text-sm py-3 text-center">Aucun message</p>
+        ) : (
+          <div className="divide-y divide-gray-800/60">
+            {announcements.slice(0, 4).map(ann => (
+              <div key={ann.id} className="py-3 first:pt-0 last:pb-0">
+                {ann.title && <div className="text-sm font-semibold text-white mb-0.5">{ann.title}</div>}
+                <div className="text-xs text-gray-500">{ann.content}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── ROW 4: Stat cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={Users}   label="Joueurs actifs"  value={counts.players || 0}       color="blue" />
         <StatCard icon={Trophy}  label="Matchs joués"    value={counts.matches_played || 0} color="green" />
@@ -243,20 +257,6 @@ export default function Dashboard() {
         <StatCard icon={Zap}     label="Équipes"          value={counts.teams || 0}           color="purple" />
       </div>
 
-      {/* Quick links */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { to: '/gamesheet', label: 'Feuille de match' },
-          { to: '/schedule',  label: 'Calendrier' },
-          { to: '/players',   label: 'Joueurs' },
-          { to: '/draft',     label: 'Repêchage' },
-        ].map(item => (
-          <Link key={item.to} to={item.to}
-            className="bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-2xl p-4 text-center text-sm font-medium text-gray-400 hover:text-white transition-all">
-            {item.label}
-          </Link>
-        ))}
-      </div>
     </div>
   );
 }

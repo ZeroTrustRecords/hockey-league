@@ -27,8 +27,7 @@ router.get('/', (req, res) => {
     ORDER BY m.date DESC LIMIT 5
   `).all();
 
-  // Top scorers
-  const topScorers = db.prepare(`
+  const playerStatsQuery = `
     SELECT p.id, p.first_name, p.last_name, p.number,
       t.name as team_name, t.color as team_color,
       SUM(CASE WHEN g.scorer_id = p.id THEN 1 ELSE 0 END) as goals,
@@ -41,9 +40,10 @@ router.get('/', (req, res) => {
     LEFT JOIN matches m ON g.match_id = m.id AND m.validated = 1
     WHERE p.status = 'active'
     GROUP BY p.id
-    ORDER BY points DESC, goals DESC
-    LIMIT 5
-  `).all();
+  `;
+  const topScorers  = db.prepare(playerStatsQuery + ' ORDER BY points DESC, goals DESC LIMIT 5').all();
+  const topGoals    = db.prepare(playerStatsQuery + ' ORDER BY goals DESC, points DESC LIMIT 5').all();
+  const topAssists  = db.prepare(playerStatsQuery + ' ORDER BY assists DESC, points DESC LIMIT 5').all();
 
   // Quick standings (single query)
   const standingsRaw = db.prepare(`
@@ -86,7 +86,7 @@ router.get('/', (req, res) => {
     ORDER BY s.created_at DESC LIMIT 1
   `).get();
 
-  res.json({ upcoming, recentResults, topScorers, standings, announcements, counts, activeSeason });
+  res.json({ upcoming, recentResults, topScorers, topGoals, topAssists, standings, announcements, counts, activeSeason });
 });
 
 module.exports = router;
