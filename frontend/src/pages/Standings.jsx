@@ -19,100 +19,82 @@ export default function Standings() {
   const top = standings[0];
 
   return (
-    <div className="space-y-5">
-      {/* Hero */}
-      <div className="relative rounded-2xl overflow-hidden border border-gray-700/50"
-        style={{ background: 'linear-gradient(135deg, #1a2e1a 0%, #111827 50%, #1a1a2e 100%)' }}>
-        <div className="absolute inset-0 opacity-5"
-          style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 12px, white 12px, white 13px)' }} />
-        <div className="relative p-6 flex items-center justify-between">
-          <div>
-            <div className="text-xs font-bold text-yellow-400 uppercase tracking-widest mb-1">🏆 Classement</div>
-            <h1 className="text-3xl font-black text-white">Saison en cours</h1>
-            <p className="text-gray-400 text-sm mt-1">{standings.length} équipes · Saison régulière</p>
-          </div>
-          <button onClick={load} className="btn-secondary"><RefreshCw size={15} /> Actualiser</button>
+    <div className="space-y-8 max-w-4xl">
+
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Saison régulière</p>
+          <h1 className="text-4xl font-black text-white">Classement</h1>
+          <p className="text-gray-500 text-sm mt-2">{standings.length} équipes</p>
         </div>
+        <button onClick={load} className="btn-secondary mt-1"><RefreshCw size={14} /> Actualiser</button>
       </div>
 
-      {/* Leader banner */}
+      {/* Leader */}
       {top && top.gp > 0 && (
-        <div className="rounded-xl border border-yellow-500/20 overflow-hidden"
-          style={{ background: `linear-gradient(135deg, ${top.team_color}25 0%, #111827 60%)` }}>
-          <div className="flex items-center gap-4 p-4">
-            <div className="text-3xl">🥇</div>
-            <div className="w-5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: top.team_color }} />
-            <div className="flex-1">
-              <Link to={`/teams/${top.team_id}`} className="text-xl font-black text-white hover:text-yellow-400 transition-colors">{top.team_name}</Link>
-              <p className="text-sm text-gray-400 mt-0.5">
-                <span className="text-yellow-400 font-bold">{top.pts} pts</span>
-                {' · '}{top.w}V {top.l}D
-                {' · '}Diff: <span className={top.diff >= 0 ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>{top.diff > 0 ? '+' : ''}{top.diff}</span>
-              </p>
-            </div>
-            <div className="text-right hidden sm:block">
-              <div className="text-3xl font-black text-yellow-400">{top.pts}</div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">points</div>
-            </div>
+        <div className="flex items-center gap-4 p-5 rounded-2xl border border-gray-800 bg-gray-900">
+          <div className="w-10 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: top.team_color + '30', border: `2px solid ${top.team_color}` }}>
+            <div className="w-full h-full flex items-center justify-center text-xs font-black" style={{ color: top.team_color }}>1</div>
+          </div>
+          <div className="flex-1">
+            <Link to={`/teams/${top.team_id}`} className="font-black text-white text-lg hover:text-gray-300 transition-colors">{top.team_name}</Link>
+            <p className="text-sm text-gray-500 mt-0.5">{top.w}V · {top.l}D · Diff {top.diff > 0 ? '+' : ''}{top.diff}</p>
+          </div>
+          <div className="text-right">
+            <div className="text-3xl font-black text-white">{top.pts}</div>
+            <div className="text-xs text-gray-600 uppercase tracking-wide">points</div>
           </div>
         </div>
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-gray-500 animate-pulse">Chargement...</div>
+        <div className="text-center py-12 text-gray-600 text-sm">Chargement...</div>
       ) : (
-        <div className="table-container">
-          <table className="table">
+        <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+          <table className="w-full text-sm">
             <thead>
-              <tr>
-                <th className="w-8">#</th>
-                <th>Équipe</th>
-                <th className="text-center">PJ</th>
-                <th className="text-center">V</th>
-                <th className="text-center">D</th>
-                <th className="text-center hidden sm:table-cell">BF</th>
-                <th className="text-center hidden sm:table-cell">BC</th>
-                <th className="text-center hidden md:table-cell">DIFF</th>
-                <th className="text-center hidden md:table-cell">%V</th>
-                <th className="text-center text-yellow-400">PTS</th>
-                <th className="text-center hidden lg:table-cell">Séquence</th>
+              <tr className="border-b border-gray-800">
+                <th className="text-left py-3 px-5 text-xs text-gray-600 font-medium w-8">#</th>
+                <th className="text-left py-3 text-xs text-gray-600 font-medium">Équipe</th>
+                <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">PJ</th>
+                <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">V</th>
+                <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">D</th>
+                <th className="text-center py-3 text-xs text-gray-600 font-medium w-12 hidden sm:table-cell">BF</th>
+                <th className="text-center py-3 text-xs text-gray-600 font-medium w-12 hidden sm:table-cell">BC</th>
+                <th className="text-center py-3 text-xs text-gray-600 font-medium w-14 hidden md:table-cell">DIFF</th>
+                <th className="text-center py-3 text-xs text-gray-600 font-medium w-14 hidden md:table-cell">%V</th>
+                <th className="text-center py-3 pr-5 text-xs text-gray-500 font-semibold w-12">PTS</th>
+                <th className="text-center py-3 pr-5 text-xs text-gray-600 font-medium hidden lg:table-cell">Séquence</th>
               </tr>
             </thead>
             <tbody>
               {standings.map((s, i) => (
                 <>
-                  <tr key={s.team_id}
-                    className={`border-t border-gray-800/50 hover:bg-gray-800/30 transition-colors ${i === 0 && s.gp > 0 ? 'bg-yellow-500/5' : ''}`}
-                    style={{ borderLeft: `4px solid ${s.team_color}` }}>
-                    <td className="pl-2">
-                      {i === 0 && s.gp > 0
-                        ? <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black" style={{ background: '#EAB308', color: '#000' }}>1</div>
-                        : <div className="flex items-center justify-center w-6 h-6 text-xs font-bold text-gray-500">{i + 1}</div>}
-                    </td>
-                    <td>
+                  <tr key={s.team_id} className="border-b border-gray-800/40 hover:bg-gray-800/30 transition-colors last:border-0">
+                    <td className="py-3.5 px-5 text-gray-600 text-xs">{i + 1}</td>
+                    <td className="py-3.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: s.team_color }} />
-                        <Link to={`/teams/${s.team_id}`} className="font-semibold text-white hover:text-blue-400 transition-colors">{s.team_name}</Link>
+                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.team_color }} />
+                        <Link to={`/teams/${s.team_id}`} className="font-medium text-gray-300 hover:text-white transition-colors">{s.team_name}</Link>
                       </div>
                     </td>
-                    <td className="text-center text-gray-400">{s.gp}</td>
-                    <td className="text-center font-bold text-emerald-400">{s.w}</td>
-                    <td className="text-center font-bold text-red-400">{s.l}</td>
-                    <td className="text-center text-gray-300 hidden sm:table-cell">{s.gf}</td>
-                    <td className="text-center text-gray-300 hidden sm:table-cell">{s.ga}</td>
-                    <td className="text-center hidden md:table-cell">
-                      <span className={s.diff > 0 ? 'text-emerald-400 font-semibold' : s.diff < 0 ? 'text-red-400 font-semibold' : 'text-gray-400'}>
+                    <td className="py-3.5 text-center text-gray-600 text-xs">{s.gp}</td>
+                    <td className="py-3.5 text-center text-gray-300 font-medium">{s.w}</td>
+                    <td className="py-3.5 text-center text-gray-500">{s.l}</td>
+                    <td className="py-3.5 text-center text-gray-500 text-xs hidden sm:table-cell">{s.gf}</td>
+                    <td className="py-3.5 text-center text-gray-500 text-xs hidden sm:table-cell">{s.ga}</td>
+                    <td className="py-3.5 text-center hidden md:table-cell">
+                      <span className={s.diff > 0 ? 'text-gray-300' : s.diff < 0 ? 'text-gray-500' : 'text-gray-600'}>
                         {s.diff > 0 ? '+' : ''}{s.diff}
                       </span>
                     </td>
-                    <td className="text-center text-gray-400 hidden md:table-cell">{s.pct}%</td>
-                    <td className="text-center">
-                      <span className="font-black text-yellow-400 text-base">{s.pts}</span>
-                    </td>
-                    <td className="hidden lg:table-cell">
+                    <td className="py-3.5 text-center text-gray-600 text-xs hidden md:table-cell">{s.pct}%</td>
+                    <td className="py-3.5 pr-5 text-center font-black text-white">{s.pts}</td>
+                    <td className="hidden lg:table-cell py-3.5 pr-5">
                       <div className="flex items-center justify-center gap-1">
                         {(s.last5 || []).map((r, j) => (
-                          <span key={j} className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black ${r === 'W' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
+                          <span key={j} className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${r === 'W' ? 'bg-gray-700 text-gray-300' : 'bg-gray-800 text-gray-600'}`}>
                             {r === 'W' ? 'V' : 'D'}
                           </span>
                         ))}
@@ -120,12 +102,12 @@ export default function Standings() {
                     </td>
                   </tr>
                   {i === PLAYOFF_CUTOFF - 1 && standings.length > PLAYOFF_CUTOFF && (
-                    <tr key="cutoff-line">
-                      <td colSpan={11} className="p-0">
-                        <div className="flex items-center gap-2 px-3 py-1">
-                          <div className="flex-1 h-px bg-blue-500/40" />
-                          <span className="text-xs text-blue-400/80 font-semibold uppercase tracking-wide whitespace-nowrap">Séries éliminatoires — top {PLAYOFF_CUTOFF}</span>
-                          <div className="flex-1 h-px bg-blue-500/40" />
+                    <tr key="cutoff">
+                      <td colSpan={11}>
+                        <div className="flex items-center gap-3 px-5 py-2">
+                          <div className="flex-1 h-px bg-gray-800" />
+                          <span className="text-xs text-gray-600 whitespace-nowrap">séries éliminatoires · top {PLAYOFF_CUTOFF}</span>
+                          <div className="flex-1 h-px bg-gray-800" />
                         </div>
                       </td>
                     </tr>
@@ -138,7 +120,7 @@ export default function Standings() {
       )}
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-4 text-xs text-gray-500">
+      <div className="flex flex-wrap gap-4 text-xs text-gray-600">
         <span>PJ = Parties jouées</span>
         <span>V = Victoires</span>
         <span>D = Défaites</span>
@@ -146,7 +128,7 @@ export default function Standings() {
         <span>BC = Buts contre</span>
         <span>DIFF = Différentiel</span>
         <span>%V = % victoires</span>
-        <span className="text-yellow-400 font-semibold">PTS = Points</span>
+        <span className="text-gray-400 font-medium">PTS = Points</span>
       </div>
     </div>
   );
