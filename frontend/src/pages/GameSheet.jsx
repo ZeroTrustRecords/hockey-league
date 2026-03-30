@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { Plus, X, Check, Target, ChevronUp, Minus } from 'lucide-react';
+import { Plus, X, Check, Target, ChevronUp } from 'lucide-react';
 
 const PERIODS = [
   { value: '1', label: '1re' },
@@ -99,8 +99,6 @@ export default function GameSheet() {
   const [selectedMatch, setSelectedMatch] = useState(id || '');
   const [form, setForm] = useState({ home_team_id: '', away_team_id: '', date: '', location: 'Aréna Municipal', season_id: '' });
   const [goals, setGoals] = useState([]);
-  const [homeScore, setHomeScore] = useState(0);
-  const [awayScore, setAwayScore] = useState(0);
   const [notes, setNotes] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
 
@@ -120,8 +118,6 @@ export default function GameSheet() {
       const m = r.data;
       setForm({ home_team_id: m.home_team_id, away_team_id: m.away_team_id, date: m.date?.slice(0, 16), location: m.location, season_id: m.season_id });
       setGoals(r.data.goals || []);
-      setHomeScore(m.home_score || 0);
-      setAwayScore(m.away_score || 0);
       setNotes(m.notes || '');
       setShowCreateForm(false);
     });
@@ -143,24 +139,10 @@ export default function GameSheet() {
     setGoals(prev => [...prev, {
       team_id: String(teamId), scorer_id: '', assist1_id: '', assist2_id: '', period: '1', time_in_period: ''
     }]);
-    // Also increment the score
-    if (String(teamId) === String(form.home_team_id)) setHomeScore(s => s + 1);
-    else setAwayScore(s => s + 1);
   };
 
   const updateGoal = (i, g) => setGoals(prev => prev.map((og, idx) => idx === i ? g : og));
-
-  const removeGoal = i => {
-    const g = goals[i];
-    if (String(g.team_id) === String(form.home_team_id)) setHomeScore(s => Math.max(0, s - 1));
-    else setAwayScore(s => Math.max(0, s - 1));
-    setGoals(prev => prev.filter((_, idx) => idx !== i));
-  };
-
-  const adjustScore = (team, delta) => {
-    if (team === 'home') setHomeScore(s => Math.max(0, s + delta));
-    else setAwayScore(s => Math.max(0, s + delta));
-  };
+  const removeGoal = i => setGoals(prev => prev.filter((_, idx) => idx !== i));
 
   // Normalize goals before sending: empty string → null, 'sub' (replacement assist) → null
   const normalizeGoals = (gs) => gs.map(g => ({
@@ -194,9 +176,11 @@ export default function GameSheet() {
     finally { setSaving(false); }
   };
 
-  const homeTeam = teams.find(t => String(t.id) === String(form.home_team_id));
-  const awayTeam = teams.find(t => String(t.id) === String(form.away_team_id));
+  const homeTeam  = teams.find(t => String(t.id) === String(form.home_team_id));
+  const awayTeam  = teams.find(t => String(t.id) === String(form.away_team_id));
   const matchData = matches.find(m => String(m.id) === String(selectedMatch));
+  const homeScore = goals.filter(g => String(g.team_id) === String(form.home_team_id)).length;
+  const awayScore = goals.filter(g => String(g.team_id) === String(form.away_team_id)).length;
 
   if (loading) return <div className="text-center py-12 text-gray-500 animate-pulse">Chargement...</div>;
 
@@ -253,55 +237,33 @@ export default function GameSheet() {
 
       {selectedMatch && (
         <>
-          {/* Scoreboard with +/- controls */}
+          {/* Scoreboard */}
           <div className="card">
             {matchData?.validated && (
               <div className="text-center mb-3">
                 <span className="text-xs bg-green-500/20 text-green-400 px-3 py-1 rounded-full">Match validé</span>
               </div>
             )}
-            <div className="flex items-center justify-center gap-2">
-
-              {/* Home team */}
+            <div className="flex items-center justify-center gap-6">
               <div className="flex-1 text-center">
                 <div className="flex items-center justify-center gap-1.5 mb-1">
                   {homeTeam && <div className="w-3 h-3 rounded-full" style={{ backgroundColor: homeTeam.color }} />}
                   <span className="font-bold text-white text-sm">{homeTeam?.name || '—'}</span>
                 </div>
                 <div className="text-xs text-gray-500 mb-2">Local</div>
-                <div className="flex items-center justify-center gap-2">
-                  <button onClick={() => adjustScore('home', -1)} className="w-8 h-8 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-gray-300 transition-colors">
-                    <Minus size={14} />
-                  </button>
-                  <span className="text-5xl font-black text-white tabular-nums w-14 text-center">{homeScore}</span>
-                  <button onClick={() => adjustScore('home', +1)} className="w-8 h-8 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-gray-300 transition-colors">
-                    <Plus size={14} />
-                  </button>
-                </div>
+                <span className="text-5xl font-black text-white tabular-nums">{homeScore}</span>
               </div>
-
-              <span className="text-2xl text-gray-700 pb-2">–</span>
-
-              {/* Away team */}
+              <span className="text-2xl text-gray-700">–</span>
               <div className="flex-1 text-center">
                 <div className="flex items-center justify-center gap-1.5 mb-1">
                   {awayTeam && <div className="w-3 h-3 rounded-full" style={{ backgroundColor: awayTeam.color }} />}
                   <span className="font-bold text-white text-sm">{awayTeam?.name || '—'}</span>
                 </div>
                 <div className="text-xs text-gray-500 mb-2">Visiteur</div>
-                <div className="flex items-center justify-center gap-2">
-                  <button onClick={() => adjustScore('away', -1)} className="w-8 h-8 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-gray-300 transition-colors">
-                    <Minus size={14} />
-                  </button>
-                  <span className="text-5xl font-black text-white tabular-nums w-14 text-center">{awayScore}</span>
-                  <button onClick={() => adjustScore('away', +1)} className="w-8 h-8 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-gray-300 transition-colors">
-                    <Plus size={14} />
-                  </button>
-                </div>
+                <span className="text-5xl font-black text-white tabular-nums">{awayScore}</span>
               </div>
-
             </div>
-            <p className="text-center text-xs text-gray-600 mt-3">Utilisez +/− pour les buts de remplaçants (pas comptés dans les stats)</p>
+            <p className="text-center text-xs text-gray-600 mt-3">Score calculé automatiquement depuis les buts enregistrés</p>
           </div>
 
           {/* Goals for stats */}
