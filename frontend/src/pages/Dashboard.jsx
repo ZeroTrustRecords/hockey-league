@@ -6,14 +6,20 @@ import { fr } from 'date-fns/locale';
 import { Trophy, Users, Zap, FileText, Target, TrendingUp, Calendar, MessageSquare, CheckCircle, Star } from 'lucide-react';
 
 function StatCard({ icon: Icon, label, value, color = 'blue' }) {
-  const colors = { blue: 'bg-blue-600/20 text-blue-400', green: 'bg-emerald-600/20 text-emerald-400', yellow: 'bg-yellow-600/20 text-yellow-400', purple: 'bg-purple-600/20 text-purple-400' };
+  const colors = {
+    blue:   { bg: 'bg-blue-600/20',    text: 'text-blue-400',    border: '#3b82f6' },
+    green:  { bg: 'bg-emerald-600/20', text: 'text-emerald-400', border: '#10b981' },
+    yellow: { bg: 'bg-yellow-600/20',  text: 'text-yellow-400',  border: '#eab308' },
+    purple: { bg: 'bg-purple-600/20',  text: 'text-purple-400',  border: '#a855f7' },
+  };
+  const c = colors[color];
   return (
-    <div className="card flex items-center gap-4">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${colors[color]}`}>
-        <Icon size={22} />
+    <div className="card flex items-center gap-4" style={{ borderLeft: `4px solid ${c.border}` }}>
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${c.bg}`}>
+        <Icon size={24} className={c.text} />
       </div>
       <div>
-        <div className="text-2xl font-bold text-white">{value}</div>
+        <div className="text-3xl font-black text-white">{value}</div>
         <div className="text-xs text-gray-400">{label}</div>
       </div>
     </div>
@@ -22,30 +28,33 @@ function StatCard({ icon: Icon, label, value, color = 'blue' }) {
 
 function MatchCard({ match, showResult }) {
   const date = parseISO(match.date);
-  const isHome = true;
   return (
-    <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-800/50 hover:bg-gray-800 transition-colors">
-      <div className="text-center min-w-[48px]">
-        <div className="text-xs text-gray-500 uppercase">{format(date, 'EEE', { locale: fr })}</div>
-        <div className="text-base font-bold text-white">{format(date, 'd MMM', { locale: fr })}</div>
-        <div className="text-xs text-gray-500">{format(date, 'HH:mm')}</div>
+    <div className="bg-gray-800/50 hover:bg-gray-800 transition-colors rounded-xl overflow-hidden">
+      <div className="text-center py-1.5 bg-gray-900/60 text-xs text-gray-500 uppercase tracking-wide">
+        {format(date, 'EEE d MMM · HH:mm', { locale: fr })}
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: match.home_color }} />
-            <span className="text-sm text-white font-medium truncate">{match.home_team_name}</span>
-          </div>
-          {showResult ? (
-            <span className="text-sm font-bold text-white px-2">{match.home_score}</span>
-          ) : <span className="text-xs text-gray-500">vs</span>}
+      <div className="flex items-center px-3 py-2.5 gap-2">
+        {/* Home team */}
+        <div className="flex-1 flex items-center gap-2 justify-end min-w-0">
+          <span className="text-sm font-semibold text-white truncate text-right">{match.home_team_name}</span>
+          <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: match.home_color }} />
         </div>
-        <div className="flex items-center justify-between gap-2 mt-1">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: match.away_color }} />
-            <span className="text-sm text-gray-300 truncate">{match.away_team_name}</span>
+        {/* Score / VS */}
+        {showResult ? (
+          <div className="flex items-center gap-0.5 bg-gray-950 rounded-lg px-3 py-1.5 flex-shrink-0 border border-gray-700">
+            <span className="text-xl font-black text-white w-6 text-center">{match.home_score}</span>
+            <span className="text-gray-600 mx-1 text-sm">-</span>
+            <span className="text-xl font-black text-white w-6 text-center">{match.away_score}</span>
           </div>
-          {showResult && <span className="text-sm font-bold text-white px-2">{match.away_score}</span>}
+        ) : (
+          <div className="bg-gray-950 rounded-lg px-4 py-1.5 flex-shrink-0 border border-gray-700">
+            <span className="text-xs font-black text-gray-400 tracking-widest">VS</span>
+          </div>
+        )}
+        {/* Away team */}
+        <div className="flex-1 flex items-center gap-2 min-w-0">
+          <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: match.away_color }} />
+          <span className="text-sm font-medium text-gray-300 truncate">{match.away_team_name}</span>
         </div>
       </div>
     </div>
@@ -67,16 +76,31 @@ export default function Dashboard() {
   );
 
   const { upcoming = [], recentResults = [], topScorers = [], standings = [], announcements = [], counts = {}, activeSeason } = data || {};
+  const maxPoints = topScorers[0]?.points || 1;
+
+  const statusBadge = () => {
+    if (!activeSeason) return null;
+    if (activeSeason.status === 'playoffs') return <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">SÉRIES</span>;
+    if (activeSeason.status === 'completed') return <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-600/30 text-gray-400 border border-gray-600/30">TERMINÉE</span>;
+    return <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">EN COURS</span>;
+  };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="page-title">Tableau de bord</h1>
-          <p className="text-gray-400 text-sm mt-0.5">Saison 2024-2025</p>
-        </div>
-        <div className="flex gap-2">
+      {/* Hero Banner */}
+      <div className="relative rounded-2xl overflow-hidden border border-gray-700/50"
+        style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #111827 50%, #1a1040 100%)' }}>
+        <div className="absolute inset-0 opacity-5"
+          style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 12px, white 12px, white 13px)' }} />
+        <div className="relative p-6 flex items-center justify-between">
+          <div>
+            <div className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-1">🏒 Ligue de Hockey</div>
+            <h1 className="text-3xl font-black text-white">Tableau de bord</h1>
+            <div className="flex items-center gap-2 mt-2">
+              <p className="text-gray-400 text-sm">{activeSeason?.name || 'Saison 2024-2025'}</p>
+              {statusBadge()}
+            </div>
+          </div>
           <Link to="/gamesheet" className="btn-primary hidden sm:flex">
             <FileText size={16} /> Feuille de match
           </Link>
@@ -157,18 +181,23 @@ export default function Dashboard() {
             <h2 className="section-title flex items-center gap-2"><TrendingUp size={16} className="text-yellow-400" /> Leaders</h2>
             <Link to="/stats" className="text-xs text-blue-400 hover:text-blue-300">Stats complètes</Link>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1">
             {topScorers.slice(0, 5).map((p, i) => (
-              <Link to={`/players/${p.id}`} key={p.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-800 transition-colors">
-                <span className="text-xs font-bold text-gray-500 w-4 text-center">{i + 1}</span>
-                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: p.team_color }} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white font-medium truncate">{p.first_name} {p.last_name}</div>
-                  <div className="text-xs text-gray-500">{p.team_name}</div>
+              <Link to={`/players/${p.id}`} key={p.id} className="block p-2 rounded-lg hover:bg-gray-800 transition-colors">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-black text-gray-500 w-4 text-center">{i + 1}</span>
+                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: p.team_color }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-white font-semibold truncate">{p.first_name} {p.last_name}</div>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <span className="text-sm font-black text-yellow-400">{p.points}</span>
+                    <span className="text-xs text-gray-500 ml-1">pts</span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm font-bold text-yellow-400">{p.points} pts</div>
-                  <div className="text-xs text-gray-500">{p.goals}B {p.assists}A</div>
+                <div className="ml-6 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all"
+                    style={{ width: `${(p.points / maxPoints) * 100}%`, background: 'linear-gradient(90deg, #eab308, #fde047)' }} />
                 </div>
               </Link>
             ))}
@@ -198,8 +227,14 @@ export default function Dashboard() {
             </thead>
             <tbody>
               {standings.map((s, i) => (
-                <tr key={s.team_id} className="border-t border-gray-800/50 hover:bg-gray-800/30 transition-colors">
-                  <td className="py-2.5 text-gray-500 font-medium">{i + 1}</td>
+                <tr key={s.team_id}
+                  className={`border-t border-gray-800/50 hover:bg-gray-800/30 transition-colors ${i === 0 && s.gp > 0 ? 'bg-yellow-500/5' : ''}`}
+                  style={{ borderLeft: `3px solid ${s.team_color}` }}>
+                  <td className="py-2.5 pl-2">
+                    {i === 0 && s.gp > 0
+                      ? <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-black" style={{ background: '#EAB308', color: '#000' }}>1</div>
+                      : <span className="text-gray-500 font-medium">{i + 1}</span>}
+                  </td>
                   <td className="py-2.5">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: s.team_color }} />
@@ -207,11 +242,11 @@ export default function Dashboard() {
                     </div>
                   </td>
                   <td className="py-2.5 text-center text-gray-400">{s.gp}</td>
-                  <td className="py-2.5 text-center text-emerald-400">{s.w}</td>
-                  <td className="py-2.5 text-center text-red-400">{s.l}</td>
+                  <td className="py-2.5 text-center font-bold text-emerald-400">{s.w}</td>
+                  <td className="py-2.5 text-center font-bold text-red-400">{s.l}</td>
                   <td className="py-2.5 text-center text-gray-300">{s.gf}</td>
                   <td className="py-2.5 text-center text-gray-300">{s.ga}</td>
-                  <td className="py-2.5 text-center font-bold text-yellow-400">{s.pts}</td>
+                  <td className="py-2.5 text-center font-black text-yellow-400 text-base">{s.pts}</td>
                 </tr>
               ))}
             </tbody>
@@ -219,7 +254,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard icon={Users} label="Joueurs actifs" value={counts.players || 0} color="blue" />
         <StatCard icon={Trophy} label="Matchs joués" value={counts.matches_played || 0} color="green" />
