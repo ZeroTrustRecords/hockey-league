@@ -32,4 +32,20 @@ router.put('/:id', authenticate, requireAdmin, (req, res) => {
   res.json({ message: 'Saison mise à jour' });
 });
 
+// Full reset: clear matches, goals, draft, playoff series, unassign players from teams
+router.post('/reset', authenticate, requireAdmin, (req, res) => {
+  const db = getDB();
+  db.transaction(() => {
+    db.prepare('DELETE FROM goals').run();
+    db.prepare('DELETE FROM matches').run();
+    db.prepare('DELETE FROM playoff_series').run();
+    db.prepare('DELETE FROM draft_picks').run();
+    db.prepare('DELETE FROM draft_sessions').run();
+    db.prepare('UPDATE players SET team_id = NULL').run();
+    db.prepare('DELETE FROM team_staff').run();
+    db.prepare("UPDATE seasons SET status = 'completed' WHERE status IN ('active','playoffs')").run();
+  })();
+  res.json({ message: 'Réinitialisation complète effectuée' });
+});
+
 module.exports = router;

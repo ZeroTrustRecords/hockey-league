@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api/client';
 import toast from 'react-hot-toast';
-import { Settings, Plus, X, Users, Shield, Calendar, RefreshCw, Check, Trash2, UserCheck, Trophy, Zap } from 'lucide-react';
+import { Settings, Plus, X, Users, Shield, Calendar, RefreshCw, Check, Trash2, UserCheck, Trophy, Zap, AlertTriangle } from 'lucide-react';
 
 function UserModal({ players, teams, onClose, onSave }) {
   const [form, setForm] = useState({ username: '', password: '', role: 'player', player_id: '', team_id: '' });
@@ -169,6 +169,16 @@ export default function Admin() {
     finally { setPlayoffStarting(false); }
   };
 
+  const handleReset = async () => {
+    if (!confirm('⚠️ RÉINITIALISATION COMPLÈTE\n\nCeci va effacer:\n- Tous les matchs et buts\n- Le repêchage\n- Les séries éliminatoires\n- Les assignations de joueurs aux équipes\n\nLes joueurs et équipes seront conservés.\n\nÊtes-vous certain?')) return;
+    if (!confirm('Dernière confirmation — cette action est irréversible. Continuer?')) return;
+    try {
+      await api.post('/seasons/reset');
+      toast.success('Réinitialisation effectuée');
+      load();
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
   const createNewSeason = async e => {
     e.preventDefault();
     try {
@@ -274,6 +284,11 @@ export default function Admin() {
               <button onClick={load} className="btn-secondary w-full justify-start">
                 <RefreshCw size={16} /> Actualiser les données
               </button>
+              <div className="pt-2 border-t border-gray-800">
+                <button onClick={handleReset} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors">
+                  <AlertTriangle size={16} /> Réinitialiser la ligue
+                </button>
+              </div>
             </div>
           </div>
           {/* Season lifecycle */}
