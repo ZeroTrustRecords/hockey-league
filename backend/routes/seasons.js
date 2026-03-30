@@ -35,6 +35,7 @@ router.put('/:id', authenticate, requireAdmin, (req, res) => {
 // Full reset: clear matches, goals, draft, playoff series, unassign players from teams
 router.post('/reset', authenticate, requireAdmin, (req, res) => {
   const db = getDB();
+  db.pragma('foreign_keys = OFF');
   db.transaction(() => {
     db.prepare('DELETE FROM goals').run();
     db.prepare('DELETE FROM matches').run();
@@ -46,6 +47,7 @@ router.post('/reset', authenticate, requireAdmin, (req, res) => {
     db.prepare('DELETE FROM team_staff').run();
     db.prepare("UPDATE seasons SET status = 'completed' WHERE status IN ('active','playoffs')").run();
   })();
+  db.pragma('foreign_keys = ON');
   res.json({ message: 'Réinitialisation complète effectuée' });
 });
 
