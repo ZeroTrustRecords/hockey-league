@@ -169,6 +169,15 @@ export default function Admin() {
     finally { setPlayoffStarting(false); }
   };
 
+  const handleAssignTeams = async () => {
+    if (!confirm('Assigner tous les joueurs à leurs équipes selon la liste CSV? Les assignations existantes seront écrasées.')) return;
+    try {
+      const r = await api.post('/seasons/assign-teams');
+      toast.success(r.data.message);
+      load();
+    } catch { toast.error('Erreur'); }
+  };
+
   const handleReset = async () => {
     if (!confirm('⚠️ RÉINITIALISATION COMPLÈTE\n\nCeci va effacer:\n- Tous les matchs et buts\n- Le repêchage\n- Les séries éliminatoires\n- Les assignations de joueurs aux équipes\n\nLes joueurs et équipes seront conservés.\n\nÊtes-vous certain?')) return;
     if (!confirm('Dernière confirmation — cette action est irréversible. Continuer?')) return;
@@ -284,7 +293,10 @@ export default function Admin() {
               <button onClick={load} className="btn-secondary w-full justify-start">
                 <RefreshCw size={16} /> Actualiser les données
               </button>
-              <div className="pt-2 border-t border-gray-800">
+              <div className="pt-2 border-t border-gray-800 space-y-2">
+                <button onClick={handleAssignTeams} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-blue-400 hover:bg-blue-500/10 border border-blue-500/20 transition-colors">
+                  <Users size={16} /> Assigner joueurs aux équipes
+                </button>
                 <button onClick={handleReset} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors">
                   <AlertTriangle size={16} /> Réinitialiser la ligue
                 </button>

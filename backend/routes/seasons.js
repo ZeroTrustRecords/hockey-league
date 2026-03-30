@@ -51,4 +51,45 @@ router.post('/reset', authenticate, requireAdmin, (req, res) => {
   res.json({ message: 'Réinitialisation complète effectuée' });
 });
 
+// One-time: assign players to teams by name from CSV data
+router.post('/assign-teams', authenticate, requireAdmin, (req, res) => {
+  const db = getDB();
+  const assignments = [
+    // [first_name, last_name, team_name]
+    ['Marc Antoine','Aylwin','Canadiens'],['Jocelyn','Comtois','Canadiens'],['Éric','De Sousa','Canadiens'],
+    ['Patrick','Desmeules','Canadiens'],['Karl','Gravel','Canadiens'],['Benoit','Laplante','Canadiens'],
+    ['Stéphane','Martin','Canadiens'],['Marc','Quesnel','Canadiens'],['Gabriel','Richer','Canadiens'],
+    ['Philippe','Thibault','Canadiens'],['Martin','Verville','Canadiens'],
+    ['Sébastien','Cool','Stars'],['Yannick','Lapointe','Stars'],['Richard','Larouche','Stars'],
+    ['Marc-André','Lebel','Stars'],['Patrick','Marcil','Stars'],['François','Noël','Stars'],
+    ['Charles','Noël','Stars'],['Marc Alexandre','Paradis','Stars'],['Maxime','Perreault','Stars'],
+    ['Mathieu','Pilon','Stars'],['Shawn','Whaley','Stars'],
+    ['Roxanne','Beliveau','Flyers'],['Éric','Bertrand','Flyers'],['Jean Marc','Le Bouthillier','Flyers'],
+    ['Alexy','Le Bouthillier','Flyers'],['Benoit','Lefebvre','Flyers'],['Ghislain','Mathieu','Flyers'],
+    ['Julien','Meunier','Flyers'],['Guillaume','Parent','Flyers'],['Malick','Plante-Girard','Flyers'],
+    ['Fils','Poulin','Flyers'],['Bruno','Poulin','Flyers'],
+    ['Nicolas','Fortin','Rangers'],['Bruno','Labrecque','Rangers'],['Julien','Lacerte','Rangers'],
+    ['Keven','Messier','Rangers'],['Yannick','Peccia','Rangers'],['Renaud','Petitclerc','Rangers'],
+    ['Alexandre','Plante','Rangers'],['Julien','Prescott','Rangers'],['Daomi','Rousseau','Rangers'],
+    ['Martin','Tousignant','Rangers'],['Benoit','Tremblay','Rangers'],
+    ['Alex','Barbusci','Bruins'],['Sébastien','Belhumeur','Bruins'],['Robert','Blanchette','Bruins'],
+    ['Steve','Caney','Bruins'],['Frédéric','Charest','Bruins'],['Jean Christophe','Dubé','Bruins'],
+    ['Olivier','Duchesne','Bruins'],['Simon','Gaudreault','Bruins'],['Jocelyn','Mathieu','Bruins'],
+    ['Jean Philippe','Perreault','Bruins'],['Jean-Philippe','Savard','Bruins'],
+    ['Guillaume','Beaudoin','Blues'],['Patrick','Binet','Blues'],['Juan','Bolivar','Blues'],
+    ['Maxime','Duchesneau','Blues'],['Jasmin','Landry','Blues'],['Pierre-Olivier','Lauzon','Blues'],
+    ['Serge','Lauzon','Blues'],['Michael','Mc lean','Blues'],['Bruno','Mercure','Blues'],
+    ['Nicolas','Teasdale','Blues'],['Fred','Yergeau','Blues'],
+  ];
+  let updated = 0, skipped = 0;
+  const update = db.prepare('UPDATE players SET team_id = (SELECT id FROM teams WHERE name = ? LIMIT 1) WHERE first_name = ? AND last_name = ?');
+  db.transaction(() => {
+    for (const [fn, ln, team] of assignments) {
+      const r = update.run(team, fn, ln);
+      if (r.changes > 0) updated++; else skipped++;
+    }
+  })();
+  res.json({ message: `${updated} joueurs assignés, ${skipped} non trouvés` });
+});
+
 module.exports = router;
