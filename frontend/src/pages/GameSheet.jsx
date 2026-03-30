@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { Plus, X, Check, Target, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, X, Check, Target, ChevronUp, Minus } from 'lucide-react';
 
 const PERIODS = [
   { value: '1', label: '1re' },
@@ -13,52 +13,28 @@ const PERIODS = [
 ];
 
 function GoalRow({ goal, index, homeTeam, awayTeam, allPlayers, onChange, onRemove }) {
-  const teams = [homeTeam, awayTeam].filter(Boolean);
+  const team = [homeTeam, awayTeam].find(t => t && String(t.id) === String(goal.team_id));
   const teamPlayers = allPlayers.filter(p => String(p.team_id) === String(goal.team_id));
   const set = (k, v) => onChange(index, { ...goal, [k]: v });
-  const selectedTeam = teams.find(t => String(t.id) === String(goal.team_id));
 
   return (
-    <div className="rounded-xl border border-gray-700 bg-gray-800/60 overflow-hidden">
-      {/* Goal header */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-gray-800 border-b border-gray-700">
-        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: selectedTeam?.color || '#6b7280' }} />
-        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider flex-1">But #{index + 1}</span>
-        <button onClick={() => onRemove(index)} className="text-gray-600 hover:text-red-400 transition-colors p-0.5">
-          <X size={14} />
-        </button>
-      </div>
+    <div className="flex items-start gap-2 p-3 rounded-xl bg-gray-800/60 border border-gray-700">
+      {/* Team color bar */}
+      <div className="w-1 self-stretch rounded-full flex-shrink-0 mt-0.5" style={{ backgroundColor: team?.color || '#6b7280' }} />
 
-      <div className="p-3 space-y-3">
-        {/* Team + Period row */}
-        <div className="flex gap-2">
-          {/* Team buttons */}
-          <div className="flex gap-1.5 flex-1">
-            {teams.map(t => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => set('team_id', String(t.id))}
-                className={`flex-1 py-2 px-2 rounded-lg text-xs font-bold border-2 transition-all ${
-                  String(goal.team_id) === String(t.id)
-                    ? 'text-white border-transparent'
-                    : 'border-gray-700 text-gray-400 hover:border-gray-500'
-                }`}
-                style={String(goal.team_id) === String(t.id) ? { backgroundColor: t.color, borderColor: t.color } : {}}
-              >
-                {t.name}
-              </button>
-            ))}
-          </div>
-
-          {/* Period pills */}
+      <div className="flex-1 space-y-2">
+        {/* Period + team label row */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-bold text-gray-400">#{index + 1}</span>
+          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: team?.color }} />
+          <span className="text-xs text-white font-semibold flex-1">{team?.name}</span>
           <div className="flex gap-1">
             {PERIODS.map(p => (
               <button
                 key={p.value}
                 type="button"
                 onClick={() => set('period', p.value)}
-                className={`px-2.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                className={`px-2 py-0.5 rounded text-xs font-bold transition-all ${
                   String(goal.period) === p.value
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
@@ -70,11 +46,11 @@ function GoalRow({ goal, index, homeTeam, awayTeam, allPlayers, onChange, onRemo
           </div>
         </div>
 
-        {/* Players row */}
+        {/* Scorer + assists */}
         <div className="grid grid-cols-3 gap-2">
           <div>
-            <label className="label">Buteur *</label>
-            <select className="select" value={goal.scorer_id} onChange={e => set('scorer_id', e.target.value)}>
+            <label className="text-[10px] text-gray-500 uppercase tracking-wide">Buteur *</label>
+            <select className="select mt-0.5 text-sm" value={goal.scorer_id} onChange={e => set('scorer_id', e.target.value)}>
               <option value="">—</option>
               {teamPlayers.map(p => (
                 <option key={p.id} value={p.id}>#{p.number} {p.last_name}</option>
@@ -82,8 +58,8 @@ function GoalRow({ goal, index, homeTeam, awayTeam, allPlayers, onChange, onRemo
             </select>
           </div>
           <div>
-            <label className="label">Passeur 1</label>
-            <select className="select" value={goal.assist1_id} onChange={e => set('assist1_id', e.target.value)}>
+            <label className="text-[10px] text-gray-500 uppercase tracking-wide">Passeur 1</label>
+            <select className="select mt-0.5 text-sm" value={goal.assist1_id} onChange={e => set('assist1_id', e.target.value)}>
               <option value="">—</option>
               {teamPlayers.filter(p => String(p.id) !== String(goal.scorer_id)).map(p => (
                 <option key={p.id} value={p.id}>#{p.number} {p.last_name}</option>
@@ -91,8 +67,8 @@ function GoalRow({ goal, index, homeTeam, awayTeam, allPlayers, onChange, onRemo
             </select>
           </div>
           <div>
-            <label className="label">Passeur 2</label>
-            <select className="select" value={goal.assist2_id} onChange={e => set('assist2_id', e.target.value)}>
+            <label className="text-[10px] text-gray-500 uppercase tracking-wide">Passeur 2</label>
+            <select className="select mt-0.5 text-sm" value={goal.assist2_id} onChange={e => set('assist2_id', e.target.value)}>
               <option value="">—</option>
               {teamPlayers.filter(p => String(p.id) !== String(goal.scorer_id) && String(p.id) !== String(goal.assist1_id)).map(p => (
                 <option key={p.id} value={p.id}>#{p.number} {p.last_name}</option>
@@ -101,6 +77,10 @@ function GoalRow({ goal, index, homeTeam, awayTeam, allPlayers, onChange, onRemo
           </div>
         </div>
       </div>
+
+      <button onClick={() => onRemove(index)} className="text-gray-600 hover:text-red-400 transition-colors p-1 flex-shrink-0 mt-0.5">
+        <X size={14} />
+      </button>
     </div>
   );
 }
@@ -145,17 +125,11 @@ export default function GameSheet() {
     });
   }, [selectedMatch]);
 
-  useEffect(() => {
-    setHomeScore(goals.filter(g => String(g.team_id) === String(form.home_team_id)).length);
-    setAwayScore(goals.filter(g => String(g.team_id) === String(form.away_team_id)).length);
-  }, [goals, form.home_team_id, form.away_team_id]);
-
   const createMatch = async e => {
     e.preventDefault();
     try {
       const r = await api.post('/matches', form);
       const newId = String(r.data.id);
-      // Refresh match list
       const mr = await api.get('/matches');
       setMatches(isAdmin ? mr.data : mr.data.filter(m => !m.validated));
       setSelectedMatch(newId);
@@ -163,20 +137,33 @@ export default function GameSheet() {
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
 
-  const addGoal = () => {
+  const addGoalForTeam = (teamId) => {
     setGoals(prev => [...prev, {
-      team_id: form.home_team_id || '', scorer_id: '', assist1_id: '', assist2_id: '',
-      period: '1', time_in_period: ''
+      team_id: String(teamId), scorer_id: '', assist1_id: '', assist2_id: '', period: '1', time_in_period: ''
     }]);
+    // Also increment the score
+    if (String(teamId) === String(form.home_team_id)) setHomeScore(s => s + 1);
+    else setAwayScore(s => s + 1);
   };
 
   const updateGoal = (i, g) => setGoals(prev => prev.map((og, idx) => idx === i ? g : og));
-  const removeGoal = i => setGoals(prev => prev.filter((_, idx) => idx !== i));
+
+  const removeGoal = i => {
+    const g = goals[i];
+    if (String(g.team_id) === String(form.home_team_id)) setHomeScore(s => Math.max(0, s - 1));
+    else setAwayScore(s => Math.max(0, s - 1));
+    setGoals(prev => prev.filter((_, idx) => idx !== i));
+  };
+
+  const adjustScore = (team, delta) => {
+    if (team === 'home') setHomeScore(s => Math.max(0, s + delta));
+    else setAwayScore(s => Math.max(0, s + delta));
+  };
 
   const saveSheet = async () => {
     if (!selectedMatch) { toast.error('Sélectionnez un match'); return; }
     const invalids = goals.filter(g => !g.scorer_id || !g.team_id);
-    if (invalids.length > 0) { toast.error('Chaque but doit avoir un buteur et une équipe'); return; }
+    if (invalids.length > 0) { toast.error('Chaque but enregistré doit avoir un buteur'); return; }
     setSaving(true);
     try {
       await api.post(`/matches/${selectedMatch}/gamesheet`, { goals, home_score: homeScore, away_score: awayScore, notes });
@@ -223,16 +210,12 @@ export default function GameSheet() {
               </option>
             ))}
           </select>
-          <button
-            onClick={() => setShowCreateForm(v => !v)}
-            className="btn-secondary py-2 flex-shrink-0"
-          >
+          <button onClick={() => setShowCreateForm(v => !v)} className="btn-secondary py-2 flex-shrink-0">
             {showCreateForm ? <ChevronUp size={16} /> : <Plus size={16} />}
             <span className="hidden sm:inline">Nouveau</span>
           </button>
         </div>
 
-        {/* Create match form */}
         {showCreateForm && (
           <form onSubmit={createMatch} className="border-t border-gray-700 pt-3 grid grid-cols-2 gap-3">
             <div>
@@ -258,52 +241,89 @@ export default function GameSheet() {
         )}
       </div>
 
-      {/* Score + Goals — only when a match is selected */}
       {selectedMatch && (
         <>
-          {/* Scoreboard */}
+          {/* Scoreboard with +/- controls */}
           <div className="card">
-            <div className="flex items-center justify-center gap-4 py-2">
-              <div className="flex-1 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  {homeTeam && <div className="w-3 h-3 rounded-full" style={{ backgroundColor: homeTeam.color }} />}
-                  <span className="font-bold text-white">{homeTeam?.name || '—'}</span>
-                </div>
-                <div className="text-xs text-gray-500 mt-0.5">Local</div>
-              </div>
-              <div className="flex items-center gap-3 px-4">
-                <span className="text-5xl font-black text-white tabular-nums">{homeScore}</span>
-                <span className="text-2xl text-gray-600">–</span>
-                <span className="text-5xl font-black text-white tabular-nums">{awayScore}</span>
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  {awayTeam && <div className="w-3 h-3 rounded-full" style={{ backgroundColor: awayTeam.color }} />}
-                  <span className="font-bold text-white">{awayTeam?.name || '—'}</span>
-                </div>
-                <div className="text-xs text-gray-500 mt-0.5">Visiteur</div>
-              </div>
-            </div>
             {matchData?.validated && (
-              <div className="text-center mt-2">
-                <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">Match validé</span>
+              <div className="text-center mb-3">
+                <span className="text-xs bg-green-500/20 text-green-400 px-3 py-1 rounded-full">Match validé</span>
               </div>
             )}
+            <div className="flex items-center justify-center gap-2">
+
+              {/* Home team */}
+              <div className="flex-1 text-center">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  {homeTeam && <div className="w-3 h-3 rounded-full" style={{ backgroundColor: homeTeam.color }} />}
+                  <span className="font-bold text-white text-sm">{homeTeam?.name || '—'}</span>
+                </div>
+                <div className="text-xs text-gray-500 mb-2">Local</div>
+                <div className="flex items-center justify-center gap-2">
+                  <button onClick={() => adjustScore('home', -1)} className="w-8 h-8 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-gray-300 transition-colors">
+                    <Minus size={14} />
+                  </button>
+                  <span className="text-5xl font-black text-white tabular-nums w-14 text-center">{homeScore}</span>
+                  <button onClick={() => adjustScore('home', +1)} className="w-8 h-8 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-gray-300 transition-colors">
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <span className="text-2xl text-gray-700 pb-2">–</span>
+
+              {/* Away team */}
+              <div className="flex-1 text-center">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  {awayTeam && <div className="w-3 h-3 rounded-full" style={{ backgroundColor: awayTeam.color }} />}
+                  <span className="font-bold text-white text-sm">{awayTeam?.name || '—'}</span>
+                </div>
+                <div className="text-xs text-gray-500 mb-2">Visiteur</div>
+                <div className="flex items-center justify-center gap-2">
+                  <button onClick={() => adjustScore('away', -1)} className="w-8 h-8 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-gray-300 transition-colors">
+                    <Minus size={14} />
+                  </button>
+                  <span className="text-5xl font-black text-white tabular-nums w-14 text-center">{awayScore}</span>
+                  <button onClick={() => adjustScore('away', +1)} className="w-8 h-8 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-gray-300 transition-colors">
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+
+            </div>
+            <p className="text-center text-xs text-gray-600 mt-3">Utilisez +/− pour les buts de remplaçants (pas comptés dans les stats)</p>
           </div>
 
-          {/* Goals */}
+          {/* Goals for stats */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-white">Buts ({goals.length})</span>
-              <button onClick={addGoal} className="btn-primary py-1.5">
-                <Plus size={15} /> Ajouter un but
-              </button>
+              <span className="font-semibold text-white text-sm">Buts enregistrés <span className="text-gray-500 font-normal">(pour les statistiques)</span></span>
             </div>
 
+            {/* Team buttons */}
+            {homeTeam && awayTeam && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => addGoalForTeam(homeTeam.id)}
+                  className="flex-1 py-3 rounded-xl border-2 font-bold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
+                  style={{ backgroundColor: homeTeam.color + '25', borderColor: homeTeam.color + '70' }}
+                >
+                  <Plus size={15} /> But — {homeTeam.name}
+                </button>
+                <button
+                  onClick={() => addGoalForTeam(awayTeam.id)}
+                  className="flex-1 py-3 rounded-xl border-2 font-bold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
+                  style={{ backgroundColor: awayTeam.color + '25', borderColor: awayTeam.color + '70' }}
+                >
+                  <Plus size={15} /> But — {awayTeam.name}
+                </button>
+              </div>
+            )}
+
             {goals.length === 0 ? (
-              <div className="card text-center py-10 text-gray-500">
-                <Target size={28} className="mx-auto mb-2 opacity-30" />
-                <p className="text-sm">Aucun but — cliquez sur "Ajouter un but"</p>
+              <div className="text-center py-6 text-gray-600 text-sm">
+                <Target size={24} className="mx-auto mb-2 opacity-30" />
+                Aucun but enregistré
               </div>
             ) : (
               <div className="space-y-2">
@@ -327,7 +347,7 @@ export default function GameSheet() {
           <div>
             <label className="label">Notes (optionnel)</label>
             <textarea
-              className="input min-h-[70px] resize-none"
+              className="input min-h-[60px] resize-none"
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="Notes sur le match..."
@@ -335,7 +355,7 @@ export default function GameSheet() {
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 justify-end pt-1 pb-4">
+          <div className="flex gap-3 justify-end pt-1 pb-6">
             <button onClick={saveSheet} disabled={saving} className="btn-secondary">
               {saving ? 'Sauvegarde...' : 'Sauvegarder'}
             </button>
