@@ -1,0 +1,531 @@
+import { useState, useEffect } from 'react';
+import api from '../api/client';
+import toast from 'react-hot-toast';
+import { Settings, Plus, X, Users, Shield, Calendar, RefreshCw, Check, Trash2, UserCheck, Trophy, Zap } from 'lucide-react';
+
+function UserModal({ players, teams, onClose, onSave }) {
+  const [form, setForm] = useState({ username: '', password: '', role: 'player', player_id: '', team_id: '' });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    try {
+      await api.post('/auth/register', form);
+      toast.success('Compte créé');
+      onSave();
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h3 className="text-lg font-bold text-white">Créer un compte</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-white"><X size={20} /></button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="label">Nom d'utilisateur *</label><input className="input" value={form.username} onChange={e => set('username', e.target.value)} required /></div>
+              <div><label className="label">Mot de passe *</label><input className="input" type="password" value={form.password} onChange={e => set('password', e.target.value)} required /></div>
+            </div>
+            <div>
+              <label className="label">Rôle</label>
+              <select className="select" value={form.role} onChange={e => set('role', e.target.value)}>
+                <option value="player">Joueur</option>
+                <option value="captain">Capitaine</option>
+                <option value="admin">Administrateur</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Joueur associé</label>
+              <select className="select" value={form.player_id} onChange={e => set('player_id', e.target.value)}>
+                <option value="">Aucun</option>
+                {players.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
+              </select>
+            </div>
+            {form.role === 'captain' && (
+              <div>
+                <label className="label">Équipe</label>
+                <select className="select" value={form.team_id} onChange={e => set('team_id', e.target.value)}>
+                  <option value="">Aucune</option>
+                  {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+          <div className="modal-footer">
+            <button type="button" onClick={onClose} className="btn-secondary">Annuler</button>
+            <button type="submit" className="btn-primary">Créer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ScheduleMatchModal({ teams, seasons, onClose, onSave }) {
+  const [form, setForm] = useState({ home_team_id: '', away_team_id: '', date: '', location: 'Aréna Municipal', season_id: seasons[0]?.id || '' });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    try {
+      await api.post('/matches', form);
+      toast.success('Match planifié');
+      onSave();
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h3 className="text-lg font-bold text-white">Planifier un match</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-white"><X size={20} /></button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">Équipe locale *</label>
+                <select className="select" value={form.home_team_id} onChange={e => set('home_team_id', e.target.value)} required>
+                  <option value="">Sélectionner...</option>
+                  {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">Équipe visiteur *</label>
+                <select className="select" value={form.away_team_id} onChange={e => set('away_team_id', e.target.value)} required>
+                  <option value="">Sélectionner...</option>
+                  {teams.filter(t => String(t.id) !== String(form.home_team_id)).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div><label className="label">Date et heure *</label><input type="datetime-local" className="input" value={form.date} onChange={e => set('date', e.target.value)} required /></div>
+            <div><label className="label">Endroit</label><input className="input" value={form.location} onChange={e => set('location', e.target.value)} /></div>
+            <div>
+              <label className="label">Saison</label>
+              <select className="select" value={form.season_id} onChange={e => set('season_id', e.target.value)}>
+                {seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button type="button" onClick={onClose} className="btn-secondary">Annuler</button>
+            <button type="submit" className="btn-primary"><Plus size={15} /> Planifier</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default function Admin() {
+  const [tab, setTab] = useState('overview');
+  const [stats, setStats] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [players, setPlayers] = useState([]);
+  const [seasons, setSeasons] = useState([]);
+  const [matches, setMatches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [showMatchModal, setShowMatchModal] = useState(false);
+  const [activeSeason, setActiveSeason] = useState(null);
+  const [playoffStarting, setPlayoffStarting] = useState(false);
+  const [newSeasonForm, setNewSeasonForm] = useState({ name: '', start_date: '' });
+  const [showNewSeasonForm, setShowNewSeasonForm] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    Promise.all([
+      api.get('/dashboard'),
+      api.get('/teams'),
+      api.get('/players', { params: { status: 'active' } }),
+      api.get('/seasons'),
+      api.get('/matches'),
+    ]).then(([dr, tr, pr, sr, mr]) => {
+      setStats(dr.data.counts);
+      setTeams(tr.data);
+      setPlayers(pr.data);
+      setSeasons(sr.data);
+      setMatches(mr.data);
+      // Find current season (active or playoffs)
+      const current = sr.data.find(s => s.status === 'active' || s.status === 'playoffs') || sr.data[0] || null;
+      setActiveSeason(current);
+    }).finally(() => setLoading(false));
+  };
+
+  const startPlayoffs = async () => {
+    if (!activeSeason) return;
+    if (!confirm('Démarrer les séries éliminatoires ? Les statistiques de saison régulière seront archivées.')) return;
+    setPlayoffStarting(true);
+    try {
+      await api.post(`/playoffs/season/${activeSeason.id}/start`);
+      toast.success('Séries éliminatoires démarrées !');
+      load();
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    finally { setPlayoffStarting(false); }
+  };
+
+  const createNewSeason = async e => {
+    e.preventDefault();
+    try {
+      await api.post('/seasons', newSeasonForm);
+      toast.success('Nouvelle saison créée');
+      setShowNewSeasonForm(false);
+      setNewSeasonForm({ name: '', start_date: '' });
+      load();
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  // Load users when needed
+  useEffect(() => {
+    if (tab === 'users') {
+      // We can't get users list via API without an endpoint - show create option
+      setUsers([]);
+    }
+  }, [tab]);
+
+  const handleDeleteMatch = async id => {
+    if (!confirm('Supprimer ce match?')) return;
+    try {
+      await api.delete(`/matches/${id}`);
+      toast.success('Match supprimé');
+      load();
+    } catch { toast.error('Erreur'); }
+  };
+
+  const handleValidateMatch = async id => {
+    try {
+      await api.post(`/matches/${id}/validate`);
+      toast.success('Match validé');
+      load();
+    } catch { toast.error('Erreur'); }
+  };
+
+  const handleUnvalidateMatch = async id => {
+    try {
+      await api.post(`/matches/${id}/unvalidate`);
+      toast.success('Validation annulée');
+      load();
+    } catch { toast.error('Erreur'); }
+  };
+
+  if (loading) return <div className="text-center py-12 text-gray-500 animate-pulse">Chargement...</div>;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-yellow-500/20 rounded-xl flex items-center justify-center">
+          <Settings size={20} className="text-yellow-400" />
+        </div>
+        <div>
+          <h1 className="page-title">Administration</h1>
+          <p className="text-sm text-gray-400">Gestion complète de la ligue</p>
+        </div>
+      </div>
+
+      {/* Stats overview */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Joueurs', value: stats?.players, icon: '👥', color: 'blue' },
+          { label: 'Équipes', value: stats?.teams, icon: '🛡️', color: 'green' },
+          { label: 'Matchs joués', value: stats?.matches_played, icon: '🏒', color: 'yellow' },
+          { label: 'Buts totaux', value: stats?.goals_total, icon: '🎯', color: 'red' },
+        ].map(s => (
+          <div key={s.label} className="card text-center">
+            <div className="text-2xl mb-1">{s.icon}</div>
+            <div className="text-2xl font-bold text-white">{s.value || 0}</div>
+            <div className="text-xs text-gray-500">{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 flex-wrap border-b border-gray-800 pb-0">
+        {[
+          { key: 'overview', label: 'Aperçu' },
+          { key: 'matches', label: 'Matchs' },
+          { key: 'users', label: 'Comptes' },
+          { key: 'teams', label: 'Équipes' },
+        ].map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)} className={tab === t.key ? 'tab-active' : 'tab-inactive'}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Overview */}
+      {tab === 'overview' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="card">
+            <h3 className="section-title mb-3">Actions rapides</h3>
+            <div className="space-y-2">
+              <button onClick={() => setShowMatchModal(true)} className="btn-primary w-full justify-start">
+                <Calendar size={16} /> Planifier un match
+              </button>
+              <button onClick={() => setShowUserModal(true)} className="btn-secondary w-full justify-start">
+                <UserCheck size={16} /> Créer un compte utilisateur
+              </button>
+              <button onClick={load} className="btn-secondary w-full justify-start">
+                <RefreshCw size={16} /> Actualiser les données
+              </button>
+            </div>
+          </div>
+          {/* Season lifecycle */}
+          <div className="card col-span-1 sm:col-span-2">
+            <h3 className="section-title mb-3 flex items-center gap-2"><Trophy size={15} className="text-yellow-400" /> Saison & Éliminatoires</h3>
+            {activeSeason ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-gray-800">
+                  <div>
+                    <div className="text-sm font-semibold text-white">{activeSeason.name}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {activeSeason.status === 'active' && 'Saison régulière en cours'}
+                      {activeSeason.status === 'playoffs' && 'Séries éliminatoires en cours'}
+                      {activeSeason.status === 'completed' && 'Saison terminée'}
+                    </div>
+                  </div>
+                  <span className={`badge text-xs font-bold ${
+                    activeSeason.status === 'active' ? 'bg-blue-500/20 text-blue-400' :
+                    activeSeason.status === 'playoffs' ? 'bg-yellow-500/20 text-yellow-400' :
+                    'bg-green-500/20 text-green-400'
+                  }`}>
+                    {activeSeason.status === 'active' ? 'Saison régulière' :
+                     activeSeason.status === 'playoffs' ? 'Éliminatoires' : 'Terminée'}
+                  </span>
+                </div>
+
+                {activeSeason.status === 'active' && (
+                  <button onClick={startPlayoffs} disabled={playoffStarting} className="btn-primary w-full justify-center">
+                    <Trophy size={15} /> {playoffStarting ? 'Démarrage...' : 'Démarrer les séries éliminatoires'}
+                  </button>
+                )}
+
+                {activeSeason.status === 'playoffs' && (
+                  <div className="text-sm text-yellow-400/80 text-center py-1 flex items-center justify-center gap-2">
+                    <Trophy size={14} /> Les séries se terminent automatiquement quand le champion est déterminé.
+                  </div>
+                )}
+
+                {(activeSeason.status === 'completed' || activeSeason.status === 'playoffs') && !showNewSeasonForm && (
+                  <button onClick={() => setShowNewSeasonForm(true)} className="btn-secondary w-full justify-center">
+                    <Zap size={15} /> Créer une nouvelle saison
+                  </button>
+                )}
+
+                {showNewSeasonForm && (
+                  <form onSubmit={createNewSeason} className="space-y-2 border-t border-gray-700 pt-3">
+                    <div>
+                      <label className="label">Nom de la saison *</label>
+                      <input className="input" placeholder="ex: 2026-2027" value={newSeasonForm.name}
+                        onChange={e => setNewSeasonForm(f => ({ ...f, name: e.target.value }))} required />
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setShowNewSeasonForm(false)} className="btn-secondary flex-1">Annuler</button>
+                      <button type="submit" className="btn-primary flex-1">Créer</button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-gray-500 text-center py-2">Aucune saison active.</p>
+                <button onClick={() => setShowNewSeasonForm(true)} className="btn-primary w-full justify-center">
+                  <Plus size={15} /> Créer une saison
+                </button>
+                {showNewSeasonForm && (
+                  <form onSubmit={createNewSeason} className="space-y-2 border-t border-gray-700 pt-3">
+                    <div>
+                      <label className="label">Nom de la saison *</label>
+                      <input className="input" placeholder="ex: 2026-2027" value={newSeasonForm.name}
+                        onChange={e => setNewSeasonForm(f => ({ ...f, name: e.target.value }))} required />
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setShowNewSeasonForm(false)} className="btn-secondary flex-1">Annuler</button>
+                      <button type="submit" className="btn-primary flex-1">Créer</button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="card">
+            <h3 className="section-title mb-3">Informations système</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between py-1.5 border-b border-gray-800">
+                <span className="text-gray-500">Saison active</span>
+                <span className="text-white">{seasons.find(s => s.status === 'active')?.name || '—'}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-gray-800">
+                <span className="text-gray-500">Matchs non validés</span>
+                <span className={`font-semibold ${matches.filter(m => !m.validated && m.status === 'completed').length > 0 ? 'text-yellow-400' : 'text-gray-400'}`}>
+                  {matches.filter(m => !m.validated && m.status === 'completed').length}
+                </span>
+              </div>
+              <div className="flex justify-between py-1.5">
+                <span className="text-gray-500">Matchs planifiés</span>
+                <span className="text-blue-400">{matches.filter(m => m.status === 'scheduled').length}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Matches management */}
+      {tab === 'matches' && (
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-400">{matches.length} matchs total</span>
+            <button onClick={() => setShowMatchModal(true)} className="btn-primary py-1.5"><Plus size={15} /> Planifier</button>
+          </div>
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Match</th>
+                  <th>Date</th>
+                  <th className="text-center">Score</th>
+                  <th className="text-center">Statut</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {matches.slice(0, 30).map(m => (
+                  <tr key={m.id}>
+                    <td>
+                      <div className="text-sm">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: m.home_color }} />
+                          <span className="text-white">{m.home_team_name}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: m.away_color }} />
+                          <span className="text-gray-400">{m.away_team_name}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="text-xs text-gray-400">{m.date?.slice(0, 16).replace('T', ' ')}</td>
+                    <td className="text-center">
+                      {m.status !== 'scheduled' ? (
+                        <span className="font-bold text-white">{m.home_score} – {m.away_score}</span>
+                      ) : <span className="text-gray-600">—</span>}
+                    </td>
+                    <td className="text-center">
+                      <span className={`badge ${
+                        m.validated ? 'bg-emerald-500/20 text-emerald-400' :
+                        m.status === 'completed' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-gray-700 text-gray-400'
+                      }`}>
+                        {m.validated ? 'Validé' : m.status === 'completed' ? 'Non validé' : 'Planifié'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="flex items-center justify-end gap-1">
+                        {!m.validated && m.status === 'completed' && (
+                          <button onClick={() => handleValidateMatch(m.id)} className="p-1.5 text-gray-500 hover:text-emerald-400 transition-colors" title="Valider">
+                            <Check size={15} />
+                          </button>
+                        )}
+                        {m.validated && (
+                          <button onClick={() => handleUnvalidateMatch(m.id)} className="p-1.5 text-gray-500 hover:text-yellow-400 transition-colors" title="Annuler validation">
+                            <RefreshCw size={15} />
+                          </button>
+                        )}
+                        <button onClick={() => handleDeleteMatch(m.id)} className="p-1.5 text-gray-500 hover:text-red-400 transition-colors" title="Supprimer">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Users management */}
+      {tab === 'users' && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-400">Gérer les accès utilisateurs</p>
+            <button onClick={() => setShowUserModal(true)} className="btn-primary py-1.5"><Plus size={15} /> Créer un compte</button>
+          </div>
+          <div className="card">
+            <div className="text-center py-8">
+              <div className="text-3xl mb-3">🔑</div>
+              <h3 className="text-white font-semibold mb-1">Comptes de démo disponibles</h3>
+              <p className="text-gray-500 text-sm mb-4">Mot de passe: <code className="text-blue-400">password123</code></p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm max-w-md mx-auto">
+                {[
+                  { user: 'admin', role: 'Administrateur', color: 'yellow' },
+                  { user: 'cap_nordiques', role: 'Capitaine — Les Nordiques', color: 'blue' },
+                  { user: 'cap_castors', role: 'Capitaine — Les Castors', color: 'red' },
+                  { user: 'cap_loups', role: 'Capitaine — Les Loups', color: 'green' },
+                  { user: 'cap_aigles', role: 'Capitaine — Les Aigles', color: 'orange' },
+                  { user: 'cap_requins', role: 'Capitaine — Les Requins', color: 'teal' },
+                  { user: 'cap_pantheres', role: 'Capitaine — Les Panthères', color: 'purple' },
+                  { user: 'joueur_nordiques', role: 'Joueur régulier', color: 'gray' },
+                ].map(u => (
+                  <div key={u.user} className="p-2.5 rounded-lg bg-gray-800 text-left">
+                    <div className="font-mono text-blue-400 text-sm">{u.user}</div>
+                    <div className="text-gray-500 text-xs">{u.role}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Teams management */}
+      {tab === 'teams' && (
+        <div className="space-y-3">
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Équipe</th>
+                  <th className="text-center">Joueurs</th>
+                  <th>Capitaine</th>
+                  <th className="text-center">Couleur</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teams.map(t => (
+                  <tr key={t.id}>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: t.color }} />
+                        <span className="text-white font-medium">{t.name}</span>
+                      </div>
+                    </td>
+                    <td className="text-center text-gray-400">{t.player_count}</td>
+                    <td className="text-gray-300">
+                      {t.captain ? `${t.captain.first_name} ${t.captain.last_name}` : <span className="text-gray-600">—</span>}
+                    </td>
+                    <td className="text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-6 h-6 rounded-lg border border-gray-700" style={{ backgroundColor: t.color }} />
+                        <code className="text-xs text-gray-500">{t.color}</code>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {showUserModal && <UserModal players={players} teams={teams} onClose={() => setShowUserModal(false)} onSave={() => { setShowUserModal(false); load(); }} />}
+      {showMatchModal && <ScheduleMatchModal teams={teams} seasons={seasons} onClose={() => setShowMatchModal(false)} onSave={() => { setShowMatchModal(false); load(); }} />}
+    </div>
+  );
+}

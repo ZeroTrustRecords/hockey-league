@@ -1,0 +1,157 @@
+import { useState, useEffect } from 'react';
+import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import api from '../api/client';
+import {
+  LayoutDashboard, Users, Shield, Trophy, BarChart3, MessageSquare,
+  Zap, FileText, Settings, Menu, X, LogOut, ChevronRight, Bell, Star
+} from 'lucide-react';
+
+const navItems = [
+  { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', exact: true },
+  { to: '/players', icon: Users, label: 'Joueurs' },
+  { to: '/teams', icon: Shield, label: 'Équipes' },
+  { to: '/standings', icon: Trophy, label: 'Classement' },
+  { to: '/stats', icon: BarChart3, label: 'Statistiques' },
+  { to: '/messages', icon: MessageSquare, label: 'Messagerie', badge: true },
+  { to: '/draft', icon: Zap, label: 'Repêchage' },
+  { to: '/playoffs', icon: Star, label: 'Éliminatoires' },
+  { to: '/gamesheet', icon: FileText, label: 'Feuille de match' },
+];
+
+function SidebarLink({ item, unreadCount, onClick }) {
+  const location = useLocation();
+  const isActive = item.exact ? location.pathname === item.to : location.pathname.startsWith(item.to);
+
+  return (
+    <NavLink
+      to={item.to}
+      onClick={onClick}
+      className={isActive ? 'nav-link-active' : 'nav-link-inactive'}
+    >
+      <item.icon size={18} className="flex-shrink-0" />
+      <span className="flex-1">{item.label}</span>
+      {item.badge && unreadCount > 0 && (
+        <span className="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center font-bold">
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </span>
+      )}
+      {isActive && <ChevronRight size={14} className="opacity-60" />}
+    </NavLink>
+  );
+}
+
+export default function Layout() {
+  const { user, logout, isAdmin } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnread = () => {
+      api.get('/messages/unread-count').then(res => setUnreadCount(res.data.count || 0)).catch(() => {});
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const roleLabel = { admin: 'Administrateur', captain: 'Capitaine', player: 'Joueur' };
+  const roleColor = { admin: 'text-yellow-400', captain: 'text-blue-400', player: 'text-gray-400' };
+
+  const sidebar = (
+    <div className="flex flex-col h-full bg-gray-900 border-r border-gray-800">
+      {/* Logo */}
+      <div className="p-4 border-b border-gray-800">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl flex-shrink-0">🏒</div>
+          <div className="min-w-0">
+            <div className="font-bold text-white text-sm leading-tight">LHMA</div>
+            <div className="text-gray-500 text-xs">Ligue de Hockey</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        {navItems.map(item => (
+          <SidebarLink key={item.to} item={item} unreadCount={unreadCount} onClick={() => setSidebarOpen(false)} />
+        ))}
+        {isAdmin && (
+          <div className="pt-2 mt-2 border-t border-gray-800">
+            <SidebarLink
+              item={{ to: '/admin', icon: Settings, label: 'Administration' }}
+              unreadCount={0}
+              onClick={() => setSidebarOpen(false)}
+            />
+          </div>
+        )}
+      </nav>
+
+      {/* User */}
+      <div className="p-3 border-t border-gray-800">
+        <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-800/50">
+          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
+            {user?.username?.[0]?.toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-white truncate">{user?.username}</div>
+            <div className={`text-xs ${roleColor[user?.role] || 'text-gray-400'}`}>
+              {roleLabel[user?.role] || user?.role}
+            </div>
+          </div>
+          <button onClick={logout} className="text-gray-500 hover:text-red-400 transition-colors p-1" title="Déconnexion">
+            <LogOut size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex h-screen bg-gray-950 overflow-hidden">
+      {/* Desktop sidebar */}
+      <div className="hidden lg:flex w-64 flex-shrink-0 flex-col">
+        {sidebar}
+      </div>
+
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-40 flex">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+          <div className="relative w-72 flex flex-col z-50">
+            {sidebar}
+          </div>
+        </div>
+      )}
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Mobile header */}
+        <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-800 flex-shrink-0">
+          <button onClick={() => setSidebarOpen(true)} className="text-gray-400 hover:text-white p-1">
+            <Menu size={22} />
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🏒</span>
+            <span className="font-bold text-sm text-white">Ligue Hockey</span>
+          </div>
+          <div className="relative">
+            <Bell size={20} className="text-gray-400" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-4 lg:p-6 max-w-7xl mx-auto animate-fade-in">
+            <Outlet context={{ refreshUnread: () => api.get('/messages/unread-count').then(r => setUnreadCount(r.data.count || 0)) }} />
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}

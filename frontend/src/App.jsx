@@ -1,0 +1,68 @@
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Layout from './components/Layout';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Players from './pages/Players';
+import PlayerProfile from './pages/PlayerProfile';
+import Teams from './pages/Teams';
+import TeamDetail from './pages/TeamDetail';
+import Standings from './pages/Standings';
+import Stats from './pages/Stats';
+import Messages from './pages/Messages';
+import Draft from './pages/Draft';
+import Playoffs from './pages/Playoffs';
+import GameSheet from './pages/GameSheet';
+import Admin from './pages/Admin';
+
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-950">
+      <div className="text-center">
+        <div className="text-4xl mb-4">🏒</div>
+        <div className="text-gray-400 text-sm animate-pulse">Chargement...</div>
+      </div>
+    </div>
+  );
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+}
+
+function AdminRoute({ children }) {
+  const { user, isAdmin } = useAuth();
+  if (!isAdmin) return <Navigate to="/" replace />;
+  return children;
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="draft" element={<ProtectedRoute><Draft /></ProtectedRoute>} />
+      <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+        <Route index element={<Dashboard />} />
+        <Route path="players" element={<Players />} />
+        <Route path="players/:id" element={<PlayerProfile />} />
+        <Route path="teams" element={<Teams />} />
+        <Route path="teams/:id" element={<TeamDetail />} />
+        <Route path="standings" element={<Standings />} />
+        <Route path="stats" element={<Stats />} />
+        <Route path="messages" element={<Messages />} />
+        <Route path="playoffs" element={<Playoffs />} />
+        <Route path="gamesheet" element={<GameSheet />} />
+        <Route path="gamesheet/:id" element={<GameSheet />} />
+        <Route path="admin" element={<AdminRoute><Admin /></AdminRoute>} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
+  );
+}
