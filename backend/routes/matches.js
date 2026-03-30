@@ -42,12 +42,12 @@ router.get('/:id', (req, res) => {
 
   const goals = db.prepare(`
     SELECT g.*,
-      p.first_name || ' ' || p.last_name as scorer_name,
+      COALESCE(p.first_name || ' ' || p.last_name, 'Remplaçant') as scorer_name,
       a1.first_name || ' ' || a1.last_name as assist1_name,
       a2.first_name || ' ' || a2.last_name as assist2_name,
       t.name as team_name, t.color as team_color
     FROM goals g
-    INNER JOIN players p ON g.scorer_id = p.id
+    LEFT JOIN players p ON g.scorer_id = p.id
     LEFT JOIN players a1 ON g.assist1_id = a1.id
     LEFT JOIN players a2 ON g.assist2_id = a2.id
     INNER JOIN teams t ON g.team_id = t.id
@@ -100,7 +100,7 @@ router.post('/:id/gamesheet', authenticate, requireCaptainOrAdmin, (req, res) =>
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
       for (const g of goals) {
-        insertGoal.run(matchId, g.team_id, g.scorer_id, g.assist1_id || null, g.assist2_id || null, g.period || 1, g.time_in_period || null);
+        insertGoal.run(matchId, g.team_id, g.scorer_id || null, g.assist1_id || null, g.assist2_id || null, g.period || 1, g.time_in_period || null);
       }
     }
 

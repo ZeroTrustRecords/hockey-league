@@ -51,7 +51,7 @@ function GoalRow({ goal, index, homeTeam, awayTeam, allPlayers, onChange, onRemo
           <div>
             <label className="text-[10px] text-gray-500 uppercase tracking-wide">Buteur *</label>
             <select className="select mt-0.5 text-sm" value={goal.scorer_id} onChange={e => set('scorer_id', e.target.value)}>
-              <option value="">—</option>
+              <option value="">Remplaçant</option>
               {teamPlayers.map(p => (
                 <option key={p.id} value={p.id}>#{p.number} {p.last_name}</option>
               ))}
@@ -61,6 +61,7 @@ function GoalRow({ goal, index, homeTeam, awayTeam, allPlayers, onChange, onRemo
             <label className="text-[10px] text-gray-500 uppercase tracking-wide">Passeur 1</label>
             <select className="select mt-0.5 text-sm" value={goal.assist1_id} onChange={e => set('assist1_id', e.target.value)}>
               <option value="">—</option>
+              <option value="sub">Remplaçant</option>
               {teamPlayers.filter(p => String(p.id) !== String(goal.scorer_id)).map(p => (
                 <option key={p.id} value={p.id}>#{p.number} {p.last_name}</option>
               ))}
@@ -70,6 +71,7 @@ function GoalRow({ goal, index, homeTeam, awayTeam, allPlayers, onChange, onRemo
             <label className="text-[10px] text-gray-500 uppercase tracking-wide">Passeur 2</label>
             <select className="select mt-0.5 text-sm" value={goal.assist2_id} onChange={e => set('assist2_id', e.target.value)}>
               <option value="">—</option>
+              <option value="sub">Remplaçant</option>
               {teamPlayers.filter(p => String(p.id) !== String(goal.scorer_id) && String(p.id) !== String(goal.assist1_id)).map(p => (
                 <option key={p.id} value={p.id}>#{p.number} {p.last_name}</option>
               ))}
@@ -160,13 +162,21 @@ export default function GameSheet() {
     else setAwayScore(s => Math.max(0, s + delta));
   };
 
+  // Normalize goals before sending: empty string → null, 'sub' (replacement assist) → null
+  const normalizeGoals = (gs) => gs.map(g => ({
+    ...g,
+    scorer_id:  g.scorer_id  || null,
+    assist1_id: (g.assist1_id === 'sub' || !g.assist1_id) ? null : g.assist1_id,
+    assist2_id: (g.assist2_id === 'sub' || !g.assist2_id) ? null : g.assist2_id,
+  }));
+
   const saveSheet = async () => {
     if (!selectedMatch) { toast.error('Sélectionnez un match'); return; }
-    const invalids = goals.filter(g => !g.scorer_id || !g.team_id);
-    if (invalids.length > 0) { toast.error('Chaque but enregistré doit avoir un buteur'); return; }
+    const invalids = goals.filter(g => !g.team_id);
+    if (invalids.length > 0) { toast.error('Chaque but doit avoir une équipe'); return; }
     setSaving(true);
     try {
-      await api.post(`/matches/${selectedMatch}/gamesheet`, { goals, home_score: homeScore, away_score: awayScore, notes });
+      await api.post(`/matches/${selectedMatch}/gamesheet`, { goals: normalizeGoals(goals), home_score: homeScore, away_score: awayScore, notes });
       toast.success('Sauvegardé!');
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
     finally { setSaving(false); }
@@ -176,7 +186,7 @@ export default function GameSheet() {
     if (!confirm('Valider ce match ? Les statistiques seront mises à jour.')) return;
     setSaving(true);
     try {
-      await api.post(`/matches/${selectedMatch}/gamesheet`, { goals, home_score: homeScore, away_score: awayScore, notes });
+      await api.post(`/matches/${selectedMatch}/gamesheet`, { goals: normalizeGoals(goals), home_score: homeScore, away_score: awayScore, notes });
       await api.post(`/matches/${selectedMatch}/validate`);
       toast.success('Match validé !');
       navigate('/standings');
