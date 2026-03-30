@@ -41,6 +41,7 @@ router.post('/reset', authenticate, requireAdmin, (req, res) => {
     db.prepare('DELETE FROM playoff_series').run();
     db.prepare('DELETE FROM draft_picks').run();
     db.prepare('DELETE FROM draft_sessions').run();
+    db.prepare('DELETE FROM player_season_stats').run();
     db.prepare('UPDATE players SET team_id = NULL').run();
     db.prepare('DELETE FROM team_staff').run();
     db.prepare("UPDATE seasons SET status = 'completed' WHERE status IN ('active','playoffs')").run();
