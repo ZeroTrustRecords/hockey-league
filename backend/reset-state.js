@@ -49,13 +49,6 @@ function resetState(db) {
     db.prepare('DELETE FROM message_reads').run();
     db.prepare('DELETE FROM messages').run();
 
-    // Remove any non-admin users that may have been added during testing
-    // (keeps admin account intact)
-    const admin = db.prepare("SELECT id FROM users WHERE username = 'admin'").get();
-    if (admin) {
-      db.prepare('DELETE FROM users WHERE id != ?').run(admin.id);
-    }
-
     // Reset completed season flag on active season (no champion yet)
     db.prepare(`
       UPDATE seasons

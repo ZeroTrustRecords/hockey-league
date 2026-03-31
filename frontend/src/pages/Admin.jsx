@@ -273,6 +273,15 @@ export default function Admin() {
     }
   };
 
+  const simulateSeason = async () => {
+    if (!confirm('Générer des données simulées pour la Saison 2024-2025 ? Cela permettra de tester l\'historique des joueurs.')) return;
+    try {
+      const res = await api.post('/simulate/season');
+      toast.success(res.data.message);
+      console.log('Transferts simulés:', res.data.transferred);
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur de simulation'); }
+  };
+
   const handleReset = async () => {
     if (!confirm('⚠️ RÉINITIALISATION COMPLÈTE\n\nCeci va effacer:\n- Tous les matchs et buts\n- Le repêchage\n- Les séries éliminatoires\n- Les assignations de joueurs aux équipes\n\nLes joueurs et équipes seront conservés.\n\nÊtes-vous certain?')) return;
     if (!confirm('Dernière confirmation — cette action est irréversible. Continuer?')) return;
@@ -406,7 +415,10 @@ export default function Admin() {
                   <input type="file" accept=".csv" className="hidden" onChange={handleCSVImport} />
                 </label>
               </div>
-              <div className="pt-1 border-t border-gray-800">
+              <div className="pt-1 border-t border-gray-800 space-y-2">
+                <button onClick={simulateSeason} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-purple-400 hover:bg-purple-500/10 border border-purple-500/20 transition-colors">
+                  <Zap size={16} /> Simuler saison précédente
+                </button>
                 <button onClick={handleReset} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors">
                   <AlertTriangle size={16} /> Réinitialiser la ligue
                 </button>

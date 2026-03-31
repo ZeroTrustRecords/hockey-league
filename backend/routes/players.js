@@ -128,4 +128,33 @@ router.delete('/:id/hard', authenticate, requireAdmin, (req, res) => {
   res.json({ message: 'Joueur supprimé' });
 });
 
+// Career stats per season (history)
+router.get('/:id/history', (req, res) => {
+  const db = getDB();
+  const playerId = parseInt(req.params.id);
+
+  // Per-season, per-team breakdown from goals
+  const rows = db.prepare(`
+    SELECT
+      s.id   AS season_id,
+      s.name AS season_name,
+      g.team_id,
+      t.name  AS team_name,
+      t.color AS team_color,
+      COUNT(DISTINCT m.id) AS matches_played,
+      SUM(CASE WHEN g.scorer_id = ? THEN 1 ELSE 0 END)                              AS goals,
+      SUM(CASE WHEN g.assist1_id = ? OR g.assist2_id = ? THEN 1 ELSE 0 END)         AS assists
+    FROM goals g
+    JOIN matches m  ON g.match_id   = m.id
+    JOIN seasons s  ON m.season_id  = s.id
+    JOIN teams   t  ON g.team_id    = t.id
+    WHERE m.validated = 1
+      AND (g.scorer_id = ? OR g.assist1_id = ? OR g.assist2_id = ?)
+    GROUP BY s.id, g.team_id
+    ORDER BY s.start_date DESC, s.id DESC
+  `).all(playerId, playerId, playerId, playerId, playerId, playerId);
+
+  res.json(rows.map(r => ({ ...r, points: r.goals + r.assists })));
+});
+
 module.exports = router;

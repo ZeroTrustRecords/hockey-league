@@ -28,6 +28,7 @@ app.use('/api/draft', require('./routes/draft'));
 app.use('/api/playoffs', require('./routes/playoffs'));
 app.use('/api/seasons', require('./routes/seasons'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/simulate', require('./routes/simulate'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

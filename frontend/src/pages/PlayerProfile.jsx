@@ -10,10 +10,17 @@ const positionLabel = { C: 'Centre', LW: 'Ailier G', RW: 'Ailier D', D: 'Défens
 export default function PlayerProfile() {
   const { id } = useParams();
   const [player, setPlayer] = useState(null);
+  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get(`/players/${id}`).then(r => setPlayer(r.data)).finally(() => setLoading(false));
+    Promise.all([
+      api.get(`/players/${id}`),
+      api.get(`/players/${id}/history`),
+    ]).then(([pr, hr]) => {
+      setPlayer(pr.data);
+      setHistory(hr.data);
+    }).finally(() => setLoading(false));
   }, [id]);
 
   if (loading) return <div className="text-center py-12 text-gray-500 animate-pulse">Chargement...</div>;
@@ -22,6 +29,11 @@ export default function PlayerProfile() {
   const { stats = {}, recentGoals = [] } = player;
   const pts = (stats.goals || 0) + (stats.assists || 0);
   const ppg = stats.matches_played > 0 ? (pts / stats.matches_played).toFixed(2) : '0.00';
+
+  // Career totals from history
+  const careerGoals   = history.reduce((s, r) => s + r.goals, 0);
+  const careerAssists = history.reduce((s, r) => s + r.assists, 0);
+  const careerPoints  = careerGoals + careerAssists;
 
   return (
     <div className="space-y-5">
@@ -64,14 +76,14 @@ export default function PlayerProfile() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Current season stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
-          { icon: Target, label: 'Buts', value: stats.goals || 0, color: 'text-red-400' },
-          { icon: TrendingUp, label: 'Passes', value: stats.assists || 0, color: 'text-blue-400' },
-          { icon: Award, label: 'Points', value: pts, color: 'text-yellow-400' },
-          { icon: Hash, label: 'Matchs', value: stats.matches_played || 0, color: 'text-gray-300' },
-          { icon: TrendingUp, label: 'Pts/match', value: ppg, color: 'text-emerald-400' },
+          { icon: Target,    label: 'Buts',      value: stats.goals || 0,       color: 'text-red-400' },
+          { icon: TrendingUp,label: 'Passes',     value: stats.assists || 0,     color: 'text-blue-400' },
+          { icon: Award,     label: 'Points',     value: pts,                    color: 'text-yellow-400' },
+          { icon: Hash,      label: 'Matchs',     value: stats.matches_played || 0, color: 'text-gray-300' },
+          { icon: TrendingUp,label: 'Pts/match',  value: ppg,                    color: 'text-emerald-400' },
         ].map(s => (
           <div key={s.label} className="card text-center">
             <div className={`text-3xl font-bold ${s.color}`}>{s.value}</div>
@@ -79,6 +91,54 @@ export default function PlayerProfile() {
           </div>
         ))}
       </div>
+
+      {/* Season history */}
+      {history.length > 0 && (
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="section-title">Historique par saison</h3>
+            {history.length > 1 && (
+              <div className="flex items-center gap-4 text-xs text-gray-500">
+                <span>Carrière :</span>
+                <span className="text-red-400 font-bold">{careerGoals}B</span>
+                <span className="text-blue-400 font-bold">{careerAssists}P</span>
+                <span className="text-yellow-400 font-bold">{careerPoints}PTS</span>
+              </div>
+            )}
+          </div>
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Saison</th>
+                  <th>Équipe</th>
+                  <th className="text-center">PJ</th>
+                  <th className="text-center">B</th>
+                  <th className="text-center">P</th>
+                  <th className="text-center font-bold text-yellow-400">PTS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((row, i) => (
+                  <tr key={i}>
+                    <td className="text-white font-medium">{row.season_name}</td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: row.team_color }} />
+                        <span className="text-gray-300 text-sm">{row.team_name}</span>
+                      </div>
+                    </td>
+                    <td className="text-center text-gray-400">{row.matches_played}</td>
+                    <td className="text-center text-red-400 font-semibold">{row.goals}</td>
+                    <td className="text-center text-blue-400 font-semibold">{row.assists}</td>
+                    <td className="text-center font-black text-yellow-400">{row.points}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Recent goals */}
       <div className="card">
