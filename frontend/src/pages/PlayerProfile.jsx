@@ -121,7 +121,15 @@ export default function PlayerProfile() {
               <tbody>
                 {history.map((row, i) => (
                   <tr key={i}>
-                    <td className="text-white font-medium">{row.season_name}</td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-medium text-sm">{row.season_name}</span>
+                        {row.is_playoff === 1
+                          ? <span className="text-xs px-1.5 py-0.5 rounded font-bold bg-yellow-500/15 text-yellow-400">Éliminatoires</span>
+                          : <span className="text-xs px-1.5 py-0.5 rounded font-bold bg-blue-500/15 text-blue-400">Régulière</span>
+                        }
+                      </div>
+                    </td>
                     <td>
                       <div className="flex items-center gap-2">
                         <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: row.team_color }} />

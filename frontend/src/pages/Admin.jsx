@@ -282,6 +282,32 @@ export default function Admin() {
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur de simulation'); }
   };
 
+  const simulatePrevSeason = async () => {
+    if (!confirm('Générer des données simulées pour la Saison 2024-2025 ?\nPermet de tester l\'historique des joueurs avec transferts.')) return;
+    try {
+      const res = await api.post('/simulate/season');
+      toast.success(res.data.message);
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
+  const simulateCurrentSeason = async () => {
+    if (!confirm('Valider tous les matchs restants de la saison en cours avec des scores simulés ?')) return;
+    try {
+      const res = await api.post('/simulate/current-season');
+      toast.success(res.data.message);
+      load();
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
+  const simulatePlayoffs = async () => {
+    if (!confirm('Simuler toutes les séries éliminatoires jusqu\'au champion ?\nLes séries doivent déjà être démarrées.')) return;
+    try {
+      const res = await api.post('/simulate/playoffs');
+      toast.success(`${res.data.message} — Champion : ${res.data.champion}`);
+      load();
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
+
   const handleReset = async () => {
     if (!confirm('⚠️ RÉINITIALISATION COMPLÈTE\n\nCeci va effacer:\n- Tous les matchs et buts\n- Le repêchage\n- Les séries éliminatoires\n- Les assignations de joueurs aux équipes\n\nLes joueurs et équipes seront conservés.\n\nÊtes-vous certain?')) return;
     if (!confirm('Dernière confirmation — cette action est irréversible. Continuer?')) return;
@@ -415,10 +441,19 @@ export default function Admin() {
                   <input type="file" accept=".csv" className="hidden" onChange={handleCSVImport} />
                 </label>
               </div>
-              <div className="pt-1 border-t border-gray-800 space-y-2">
-                <button onClick={simulateSeason} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-purple-400 hover:bg-purple-500/10 border border-purple-500/20 transition-colors">
-                  <Zap size={16} /> Simuler saison précédente
+              <div className="pt-2 border-t border-gray-800 space-y-1">
+                <div className="text-xs text-gray-500 font-medium uppercase tracking-wide px-1 pt-1">🧪 Simulation & Tests</div>
+                <button onClick={simulatePrevSeason} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-purple-400 hover:bg-purple-500/10 border border-purple-500/20 transition-colors">
+                  <Zap size={16} /> 1. Simuler saison précédente
                 </button>
+                <button onClick={simulateCurrentSeason} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-purple-400 hover:bg-purple-500/10 border border-purple-500/20 transition-colors">
+                  <Zap size={16} /> 2. Simuler saison en cours
+                </button>
+                <button onClick={simulatePlayoffs} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-yellow-400 hover:bg-yellow-500/10 border border-yellow-500/20 transition-colors">
+                  <Trophy size={16} /> 3. Simuler les éliminatoires
+                </button>
+              </div>
+              <div className="pt-1 border-t border-gray-800">
                 <button onClick={handleReset} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors">
                   <AlertTriangle size={16} /> Réinitialiser la ligue
                 </button>
