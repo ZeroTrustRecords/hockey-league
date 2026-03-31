@@ -14,12 +14,15 @@ function resetState(db) {
     // Clear all goals
     db.prepare('DELETE FROM goals').run();
 
-    // Reset all matches to scheduled with no score
+    // Reset all matches to scheduled with no score and not validated
     db.prepare(`
       UPDATE matches
-      SET status = 'scheduled',
+      SET status     = 'scheduled',
           home_score = 0,
-          away_score = 0
+          away_score = 0,
+          validated  = 0,
+          mvp_id     = NULL,
+          notes      = NULL
     `).run();
 
     // Clear player season stats
