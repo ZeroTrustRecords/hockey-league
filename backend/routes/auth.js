@@ -57,7 +57,13 @@ router.delete('/users/:id', authenticate, requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'Vous ne pouvez pas supprimer votre propre compte' });
   }
   const db = getDB();
-  db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
+  const id = req.params.id;
+  db.transaction(() => {
+    db.prepare('DELETE FROM message_reads WHERE user_id = ?').run(id);
+    db.prepare('UPDATE messages SET sender_id = ? WHERE sender_id = ?').run(req.user.id, id);
+    db.prepare('DELETE FROM messages WHERE recipient_id = ?').run(id);
+    db.prepare('DELETE FROM users WHERE id = ?').run(id);
+  })();
   res.json({ message: 'Compte supprimé' });
 });
 
