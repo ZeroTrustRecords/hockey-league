@@ -160,6 +160,7 @@ function seed() {
   // --- USERS ---
   const hash = bcrypt.hashSync('password123', 10);
   db.prepare("INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, 'admin')").run('admin', 'admin@lhma.ca', hash);
+  db.prepare("INSERT INTO users (username, password_hash, role) VALUES (?, ?, 'marqueur')").run('marqueur', hash);
 
   for (const [tIdx, ln] of Object.entries(captainNames)) {
     const t = teams[parseInt(tIdx)];
@@ -249,6 +250,7 @@ function seed() {
   console.log(`   - ${matchIds.length} matchs (saison à venir)`);
   console.log(`\n🔑 Comptes de connexion (mot de passe: password123):`);
   console.log(`   admin           → Admin complet`);
+  console.log(`   marqueur        → Marqueur (feuille de match)`);
   console.log(`   cap_rangers     → Capitaine des Rangers`);
   console.log(`   cap_canadiens   → Capitaine des Canadiens`);
   console.log(`   cap_flyers      → Capitaine des Flyers`);

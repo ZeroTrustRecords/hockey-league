@@ -91,7 +91,12 @@ function GoalRow({ goal, index, homeTeam, awayTeam, allPlayers, onChange, onRemo
 export default function GameSheet() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAdmin, canEditGamesheet } = useAuth();
+  const { isAdmin, isMarqueur, canEditGamesheet } = useAuth();
+  // Returns the single next unvalidated match (sorted by date ascending)
+  const nextMatch = (list) => {
+    const upcoming = list.filter(m => !m.validated).sort((a, b) => new Date(a.date) - new Date(b.date));
+    return upcoming.slice(0, 1);
+  };
   const [teams, setTeams] = useState([]);
   const [allPlayers, setAllPlayers] = useState([]);
   const [matches, setMatches] = useState([]);
@@ -108,7 +113,9 @@ export default function GameSheet() {
       .then(([tr, pr, mr, sr]) => {
         setTeams(tr.data);
         setAllPlayers(pr.data);
-        setMatches(canEditGamesheet ? mr.data : mr.data.filter(m => !m.validated));
+        if (isAdmin) setMatches(mr.data);
+        else if (isMarqueur) setMatches(nextMatch(mr.data));
+        else setMatches(mr.data.filter(m => !m.validated));
         if (sr.data) setForm(f => ({ ...f, season_id: sr.data.id }));
       }).finally(() => setLoading(false));
   }, []);
@@ -130,7 +137,9 @@ export default function GameSheet() {
       const r = await api.post('/matches', form);
       const newId = String(r.data.id);
       const mr = await api.get('/matches');
-      setMatches(isAdmin ? mr.data : mr.data.filter(m => !m.validated));
+      if (isAdmin) setMatches(mr.data);
+      else if (isMarqueur) setMatches(nextMatch(mr.data));
+      else setMatches(mr.data.filter(m => !m.validated));
       setSelectedMatch(newId);
       toast.success('Match créé');
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
@@ -186,6 +195,8 @@ export default function GameSheet() {
   const matchData = matches.find(m => String(m.id) === String(selectedMatch));
   const homeScore = goals.filter(g => String(g.team_id) === String(form.home_team_id)).length;
   const awayScore = goals.filter(g => String(g.team_id) === String(form.away_team_id)).length;
+  // Marqueur can only edit the single next upcoming game
+  const isMatchLocked = isMarqueur && !!selectedMatch && (matches.length === 0 || String(matches[0]?.id) !== String(selectedMatch));
 
   if (loading) return <div className="text-center py-12 text-gray-500 animate-pulse">Chargement...</div>;
 
@@ -209,10 +220,12 @@ export default function GameSheet() {
               </option>
             ))}
           </select>
-          <button onClick={() => setShowCreateForm(v => !v)} className="btn-secondary py-2 flex-shrink-0">
-            {showCreateForm ? <ChevronUp size={16} /> : <Plus size={16} />}
-            <span className="hidden sm:inline">Nouveau</span>
-          </button>
+          {isAdmin && (
+            <button onClick={() => setShowCreateForm(v => !v)} className="btn-secondary py-2 flex-shrink-0">
+              {showCreateForm ? <ChevronUp size={16} /> : <Plus size={16} />}
+              <span className="hidden sm:inline">Nouveau</span>
+            </button>
+          )}
         </div>
 
         {showCreateForm && (
@@ -242,6 +255,19 @@ export default function GameSheet() {
 
       {selectedMatch && (
         <>
+          {/* Locked notice for marqueur on non-today or validated games */}
+          {isMatchLocked && (
+            <div className="card text-center py-8 space-y-2">
+              <div className="text-3xl">🔒</div>
+              <div className="font-semibold text-white">Feuille verrouillée</div>
+              <div className="text-sm text-gray-500">
+                {matchData?.validated
+                  ? 'Ce match a déjà été validé par l\'administrateur.'
+                  : 'Ce match n\'est accessible que le jour de la partie.'}
+              </div>
+            </div>
+          )}
+
           {/* Scoreboard */}
           <div className="card">
             {matchData?.validated && (
@@ -277,76 +303,82 @@ export default function GameSheet() {
           </div>
 
           {/* Goals for stats */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-white text-sm">Buts enregistrés <span className="text-gray-500 font-normal">(pour les statistiques)</span></span>
+          {!isMatchLocked && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-white text-sm">Buts enregistrés <span className="text-gray-500 font-normal">(pour les statistiques)</span></span>
+              </div>
+
+              {/* Team buttons */}
+              {homeTeam && awayTeam && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => addGoalForTeam(homeTeam.id)}
+                    className="flex-1 py-3 rounded-xl border-2 font-bold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
+                    style={{ backgroundColor: homeTeam.color + '25', borderColor: homeTeam.color + '70' }}
+                  >
+                    <Plus size={15} /> But — {homeTeam.name}
+                  </button>
+                  <button
+                    onClick={() => addGoalForTeam(awayTeam.id)}
+                    className="flex-1 py-3 rounded-xl border-2 font-bold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
+                    style={{ backgroundColor: awayTeam.color + '25', borderColor: awayTeam.color + '70' }}
+                  >
+                    <Plus size={15} /> But — {awayTeam.name}
+                  </button>
+                </div>
+              )}
+
+              {goals.length === 0 ? (
+                <div className="text-center py-6 text-gray-600 text-sm">
+                  <Target size={24} className="mx-auto mb-2 opacity-30" />
+                  Aucun but enregistré
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {goals.map((g, i) => (
+                    <GoalRow
+                      key={i}
+                      goal={g}
+                      index={i}
+                      homeTeam={homeTeam}
+                      awayTeam={awayTeam}
+                      allPlayers={allPlayers}
+                      onChange={updateGoal}
+                      onRemove={removeGoal}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-
-            {/* Team buttons */}
-            {homeTeam && awayTeam && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => addGoalForTeam(homeTeam.id)}
-                  className="flex-1 py-3 rounded-xl border-2 font-bold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
-                  style={{ backgroundColor: homeTeam.color + '25', borderColor: homeTeam.color + '70' }}
-                >
-                  <Plus size={15} /> But — {homeTeam.name}
-                </button>
-                <button
-                  onClick={() => addGoalForTeam(awayTeam.id)}
-                  className="flex-1 py-3 rounded-xl border-2 font-bold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
-                  style={{ backgroundColor: awayTeam.color + '25', borderColor: awayTeam.color + '70' }}
-                >
-                  <Plus size={15} /> But — {awayTeam.name}
-                </button>
-              </div>
-            )}
-
-            {goals.length === 0 ? (
-              <div className="text-center py-6 text-gray-600 text-sm">
-                <Target size={24} className="mx-auto mb-2 opacity-30" />
-                Aucun but enregistré
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {goals.map((g, i) => (
-                  <GoalRow
-                    key={i}
-                    goal={g}
-                    index={i}
-                    homeTeam={homeTeam}
-                    awayTeam={awayTeam}
-                    allPlayers={allPlayers}
-                    onChange={updateGoal}
-                    onRemove={removeGoal}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Notes */}
-          <div>
-            <label className="label">Notes (optionnel)</label>
-            <textarea
-              className="input min-h-[60px] resize-none"
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="Notes sur le match..."
-            />
-          </div>
+          {!isMatchLocked && (
+            <div>
+              <label className="label">Notes (optionnel)</label>
+              <textarea
+                className="input min-h-[60px] resize-none"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="Notes sur le match..."
+              />
+            </div>
+          )}
 
           {/* Actions */}
-          <div className="flex gap-3 justify-end pt-1 pb-6">
-            <button onClick={saveSheet} disabled={saving} className="btn-secondary">
-              {saving ? 'Sauvegarde...' : 'Sauvegarder'}
-            </button>
-            {canEditGamesheet && (
-              <button onClick={validateMatch} disabled={saving} className="btn-success">
-                <Check size={15} /> Valider et publier
+          {!isMatchLocked && (
+            <div className="flex gap-3 justify-end pt-1 pb-6">
+              <button onClick={saveSheet} disabled={saving} className="btn-secondary">
+                {saving ? 'Sauvegarde...' : 'Sauvegarder'}
               </button>
-            )}
-          </div>
+              {canEditGamesheet && (
+                <button onClick={validateMatch} disabled={saving} className="btn-success">
+                  <Check size={15} /> Valider et publier
+                </button>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>

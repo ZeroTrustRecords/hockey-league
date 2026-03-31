@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 const { initDB, getDB } = require('./db');
 const { resetState } = require('./reset-state');
 
@@ -39,9 +40,18 @@ if (isProduction) {
   app.get('*', (req, res) => res.sendFile(path.join(frontendDist, 'index.html')));
 }
 
+// Ensure permanent system accounts always exist (admin + marqueur)
+function ensureSystemAccounts(db) {
+  const defaultHash = bcrypt.hashSync('password123', 10);
+  db.prepare(`INSERT OR IGNORE INTO users (username, email, password_hash, role) VALUES ('admin', 'admin@lhma.ca', ?, 'admin')`).run(defaultHash);
+  db.prepare(`INSERT OR IGNORE INTO users (username, password_hash, role) VALUES ('marqueur', ?, 'marqueur')`).run(defaultHash);
+}
+
 // Initialize DB, reset to clean state, then start
 initDB();
-resetState(getDB());
+const _db = getDB();
+resetState(_db);
+ensureSystemAccounts(_db);
 
 app.listen(PORT, () => {
   console.log(`\n🏒  Ligue de hockey — Serveur démarré sur http://localhost:${PORT}\n`);
