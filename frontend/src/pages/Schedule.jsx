@@ -14,7 +14,7 @@ function MatchRow({ match }) {
     <Link to={`/gamesheet/${match.id}`}
       className={`flex items-center gap-4 px-5 py-3.5 hover:bg-gray-800/30 transition-colors border-b last:border-0 group ${isPlayoff ? 'border-yellow-500/15 bg-yellow-500/3' : 'border-gray-800/40'}`}>
       {/* Date */}
-      <div className="w-20 flex-shrink-0">
+      <div className="w-14 sm:w-20 flex-shrink-0">
         <div className="text-xs text-gray-500">{format(date, 'EEE', { locale: fr })}</div>
         <div className="text-sm font-semibold text-gray-300">{format(date, 'd MMM', { locale: fr })}</div>
         <div className="text-xs text-gray-600">{format(date, 'HH:mm')}</div>
@@ -50,11 +50,11 @@ function MatchRow({ match }) {
       </div>
 
       {/* Status badge */}
-      <div className="flex-shrink-0 w-24 text-right flex flex-col items-end gap-0.5">
-        {isPlayoff && <span className="text-xs font-bold text-yellow-400">🏆 Éliminatoires</span>}
+      <div className="flex-shrink-0 w-5 sm:w-24 text-right flex flex-col items-end gap-0.5">
+        {isPlayoff && <span className="hidden sm:inline text-xs font-bold text-yellow-400">🏆 Éliminatoires</span>}
         {isDone
-          ? <span className="text-xs text-gray-600">Terminé</span>
-          : <span className="text-xs text-blue-500">À venir</span>}
+          ? <span className="hidden sm:inline text-xs text-gray-600">Terminé</span>
+          : <span className="hidden sm:inline text-xs text-blue-500">À venir</span>}
       </div>
     </Link>
   );
@@ -113,7 +113,7 @@ export default function Schedule() {
       {/* Header */}
       <div>
         <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Ligue de Hockey</p>
-        <h1 className="text-4xl font-black text-white">Calendrier</h1>
+        <h1 className="text-2xl sm:text-4xl font-black text-white">Calendrier</h1>
         {selectedTeam && (
           <div className="flex items-center gap-2 mt-2">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedTeam.color }} />
@@ -123,16 +123,16 @@ export default function Schedule() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
+      <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center flex-wrap">
         <div className="flex items-center gap-2 text-xs text-gray-500">
           <Filter size={13} />
           <span>Filtrer par</span>
         </div>
-        <select className="select w-48" value={filterTeam} onChange={e => setFilterTeam(e.target.value)}>
+        <select className="select w-full sm:w-48" value={filterTeam} onChange={e => setFilterTeam(e.target.value)}>
           <option value="">Toutes les équipes</option>
           {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
-        <select className="select w-40" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+        <select className="select w-full sm:w-40" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
           <option value="">Tous les matchs</option>
           <option value="scheduled">À venir</option>
           <option value="completed">Terminés</option>
@@ -144,7 +144,7 @@ export default function Schedule() {
           </button>
         )}
         {!loading && (
-          <span className="text-xs text-gray-600 ml-auto">{matches.length} match{matches.length !== 1 ? 's' : ''}</span>
+          <span className="text-xs text-gray-600 sm:ml-auto">{matches.length} match{matches.length !== 1 ? 's' : ''}</span>
         )}
       </div>
 

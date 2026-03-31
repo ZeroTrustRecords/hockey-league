@@ -85,8 +85,8 @@ export default function PlayerProfile() {
           { icon: Hash,      label: 'Matchs',     value: stats.matches_played || 0, color: 'text-gray-300' },
           { icon: TrendingUp,label: 'Pts/match',  value: ppg,                    color: 'text-emerald-400' },
         ].map(s => (
-          <div key={s.label} className="card text-center">
-            <div className={`text-3xl font-bold ${s.color}`}>{s.value}</div>
+          <div key={s.label} className="card text-center p-3 sm:p-4">
+            <div className={`text-2xl sm:text-3xl font-bold ${s.color}`}>{s.value}</div>
             <div className="text-xs text-gray-500 mt-1">{s.label}</div>
           </div>
         ))}
@@ -98,8 +98,8 @@ export default function PlayerProfile() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="section-title">Historique par saison</h3>
             {history.length > 1 && (
-              <div className="flex items-center gap-4 text-xs text-gray-500">
-                <span>Carrière :</span>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-gray-500">
+                <span className="hidden sm:inline">Carrière :</span>
                 <span className="text-red-400 font-bold">{careerGoals}B</span>
                 <span className="text-blue-400 font-bold">{careerAssists}P</span>
                 <span className="text-yellow-400 font-bold">{careerPoints}PTS</span>
@@ -112,7 +112,7 @@ export default function PlayerProfile() {
                 <tr>
                   <th>Saison</th>
                   <th>Équipe</th>
-                  <th className="text-center">PJ</th>
+                  <th className="hidden sm:table-cell text-center">PJ</th>
                   <th className="text-center">B</th>
                   <th className="text-center">P</th>
                   <th className="text-center font-bold text-yellow-400">PTS</th>
@@ -136,7 +136,7 @@ export default function PlayerProfile() {
                         <span className="text-gray-300 text-sm">{row.team_name}</span>
                       </div>
                     </td>
-                    <td className="text-center text-gray-400">{row.matches_played}</td>
+                    <td className="hidden sm:table-cell text-center text-gray-400">{row.matches_played}</td>
                     <td className="text-center text-red-400 font-semibold">{row.goals}</td>
                     <td className="text-center text-blue-400 font-semibold">{row.assists}</td>
                     <td className="text-center font-black text-yellow-400">{row.points}</td>

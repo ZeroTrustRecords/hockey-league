@@ -95,18 +95,18 @@ export default function Stats() {
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-4xl font-black text-white">Statistiques</h1>
+          <h1 className="text-2xl sm:text-4xl font-black text-white">Statistiques</h1>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
           {/* Type selector */}
-          <div className="flex rounded-lg overflow-hidden border border-gray-700 text-sm">
+          <div className="flex rounded-lg overflow-hidden border border-gray-700 text-sm w-full sm:w-auto">
             {[
-              { key: 'regular',  label: 'Saison régulière' },
-              { key: 'playoffs', label: '🏆 Éliminatoires' },
+              { key: 'regular',  label: 'Saison rég.' },
+              { key: 'playoffs', label: '🏆 Élim.' },
               { key: 'all',      label: 'Tout' },
             ].map(opt => (
               <button key={opt.key} onClick={() => setStatType(opt.key)}
-                className={`px-3 py-1.5 font-medium transition-colors ${statType === opt.key ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
+                className={`flex-1 px-2 sm:px-3 py-1.5 font-medium transition-colors text-xs sm:text-sm ${statType === opt.key ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
                 {opt.label}
               </button>
             ))}
@@ -169,26 +169,26 @@ export default function Stats() {
       {/* Players */}
       {tab === 'players' && (
         <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <select className="select w-44" value={filterTeam} onChange={e => setFilterTeam(e.target.value)}>
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+            <select className="select w-full sm:w-44" value={filterTeam} onChange={e => setFilterTeam(e.target.value)}>
               <option value="">Toutes les équipes</option>
               {allTeams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
-            <select className="select w-36" value={filterPos} onChange={e => setFilterPos(e.target.value)}>
+            <select className="select w-full sm:w-36" value={filterPos} onChange={e => setFilterPos(e.target.value)}>
               <option value="">Toutes positions</option>
               {['C','LW','RW','D','G'].map(p => <option key={p} value={p}>{positionLabel[p]}</option>)}
             </select>
             <span className="text-xs text-gray-600 self-center">{filteredPlayers.length} joueur{filteredPlayers.length !== 1 ? 's' : ''}</span>
           </div>
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+          <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-800">
                   <th className="text-left py-3 px-5 text-xs text-gray-600 font-medium w-8">#</th>
                   <th className="text-left py-3 text-xs text-gray-600 font-medium">Joueur</th>
-                  <th className="text-left py-3 text-xs text-gray-600 font-medium">Pos</th>
+                  <th className="hidden sm:table-cell text-left py-3 text-xs text-gray-600 font-medium">Pos</th>
                   <th className="text-left py-3 text-xs text-gray-600 font-medium hidden sm:table-cell">Équipe</th>
-                  <th className="text-center py-3 text-xs text-gray-600 font-medium w-12 cursor-pointer hover:text-gray-400" onClick={() => handleSort('matches_played')}>MJ <SortIcon field="matches_played" current={sortField} dir={sortDir} /></th>
+                  <th className="hidden md:table-cell text-center py-3 text-xs text-gray-600 font-medium w-12 cursor-pointer hover:text-gray-400" onClick={() => handleSort('matches_played')}>MJ <SortIcon field="matches_played" current={sortField} dir={sortDir} /></th>
                   <th className="text-center py-3 text-xs text-gray-600 font-medium w-14 cursor-pointer hover:text-gray-400" onClick={() => handleSort('goals')}>B <SortIcon field="goals" current={sortField} dir={sortDir} /></th>
                   <th className="text-center py-3 text-xs text-gray-600 font-medium w-14 cursor-pointer hover:text-gray-400" onClick={() => handleSort('assists')}>A <SortIcon field="assists" current={sortField} dir={sortDir} /></th>
                   <th className="text-center py-3 pr-5 text-xs text-gray-500 font-semibold w-14 cursor-pointer hover:text-gray-400" onClick={() => handleSort('points')}>PTS <SortIcon field="points" current={sortField} dir={sortDir} /></th>
@@ -212,7 +212,7 @@ export default function Stats() {
                           </Link>
                         </div>
                       </td>
-                      <td className="py-3.5"><span className="position-badge">{p.position}</span></td>
+                      <td className="hidden sm:table-cell py-3.5"><span className="position-badge">{p.position}</span></td>
                       <td className="py-3.5 hidden sm:table-cell">
                         {p.team_name
                           ? <div className="flex items-center gap-1.5">
@@ -221,7 +221,7 @@ export default function Stats() {
                             </div>
                           : <span className="text-gray-700">—</span>}
                       </td>
-                      <td className="py-3.5 text-center text-gray-600 text-xs">{p.matches_played || 0}</td>
+                      <td className="hidden md:table-cell py-3.5 text-center text-gray-600 text-xs">{p.matches_played || 0}</td>
                       <td className="py-3.5 text-center">
                         <div className="text-gray-300 font-medium">{p.goals || 0}</div>
                         <Bar value={p.goals || 0} max={maxGoals} />
@@ -246,17 +246,17 @@ export default function Stats() {
 
       {/* Teams */}
       {tab === 'teams' && (
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+        <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-800">
                 <th className="text-left py-3 px-5 text-xs text-gray-600 font-medium">Équipe</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">PJ</th>
-                <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">V</th>
-                <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">D</th>
-                <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">BP</th>
-                <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">BC</th>
-                <th className="text-center py-3 text-xs text-gray-600 font-medium w-14">DIFF</th>
+                <th className="hidden sm:table-cell text-center py-3 text-xs text-gray-600 font-medium w-12">V</th>
+                <th className="hidden sm:table-cell text-center py-3 text-xs text-gray-600 font-medium w-12">D</th>
+                <th className="hidden sm:table-cell text-center py-3 text-xs text-gray-600 font-medium w-12">BP</th>
+                <th className="hidden sm:table-cell text-center py-3 text-xs text-gray-600 font-medium w-12">BC</th>
+                <th className="hidden sm:table-cell text-center py-3 text-xs text-gray-600 font-medium w-14">DIFF</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-16 hidden sm:table-cell">Moy BP</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-16 hidden sm:table-cell">Moy BC</th>
                 <th className="text-center py-3 pr-5 text-xs text-gray-600 font-medium hidden md:table-cell">5 derniers</th>
@@ -272,11 +272,11 @@ export default function Stats() {
                     </div>
                   </td>
                   <td className="py-3.5 text-center text-gray-600 text-xs">{t.gp}</td>
-                  <td className="py-3.5 text-center text-gray-300 font-medium">{t.w}</td>
-                  <td className="py-3.5 text-center text-gray-500">{t.l}</td>
-                  <td className="py-3.5 text-center text-gray-500 text-xs">{t.gf}</td>
-                  <td className="py-3.5 text-center text-gray-500 text-xs">{t.ga}</td>
-                  <td className="py-3.5 text-center text-xs">
+                  <td className="hidden sm:table-cell py-3.5 text-center text-gray-300 font-medium">{t.w}</td>
+                  <td className="hidden sm:table-cell py-3.5 text-center text-gray-500">{t.l}</td>
+                  <td className="hidden sm:table-cell py-3.5 text-center text-gray-500 text-xs">{t.gf}</td>
+                  <td className="hidden sm:table-cell py-3.5 text-center text-gray-500 text-xs">{t.ga}</td>
+                  <td className="hidden sm:table-cell py-3.5 text-center text-xs">
                     <span className={t.diff > 0 ? 'text-gray-300' : t.diff < 0 ? 'text-gray-600' : 'text-gray-600'}>
                       {t.diff > 0 ? '+' : ''}{t.diff}
                     </span>

@@ -8,6 +8,8 @@
     @apply bg-gray-950 text-gray-100 font-sans antialiased;
     background-color: #080d18;
   }
+  /* Remove 300ms tap delay on mobile */
+  button, a, [role="button"] { touch-action: manipulation; }
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { @apply bg-gray-900; }
   ::-webkit-scrollbar-thumb { @apply bg-gray-600 rounded-full; }

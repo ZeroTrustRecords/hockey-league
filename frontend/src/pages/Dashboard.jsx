@@ -9,9 +9,9 @@ import { Trophy, Users, Zap, FileText, Target, TrendingUp, Calendar, MessageSqua
 function StatCard({ icon: Icon, label, value, color = 'blue' }) {
   const colors = { blue: 'text-blue-400', green: 'text-emerald-400', yellow: 'text-yellow-400', purple: 'text-purple-400' };
   return (
-    <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
-      <Icon size={20} className={`${colors[color]} mb-3`} />
-      <div className="text-3xl font-black text-white">{value}</div>
+    <div className="bg-gray-900 rounded-2xl p-3 sm:p-5 border border-gray-800">
+      <Icon size={18} className={`${colors[color]} mb-2 sm:mb-3`} />
+      <div className="text-2xl sm:text-3xl font-black text-white">{value}</div>
       <div className="text-xs text-gray-500 mt-1">{label}</div>
     </div>
   );
@@ -24,14 +24,14 @@ function MatchRow({ match, showResult }) {
   return (
     <div className={`py-2.5 border-b last:border-0 ${isPlayoff ? 'border-yellow-500/20' : 'border-gray-800/60'}`}>
       <div className="flex items-center gap-1.5 mb-1.5">
-        <span className="text-xs text-gray-600">{format(date, 'EEE d MMM · HH:mm', { locale: fr })}</span>
+        <span className="text-[10px] sm:text-xs text-gray-600 truncate">{format(date, 'EEE d MMM · HH:mm', { locale: fr })}</span>
         {isPlayoff && (
           <span className="text-xs px-1.5 py-0.5 rounded font-bold bg-yellow-500/15 text-yellow-400 leading-none">🏆 Éliminatoires</span>
         )}
       </div>
       <div className="flex items-center gap-2">
         <div className="flex-1 flex items-center gap-1.5 justify-end min-w-0">
-          <span className={`text-sm font-medium truncate text-right ${isPlayoff ? 'text-yellow-100' : 'text-white'}`}>{match.home_team_name}</span>
+          <span className={`text-xs sm:text-sm font-medium truncate text-right ${isPlayoff ? 'text-yellow-100' : 'text-white'}`}>{match.home_team_name}</span>
           <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: match.home_color }} />
         </div>
         {showResult ? (
@@ -45,7 +45,7 @@ function MatchRow({ match, showResult }) {
         )}
         <div className="flex-1 flex items-center gap-1.5 min-w-0">
           <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: match.away_color }} />
-          <span className={`text-sm truncate ${isPlayoff ? 'text-yellow-100/70' : 'text-gray-400'}`}>{match.away_team_name}</span>
+          <span className={`text-xs sm:text-sm truncate ${isPlayoff ? 'text-yellow-100/70' : 'text-gray-400'}`}>{match.away_team_name}</span>
         </div>
       </div>
     </div>
@@ -56,8 +56,8 @@ function MatchRow({ match, showResult }) {
 function LeaderList({ title, players, valueKey, valueLabel, icon: Icon }) {
   const max = players[0]?.[valueKey] || 1;
   return (
-    <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="bg-gray-900 rounded-2xl p-4 sm:p-5 border border-gray-800">
+      <div className="flex items-center gap-2 mb-3 sm:mb-4">
         <Icon size={15} className="text-gray-500" />
         <span className="text-sm font-semibold text-white">{title}</span>
       </div>
@@ -117,7 +117,7 @@ export default function Dashboard() {
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Ligue de Hockey</p>
-          <h1 className="text-4xl font-black text-white">Tableau de bord</h1>
+          <h1 className="text-2xl sm:text-4xl font-black text-white">Tableau de bord</h1>
           <p className="text-gray-500 text-sm mt-2">{activeSeason?.name || 'Saison 2024-2025'}</p>
         </div>
         <Link to="/gamesheet" className="btn-primary hidden sm:flex mt-1">
@@ -152,7 +152,7 @@ export default function Dashboard() {
       )}
 
       {/* ── ROW 1: Classement + Derniers résultats + Prochains matchs ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr] gap-3 sm:gap-5">
 
         {/* Classement */}
         <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
@@ -170,8 +170,8 @@ export default function Dashboard() {
                   <th className="text-left py-2.5 px-5 text-xs text-gray-600 font-medium w-7">#</th>
                   <th className="text-left py-2.5 text-xs text-gray-600 font-medium">Équipe</th>
                   <th className="text-center py-2.5 text-xs text-gray-600 font-medium w-9">PJ</th>
-                  <th className="text-center py-2.5 text-xs text-gray-600 font-medium w-9">V</th>
-                  <th className="text-center py-2.5 text-xs text-gray-600 font-medium w-9">D</th>
+                  <th className="hidden sm:table-cell text-center py-2.5 text-xs text-gray-600 font-medium w-9">V</th>
+                  <th className="hidden sm:table-cell text-center py-2.5 text-xs text-gray-600 font-medium w-9">D</th>
                   <th className="text-center py-2.5 pr-5 text-xs text-gray-500 font-semibold w-11">PTS</th>
                 </tr>
               </thead>
@@ -186,8 +186,8 @@ export default function Dashboard() {
                       </div>
                     </td>
                     <td className="py-2.5 text-center text-gray-600 text-xs">{s.gp}</td>
-                    <td className="py-2.5 text-center text-gray-300 text-sm">{s.w}</td>
-                    <td className="py-2.5 text-center text-gray-500 text-sm">{s.l}</td>
+                    <td className="hidden sm:table-cell py-2.5 text-center text-gray-300 text-sm">{s.w}</td>
+                    <td className="hidden sm:table-cell py-2.5 text-center text-gray-500 text-sm">{s.l}</td>
                     <td className="py-2.5 pr-5 text-center font-black text-white">{s.pts}</td>
                   </tr>
                 ))}

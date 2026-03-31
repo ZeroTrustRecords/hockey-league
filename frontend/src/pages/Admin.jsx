@@ -26,7 +26,7 @@ function UserModal({ players, teams, onClose, onSave }) {
         </div>
         <form onSubmit={handleSubmit}>
           <div className="modal-body space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><label className="label">Nom d'utilisateur *</label><input className="input" value={form.username} onChange={e => set('username', e.target.value)} required /></div>
               <div><label className="label">Mot de passe *</label><input className="input" type="password" value={form.password} onChange={e => set('password', e.target.value)} required /></div>
             </div>
@@ -88,7 +88,7 @@ function ScheduleMatchModal({ teams, seasons, onClose, onSave }) {
         </div>
         <form onSubmit={handleSubmit}>
           <div className="modal-body space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="label">Équipe locale *</label>
                 <select className="select" value={form.home_team_id} onChange={e => set('home_team_id', e.target.value)} required>
@@ -513,7 +513,7 @@ export default function Admin() {
                         </button>
                       ) : (
                         <form onSubmit={generateSchedule} className="space-y-2">
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div>
                               <label className="label text-xs">Date de début *</label>
                               <input type="date" className="input text-sm" required
@@ -630,8 +630,8 @@ export default function Admin() {
               <thead>
                 <tr>
                   <th>Match</th>
-                  <th>Date</th>
-                  <th className="text-center">Score</th>
+                  <th className="hidden sm:table-cell">Date</th>
+                  <th className="hidden sm:table-cell text-center">Score</th>
                   <th className="text-center">Statut</th>
                   <th className="text-right">Actions</th>
                 </tr>
@@ -649,10 +649,13 @@ export default function Admin() {
                           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: m.away_color }} />
                           <span className="text-gray-400">{m.away_team_name}</span>
                         </div>
+                        {m.status !== 'scheduled' && (
+                          <div className="sm:hidden text-xs text-gray-500 mt-0.5">{m.home_score} – {m.away_score}</div>
+                        )}
                       </div>
                     </td>
-                    <td className="text-xs text-gray-400">{m.date?.slice(0, 16).replace('T', ' ')}</td>
-                    <td className="text-center">
+                    <td className="hidden sm:table-cell text-xs text-gray-400">{m.date?.slice(0, 16).replace('T', ' ')}</td>
+                    <td className="hidden sm:table-cell text-center">
                       {m.status !== 'scheduled' ? (
                         <span className="font-bold text-white">{m.home_score} – {m.away_score}</span>
                       ) : <span className="text-gray-600">—</span>}
@@ -704,8 +707,8 @@ export default function Admin() {
                 <tr>
                   <th>Utilisateur</th>
                   <th>Rôle</th>
-                  <th>Joueur associé</th>
-                  <th>Créé le</th>
+                  <th className="hidden sm:table-cell">Joueur associé</th>
+                  <th className="hidden md:table-cell">Créé le</th>
                   <th></th>
                 </tr>
               </thead>
@@ -731,15 +734,15 @@ export default function Admin() {
                         </div>
                       </td>
                       <td><span className={`text-sm font-medium ${roleColor[u.role] || 'text-gray-400'}`}>{roleLabel[u.role] || u.role}</span></td>
-                      <td className="text-gray-400 text-sm">
+                      <td className="hidden sm:table-cell text-gray-400 text-sm">
                         {linked ? `${linked.first_name} ${linked.last_name}` : <span className="text-gray-600">—</span>}
                       </td>
-                      <td className="text-gray-500 text-sm">
+                      <td className="hidden md:table-cell text-gray-500 text-sm">
                         {u.created_at ? new Date(u.created_at).toLocaleDateString('fr-CA') : '—'}
                       </td>
                       <td className="text-right">
                         {!isSelf && (
-                          <button onClick={() => deleteUser(u.id)} className="text-gray-600 hover:text-red-400 transition-colors p-1" title="Supprimer">
+                          <button onClick={() => deleteUser(u.id)} className="text-gray-600 hover:text-red-400 transition-colors p-2" title="Supprimer">
                             <Trash2 size={15} />
                           </button>
                         )}

@@ -41,6 +41,34 @@ function SidebarLink({ item, unreadCount, onClick }) {
   );
 }
 
+function BottomNav({ user, isAdmin, isMarqueur, unreadCount }) {
+  const location = useLocation();
+  const bottomItems = [
+    { to: '/', icon: LayoutDashboard, label: 'Dashboard', exact: true },
+    { to: '/schedule', icon: CalendarDays, label: 'Calendrier' },
+    { to: '/stats', icon: BarChart3, label: 'Stats' },
+    ...(isAdmin || isMarqueur ? [{ to: '/gamesheet', icon: FileText, label: 'Feuille' }] : []),
+  ];
+
+  return (
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-gray-950 border-t border-gray-800 flex">
+      {bottomItems.map(item => {
+        const isActive = item.exact ? location.pathname === item.to : location.pathname.startsWith(item.to);
+        return (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-[10px] transition-colors ${isActive ? 'text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}
+          >
+            <item.icon size={20} />
+            <span>{item.label}</span>
+          </NavLink>
+        );
+      })}
+    </nav>
+  );
+}
+
 export default function Layout() {
   const { user, logout, isAdmin, isMarqueur } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -142,7 +170,7 @@ export default function Layout() {
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-40 flex">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
-          <div className="relative w-72 flex flex-col z-50">
+          <div className="relative w-[85vw] max-w-xs flex flex-col z-50">
             {sidebar}
           </div>
         </div>
@@ -152,7 +180,7 @@ export default function Layout() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile header */}
         <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-800 flex-shrink-0">
-          <button onClick={() => setSidebarOpen(true)} className="text-gray-400 hover:text-white p-1">
+          <button onClick={() => setSidebarOpen(true)} className="text-gray-400 hover:text-white p-2">
             <Menu size={22} />
           </button>
           <div className="flex items-center gap-2">
@@ -169,9 +197,12 @@ export default function Layout() {
           </div>
         </div>
 
+        {/* Bottom Navigation Bar (mobile only) */}
+        <BottomNav user={user} isAdmin={isAdmin} isMarqueur={isMarqueur} unreadCount={unreadCount} />
+
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="p-4 lg:p-6 max-w-7xl mx-auto animate-fade-in">
+          <div className="p-3 sm:p-4 lg:p-6 pb-20 lg:pb-0 max-w-7xl mx-auto animate-fade-in">
             <Outlet context={{ refreshUnread: () => api.get('/messages/unread-count').then(r => setUnreadCount(r.data.count || 0)) }} />
           </div>
         </main>

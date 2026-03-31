@@ -198,7 +198,7 @@ export default function Playoffs() {
 
       {/* Champion banner */}
       {champion && (
-        <div className="rounded-2xl border-2 text-center py-10 space-y-2"
+        <div className="rounded-2xl border-2 text-center py-6 sm:py-10 space-y-2"
           style={{ borderColor: champion.color + '80', background: champion.color + '18' }}>
           <div className="text-5xl">🏆</div>
           <div className="text-3xl font-black text-white">{champion.name}</div>
@@ -214,11 +214,11 @@ export default function Playoffs() {
         │  M3: 4v5    │──►│ M5: P2 vs G3 │   │               │   │        │
         └─────────────┘   └──────────────┘   └───────────────┘   └────────┘
       */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] gap-2 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] gap-4 xl:gap-2 items-start">
 
         {/* ── Col 1: Semaine 1 ── */}
         <div className="space-y-2">
-          <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest text-center mb-3">
+          <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest text-center mb-3 border-b border-gray-800 pb-2 xl:border-0 xl:pb-0">
             Semaine 1
           </div>
           {m1 && <SeriesCard series={m1} label="Match 1 · 1er vs 2e"  isAdmin={isAdmin} onAddGame={setAddGameSeries} />}
@@ -233,7 +233,7 @@ export default function Playoffs() {
 
         {/* ── Col 2: Semaine 2 — croisements ── */}
         <div className="space-y-2">
-          <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest text-center mb-3">
+          <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest text-center mb-3 border-b border-gray-800 pb-2 xl:border-0 xl:pb-0">
             Semaine 2
           </div>
           {m4 && <SeriesCard series={m4} label="Match 4 · G2 vs P3"  isAdmin={isAdmin} onAddGame={setAddGameSeries} />}
@@ -247,7 +247,7 @@ export default function Playoffs() {
 
         {/* ── Col 3: Demi-finales ── */}
         <div className="space-y-2">
-          <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest text-center mb-3">
+          <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest text-center mb-3 border-b border-gray-800 pb-2 xl:border-0 xl:pb-0">
             Demi-finales
           </div>
           {m6 && <SeriesCard series={m6} label="Match 6 · G1 vs G5"  isAdmin={isAdmin} onAddGame={setAddGameSeries} />}
@@ -261,7 +261,7 @@ export default function Playoffs() {
 
         {/* ── Col 4: Finale ── */}
         <div className="space-y-2">
-          <div className="text-[10px] font-black text-yellow-600 uppercase tracking-widest text-center mb-3">
+          <div className="text-[10px] font-black text-yellow-600 uppercase tracking-widest text-center mb-3 border-b border-yellow-600/30 pb-2 xl:border-0 xl:pb-0">
             🏆 Finale
           </div>
           {mf && (
