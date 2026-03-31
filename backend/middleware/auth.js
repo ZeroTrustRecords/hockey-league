@@ -1,5 +1,14 @@
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'hockey_league_secret_2024';
+
+function getJwtSecret() {
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET must be set in production');
+  }
+  return 'dev-hockey-league-secret';
+}
+
+const JWT_SECRET = getJwtSecret();
 
 function authenticate(req, res, next) {
   const authHeader = req.headers['authorization'];

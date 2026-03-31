@@ -3,7 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const { initDB, getDB } = require('./db');
-const { resetState } = require('./reset-state');
+const { resetState, shouldResetOnStartup } = require('./reset-state');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -42,15 +42,18 @@ if (isProduction) {
 
 // Ensure permanent system accounts always exist (admin + marqueur)
 function ensureSystemAccounts(db) {
-  const defaultHash = bcrypt.hashSync('password123', 10);
+  const defaultPassword = process.env.DEFAULT_SYSTEM_PASSWORD || 'password123';
+  const defaultHash = bcrypt.hashSync(defaultPassword, 10);
   db.prepare(`INSERT OR IGNORE INTO users (username, email, password_hash, role) VALUES ('admin', 'admin@lhma.ca', ?, 'admin')`).run(defaultHash);
   db.prepare(`INSERT OR IGNORE INTO users (username, password_hash, role) VALUES ('marqueur', ?, 'marqueur')`).run(defaultHash);
 }
 
-// Initialize DB, reset to clean state, then start
+// Initialize DB and optionally reset state for local demos/testing
 initDB();
 const _db = getDB();
-resetState(_db);
+if (shouldResetOnStartup()) {
+  resetState(_db);
+}
 ensureSystemAccounts(_db);
 
 app.listen(PORT, () => {

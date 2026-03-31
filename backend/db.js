@@ -118,7 +118,7 @@ function initDB() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       match_id INTEGER NOT NULL,
       team_id INTEGER NOT NULL,
-      scorer_id INTEGER NOT NULL,
+      scorer_id INTEGER,
       assist1_id INTEGER,
       assist2_id INTEGER,
       period INTEGER DEFAULT 1,
@@ -154,6 +154,17 @@ function initDB() {
       UNIQUE(message_id, user_id),
       FOREIGN KEY (message_id) REFERENCES messages(id),
       FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS attendance (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      match_id INTEGER NOT NULL,
+      player_id INTEGER NOT NULL,
+      status TEXT DEFAULT 'present',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(match_id, player_id),
+      FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
+      FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS draft_settings (
@@ -203,6 +214,41 @@ function initDB() {
     );
   `);
 
+  const goalsColumns = db.prepare(`PRAGMA table_info(goals)`).all();
+  const scorerColumn = goalsColumns.find(column => column.name === 'scorer_id');
+  if (scorerColumn?.notnull) {
+    db.pragma('foreign_keys = OFF');
+    db.transaction(() => {
+      db.exec(`
+        ALTER TABLE goals RENAME TO goals_old;
+
+        CREATE TABLE goals (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          match_id INTEGER NOT NULL,
+          team_id INTEGER NOT NULL,
+          scorer_id INTEGER,
+          assist1_id INTEGER,
+          assist2_id INTEGER,
+          period INTEGER DEFAULT 1,
+          time_in_period TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
+          FOREIGN KEY (team_id) REFERENCES teams(id),
+          FOREIGN KEY (scorer_id) REFERENCES players(id),
+          FOREIGN KEY (assist1_id) REFERENCES players(id),
+          FOREIGN KEY (assist2_id) REFERENCES players(id)
+        );
+
+        INSERT INTO goals (id, match_id, team_id, scorer_id, assist1_id, assist2_id, period, time_in_period, created_at)
+        SELECT id, match_id, team_id, scorer_id, assist1_id, assist2_id, period, time_in_period, created_at
+        FROM goals_old;
+
+        DROP TABLE goals_old;
+      `);
+    })();
+    db.pragma('foreign_keys = ON');
+  }
+
   // Indexes for performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status);
@@ -217,6 +263,8 @@ function initDB() {
     CREATE INDEX IF NOT EXISTS idx_goals_assist2 ON goals(assist2_id);
     CREATE INDEX IF NOT EXISTS idx_players_team ON players(team_id);
     CREATE INDEX IF NOT EXISTS idx_players_status ON players(status);
+    CREATE INDEX IF NOT EXISTS idx_attendance_match ON attendance(match_id);
+    CREATE INDEX IF NOT EXISTS idx_attendance_player ON attendance(player_id);
     CREATE INDEX IF NOT EXISTS idx_messages_type ON messages(type);
     CREATE INDEX IF NOT EXISTS idx_messages_announcement ON messages(is_announcement);
     CREATE INDEX IF NOT EXISTS idx_draft_picks_season ON draft_picks(season_id);

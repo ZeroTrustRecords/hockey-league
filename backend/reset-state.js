@@ -1,12 +1,16 @@
 /**
  * reset-state.js
- * Resets the app to a clean baseline state on every server startup.
+ * Resets the app to a clean baseline state when explicitly enabled.
  *
  * PRESERVED:  teams, players (with team assignments), users,
  *             completed seasons with ALL their goals/matches (historical record)
  * RESET:      active season — goals cleared, matches → scheduled,
  *             playoff series, draft picks, messages, attendance
  */
+
+function shouldResetOnStartup() {
+  return process.env.RESET_ON_STARTUP === 'true';
+}
 
 function resetState(db) {
   console.log('🔄  Resetting app to clean state...');
@@ -63,4 +67,4 @@ function resetState(db) {
   console.log('✅  Clean state restored.');
 }
 
-module.exports = { resetState };
+module.exports = { resetState, shouldResetOnStartup };

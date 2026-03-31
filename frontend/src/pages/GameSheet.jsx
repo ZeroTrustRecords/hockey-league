@@ -9,7 +9,6 @@ const PERIODS = [
   { value: '1', label: '1re' },
   { value: '2', label: '2e' },
   { value: '3', label: '3e' },
-  { value: '4', label: 'Prol.' },
   { value: '5', label: 'Fusil.' },
 ];
 
@@ -52,7 +51,8 @@ function GoalRow({ goal, index, homeTeam, awayTeam, allPlayers, onChange, onRemo
           <div>
             <label className="text-[10px] text-gray-500 uppercase tracking-wide">Buteur *</label>
             <select className="select mt-0.5 text-sm" value={goal.scorer_id} onChange={e => set('scorer_id', e.target.value)}>
-              <option value="">Remplaçant</option>
+              <option value="">—</option>
+              <option value="sub">Remplaçant</option>
               {teamPlayers.map(p => (
                 <option key={p.id} value={p.id}>#{p.number} {p.last_name}</option>
               ))}
@@ -163,7 +163,7 @@ export default function GameSheet() {
   // Normalize goals before sending: empty string → null, 'sub' (replacement assist) → null
   const normalizeGoals = (gs) => gs.map(g => ({
     ...g,
-    scorer_id:  g.scorer_id  || null,
+    scorer_id:  (g.scorer_id === 'sub' || !g.scorer_id) ? null : g.scorer_id,
     assist1_id: (g.assist1_id === 'sub' || !g.assist1_id) ? null : g.assist1_id,
     assist2_id: (g.assist2_id === 'sub' || !g.assist2_id) ? null : g.assist2_id,
   }));
@@ -182,7 +182,7 @@ export default function GameSheet() {
 
   const validateMatch = async () => {
     if (homeScore === awayScore) {
-      toast.error('Un match ne peut pas se terminer à égalité. Ajoutez un but en prolongation ou en fusillade.');
+      toast.error('Un match ne peut pas se terminer à égalité. Ajoutez un but en fusillade.');
       return;
     }
     if (!confirm('Valider ce match ? Les statistiques seront mises à jour.')) return;
@@ -301,7 +301,7 @@ export default function GameSheet() {
               </div>
             </div>
             {homeScore === awayScore && homeScore > 0 && (
-              <p className="text-center text-xs text-yellow-500 mt-3 font-medium">⚠️ Égalité — ajoutez un but en prolongation ou fusillade</p>
+              <p className="text-center text-xs text-yellow-500 mt-3 font-medium">⚠️ Égalité — ajoutez un but en fusillade</p>
             )}
             {!(homeScore === awayScore && homeScore > 0) && (
               <p className="text-center text-xs text-gray-600 mt-3">Score calculé automatiquement depuis les buts enregistrés</p>
