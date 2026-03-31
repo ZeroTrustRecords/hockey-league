@@ -128,6 +128,23 @@ router.post('/:id/validate', authenticate, requireGamesheetAccess, (req, res) =>
   if (match.is_playoff && match.playoff_series_id) {
     const playoffsRouter = require('./playoffs');
     playoffsRouter.recalcSeries(db, match.playoff_series_id);
+
+    // Auto-schedule next game if series is still active and no game is pending
+    const series = db.prepare('SELECT * FROM playoff_series WHERE id = ?').get(match.playoff_series_id);
+    if (series && series.status === 'active') {
+      const pending = db.prepare("SELECT id FROM matches WHERE playoff_series_id = ? AND status = 'scheduled'").get(series.id);
+      if (!pending) {
+        const gameCount = db.prepare('SELECT COUNT(*) as c FROM matches WHERE playoff_series_id = ?').get(series.id).c;
+        const nextHome = gameCount % 2 === 0 ? series.team1_id : series.team2_id;
+        const nextAway = gameCount % 2 === 0 ? series.team2_id : series.team1_id;
+        const d = new Date();
+        d.setDate(d.getDate() + 2);
+        db.prepare(`
+          INSERT INTO matches (home_team_id, away_team_id, date, location, status, season_id, is_playoff, playoff_series_id)
+          VALUES (?, ?, ?, 'Aréna Municipal', 'scheduled', ?, 1, ?)
+        `).run(nextHome, nextAway, d.toISOString().slice(0, 10) + ' 21:00', series.season_id, series.id);
+      }
+    }
   }
 
   res.json({ message: 'Match validé' });

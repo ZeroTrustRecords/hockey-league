@@ -5,6 +5,19 @@ const { authenticate, requireAdmin } = require('../middleware/auth');
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
+function scheduleGame1(db, seriesId, daysFromNow = 1) {
+  const series = db.prepare('SELECT * FROM playoff_series WHERE id = ?').get(seriesId);
+  if (!series || series.status !== 'active' || !series.team1_id || !series.team2_id) return;
+  const existing = db.prepare("SELECT id FROM matches WHERE playoff_series_id = ? AND status = 'scheduled'").get(seriesId);
+  if (existing) return; // game already scheduled
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromNow);
+  db.prepare(`
+    INSERT INTO matches (home_team_id, away_team_id, date, location, status, season_id, is_playoff, playoff_series_id)
+    VALUES (?, ?, ?, 'Aréna Municipal', 'scheduled', ?, 1, ?)
+  `).run(series.team1_id, series.team2_id, d.toISOString().slice(0, 10) + ' 21:00', series.season_id, seriesId);
+}
+
 function computeStandings(db, seasonId) {
   const teams = db.prepare('SELECT * FROM teams').all();
   return teams.map(team => {
@@ -70,6 +83,8 @@ function recalcSeries(db, seriesId) {
       const next = db.prepare('SELECT * FROM playoff_series WHERE id=?').get(series.next_series_id);
       if (next.team1_id && next.team2_id) {
         db.prepare("UPDATE playoff_series SET status='active' WHERE id=?").run(series.next_series_id);
+        // Auto-schedule Game 1 for newly activated series
+        scheduleGame1(db, series.next_series_id);
       }
     } else {
       // This is the Final — set champion
@@ -159,6 +174,11 @@ router.post('/season/:seasonId/start', authenticate, requireAdmin, (req, res) =>
   db.prepare('UPDATE playoff_series SET next_series_id=?, next_series_slot=2 WHERE id=?').run(id5, id4); // WSF → Final slot 2
 
   db.prepare("UPDATE seasons SET status='playoffs' WHERE id=?").run(seasonId);
+
+  // Auto-schedule Game 1 for each active Round 1 series
+  scheduleGame1(db, id1, 1);
+  scheduleGame1(db, id2, 3);
+  scheduleGame1(db, id3, 5);
 
   res.json({ message: 'Séries éliminatoires démarrées' });
 });

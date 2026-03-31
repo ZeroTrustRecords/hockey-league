@@ -5,14 +5,20 @@ const { getDB } = require('../db');
 // Individual stats leaderboard
 router.get('/players', (req, res) => {
   const db = getDB();
-  const { season_id, limit = 50, sort = 'points' } = req.query;
+  // type: 'regular' (default) | 'playoffs' | 'all'
+  const { season_id, limit = 50, sort = 'points', type = 'regular' } = req.query;
 
-  let seasonFilter = '';
-  const params = [];
+  const filters = [];
+  const params  = [];
+
   if (season_id) {
-    seasonFilter = 'AND m.season_id = ?';
+    filters.push('m.season_id = ?');
     params.push(season_id, season_id, season_id, season_id);
   }
+  if (type === 'regular')  { filters.push('m.is_playoff = 0'); }
+  if (type === 'playoffs') { filters.push('m.is_playoff = 1'); }
+
+  const seasonFilter = filters.length ? 'AND ' + filters.join(' AND ') : '';
 
   const rows = db.prepare(`
     SELECT
@@ -31,7 +37,7 @@ router.get('/players', (req, res) => {
     GROUP BY p.id
     ORDER BY points DESC, goals DESC, assists DESC
     LIMIT ?
-  `).all(...(season_id ? params : []), parseInt(limit));
+  `).all(...(params.length ? params : []), parseInt(limit));
 
   res.json(rows);
 });

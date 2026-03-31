@@ -20,16 +20,22 @@ function StatCard({ icon: Icon, label, value, color = 'blue' }) {
 // ─── Match row (results + upcoming) ───────────────────────────────────────────
 function MatchRow({ match, showResult }) {
   const date = parseISO(match.date);
+  const isPlayoff = !!match.is_playoff;
   return (
-    <div className="py-2.5 border-b border-gray-800/60 last:border-0">
-      <div className="text-xs text-gray-600 mb-1.5">{format(date, 'EEE d MMM · HH:mm', { locale: fr })}</div>
+    <div className={`py-2.5 border-b last:border-0 ${isPlayoff ? 'border-yellow-500/20' : 'border-gray-800/60'}`}>
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <span className="text-xs text-gray-600">{format(date, 'EEE d MMM · HH:mm', { locale: fr })}</span>
+        {isPlayoff && (
+          <span className="text-xs px-1.5 py-0.5 rounded font-bold bg-yellow-500/15 text-yellow-400 leading-none">🏆 Éliminatoires</span>
+        )}
+      </div>
       <div className="flex items-center gap-2">
         <div className="flex-1 flex items-center gap-1.5 justify-end min-w-0">
-          <span className="text-sm font-medium text-white truncate text-right">{match.home_team_name}</span>
+          <span className={`text-sm font-medium truncate text-right ${isPlayoff ? 'text-yellow-100' : 'text-white'}`}>{match.home_team_name}</span>
           <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: match.home_color }} />
         </div>
         {showResult ? (
-          <div className="flex items-center gap-1 flex-shrink-0 bg-gray-800 rounded-lg px-2.5 py-1">
+          <div className={`flex items-center gap-1 flex-shrink-0 rounded-lg px-2.5 py-1 ${isPlayoff ? 'bg-yellow-500/10 border border-yellow-500/20' : 'bg-gray-800'}`}>
             <span className="text-sm font-black text-white w-4 text-center">{match.home_score}</span>
             <span className="text-gray-600 text-xs">—</span>
             <span className="text-sm font-black text-white w-4 text-center">{match.away_score}</span>
@@ -39,7 +45,7 @@ function MatchRow({ match, showResult }) {
         )}
         <div className="flex-1 flex items-center gap-1.5 min-w-0">
           <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: match.away_color }} />
-          <span className="text-sm text-gray-400 truncate">{match.away_team_name}</span>
+          <span className={`text-sm truncate ${isPlayoff ? 'text-yellow-100/70' : 'text-gray-400'}`}>{match.away_team_name}</span>
         </div>
       </div>
     </div>

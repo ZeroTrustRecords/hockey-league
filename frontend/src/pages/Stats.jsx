@@ -29,11 +29,12 @@ export default function Stats() {
   const [filterTeam, setFilterTeam] = useState('');
   const [filterPos, setFilterPos] = useState('');
   const [allTeams, setAllTeams] = useState([]);
+  const [statType, setStatType] = useState('regular'); // 'regular' | 'playoffs' | 'all'
 
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      api.get('/stats/players', { params: { limit: 100 } }),
+      api.get('/stats/players', { params: { limit: 100, type: statType } }),
       api.get('/stats/teams'),
       api.get('/stats/leaders'),
       api.get('/teams'),
@@ -43,7 +44,7 @@ export default function Stats() {
       setLeaders(lr.data);
       setAllTeams(at.data);
     }).finally(() => setLoading(false));
-  }, []);
+  }, [statType]);
 
   const handleSort = field => {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -79,12 +80,26 @@ export default function Stats() {
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Saison régulière</p>
           <h1 className="text-4xl font-black text-white">Statistiques</h1>
         </div>
-        {tab === 'players' && (
-          <button onClick={exportCSV} className="btn-secondary mt-1"><Download size={14} /> Exporter</button>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Type selector */}
+          <div className="flex rounded-lg overflow-hidden border border-gray-700 text-sm">
+            {[
+              { key: 'regular',  label: 'Saison régulière' },
+              { key: 'playoffs', label: '🏆 Éliminatoires' },
+              { key: 'all',      label: 'Tout' },
+            ].map(opt => (
+              <button key={opt.key} onClick={() => setStatType(opt.key)}
+                className={`px-3 py-1.5 font-medium transition-colors ${statType === opt.key ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {tab === 'players' && (
+            <button onClick={exportCSV} className="btn-secondary"><Download size={14} /> Exporter</button>
+          )}
+        </div>
       </div>
 
       {/* Leaders */}

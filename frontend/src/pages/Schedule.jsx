@@ -8,10 +8,11 @@ import { Calendar, Filter } from 'lucide-react';
 function MatchRow({ match }) {
   const date = parseISO(match.date);
   const isDone = match.status === 'completed';
+  const isPlayoff = !!match.is_playoff;
 
   return (
     <Link to={`/gamesheet/${match.id}`}
-      className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-800/30 transition-colors border-b border-gray-800/40 last:border-0 group">
+      className={`flex items-center gap-4 px-5 py-3.5 hover:bg-gray-800/30 transition-colors border-b last:border-0 group ${isPlayoff ? 'border-yellow-500/15 bg-yellow-500/3' : 'border-gray-800/40'}`}>
       {/* Date */}
       <div className="w-20 flex-shrink-0">
         <div className="text-xs text-gray-500">{format(date, 'EEE', { locale: fr })}</div>
@@ -49,7 +50,8 @@ function MatchRow({ match }) {
       </div>
 
       {/* Status badge */}
-      <div className="flex-shrink-0 w-16 text-right">
+      <div className="flex-shrink-0 w-24 text-right flex flex-col items-end gap-0.5">
+        {isPlayoff && <span className="text-xs font-bold text-yellow-400">🏆 Éliminatoires</span>}
         {isDone
           ? <span className="text-xs text-gray-600">Terminé</span>
           : <span className="text-xs text-blue-500">À venir</span>}
