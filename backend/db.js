@@ -230,6 +230,9 @@ function initDB() {
   try { db.exec(`ALTER TABLE matches ADD COLUMN is_playoff INTEGER DEFAULT 0`); } catch {}
   try { db.exec(`ALTER TABLE matches ADD COLUMN playoff_series_id INTEGER`); } catch {}
   try { db.exec(`ALTER TABLE seasons ADD COLUMN champion_team_id INTEGER`); } catch {}
+  // New format: loser routing in bracket (safe to re-run)
+  try { db.exec(`ALTER TABLE playoff_series ADD COLUMN next_loser_series_id INTEGER`); } catch {}
+  try { db.exec(`ALTER TABLE playoff_series ADD COLUMN next_loser_slot INTEGER`); } catch {}
 
   console.log('Database initialized');
   return db;

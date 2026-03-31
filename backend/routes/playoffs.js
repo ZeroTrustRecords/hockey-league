@@ -9,7 +9,7 @@ function scheduleGame1(db, seriesId, daysFromNow = 1) {
   const series = db.prepare('SELECT * FROM playoff_series WHERE id = ?').get(seriesId);
   if (!series || series.status !== 'active' || !series.team1_id || !series.team2_id) return;
   const existing = db.prepare("SELECT id FROM matches WHERE playoff_series_id = ? AND status = 'scheduled'").get(seriesId);
-  if (existing) return; // game already scheduled
+  if (existing) return;
   const d = new Date();
   d.setDate(d.getDate() + daysFromNow);
   db.prepare(`
@@ -58,6 +58,11 @@ function archiveSeasonStats(db, seasonId) {
   }
 }
 
+/**
+ * Recalculate a series after a game is validated.
+ * Handles BOTH winner progression (next_series_id) and loser progression
+ * (next_loser_series_id) so the backdoor bracket fills automatically.
+ */
 function recalcSeries(db, seriesId) {
   const series = db.prepare('SELECT * FROM playoff_series WHERE id=?').get(seriesId);
   if (!series || series.status === 'completed') return;
@@ -73,22 +78,34 @@ function recalcSeries(db, seriesId) {
   db.prepare('UPDATE playoff_series SET wins1=?, wins2=? WHERE id=?').run(wins1, wins2, seriesId);
 
   const need = Math.ceil(series.best_of / 2);
-  if (wins1 >= need || wins2 >= need) {
-    const winnerId = wins1 >= need ? series.team1_id : series.team2_id;
-    db.prepare("UPDATE playoff_series SET winner_id=?, status='completed' WHERE id=?").run(winnerId, seriesId);
+  if (wins1 < need && wins2 < need) return; // Series not over yet
 
-    if (series.next_series_id) {
-      const col = series.next_series_slot === 1 ? 'team1_id' : 'team2_id';
-      db.prepare(`UPDATE playoff_series SET ${col}=? WHERE id=?`).run(winnerId, series.next_series_id);
-      const next = db.prepare('SELECT * FROM playoff_series WHERE id=?').get(series.next_series_id);
-      if (next.team1_id && next.team2_id) {
-        db.prepare("UPDATE playoff_series SET status='active' WHERE id=?").run(series.next_series_id);
-        // Auto-schedule Game 1 for newly activated series
-        scheduleGame1(db, series.next_series_id);
-      }
-    } else {
-      // This is the Final — set champion
-      db.prepare("UPDATE seasons SET champion_team_id=?, status='completed' WHERE id=?").run(winnerId, series.season_id);
+  const winnerId = wins1 >= need ? series.team1_id : series.team2_id;
+  const loserId  = wins1 >= need ? series.team2_id : series.team1_id;
+  db.prepare("UPDATE playoff_series SET winner_id=?, status='completed' WHERE id=?").run(winnerId, seriesId);
+
+  // ── Winner routing ──────────────────────────────────────────────────────────
+  if (series.next_series_id) {
+    const col = series.next_series_slot === 1 ? 'team1_id' : 'team2_id';
+    db.prepare(`UPDATE playoff_series SET ${col}=? WHERE id=?`).run(winnerId, series.next_series_id);
+    const next = db.prepare('SELECT * FROM playoff_series WHERE id=?').get(series.next_series_id);
+    if (next.team1_id && next.team2_id) {
+      db.prepare("UPDATE playoff_series SET status='active' WHERE id=?").run(series.next_series_id);
+      scheduleGame1(db, series.next_series_id);
+    }
+  } else {
+    // No next series → this is the Final; crown champion
+    db.prepare("UPDATE seasons SET champion_team_id=?, status='completed' WHERE id=?").run(winnerId, series.season_id);
+  }
+
+  // ── Loser routing (backdoor bracket) ───────────────────────────────────────
+  if (series.next_loser_series_id && loserId) {
+    const col = series.next_loser_slot === 1 ? 'team1_id' : 'team2_id';
+    db.prepare(`UPDATE playoff_series SET ${col}=? WHERE id=?`).run(loserId, series.next_loser_series_id);
+    const next = db.prepare('SELECT * FROM playoff_series WHERE id=?').get(series.next_loser_series_id);
+    if (next.team1_id && next.team2_id) {
+      db.prepare("UPDATE playoff_series SET status='active' WHERE id=?").run(series.next_loser_series_id);
+      scheduleGame1(db, series.next_loser_series_id);
     }
   }
 }
@@ -142,48 +159,77 @@ router.post('/season/:seasonId/start', authenticate, requireAdmin, (req, res) =>
   if (season.status === 'completed') return res.status(400).json({ error: 'Saison terminée' });
 
   const standings = computeStandings(db, seasonId);
-  if (standings.length < 4) return res.status(400).json({ error: 'Pas assez d\'équipes classées (min. 4)' });
+  if (standings.length < 6) return res.status(400).json({ error: 'Il faut au moins 6 équipes classées pour démarrer les séries' });
 
   archiveSeasonStats(db, seasonId);
 
-  const seeds = standings.slice(0, Math.min(6, standings.length));
+  const seeds = standings.slice(0, 6); // Top 6 by standings
   db.prepare('DELETE FROM playoff_series WHERE season_id=?').run(seasonId);
 
   const ins = db.prepare(`
     INSERT INTO playoff_series (season_id, round, series_number, team1_id, team2_id, status, best_of)
-    VALUES (?, ?, ?, ?, ?, ?, 3)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
-  // Round 1: 1v6, 2v5, 3v4 (or fewer if < 6 teams)
-  const r1s1 = ins.run(seasonId, 1, 1, seeds[0].team_id, seeds[5]?.team_id ?? null, seeds[5] ? 'active' : 'pending');
-  const r1s2 = ins.run(seasonId, 1, 2, seeds[1].team_id, seeds[4]?.team_id ?? null, seeds[4] ? 'active' : 'pending');
-  const r1s3 = ins.run(seasonId, 1, 3, seeds[2].team_id, seeds[3]?.team_id ?? null, seeds[3] ? 'active' : 'pending');
+  // ── Round 1 — Semaine playoff 1 (single games, teams known) ────────────────
+  // M1: 1er vs 2e
+  const r1s1 = ins.run(seasonId, 1, 1, seeds[0].team_id, seeds[1].team_id, 'active', 1);
+  // M2: 3e vs 6e
+  const r1s2 = ins.run(seasonId, 1, 2, seeds[2].team_id, seeds[5].team_id, 'active', 1);
+  // M3: 4e vs 5e
+  const r1s3 = ins.run(seasonId, 1, 3, seeds[3].team_id, seeds[4].team_id, 'active', 1);
 
-  // Round 2: SF (W of series2 vs W of series3) — seed 1 winner has bye to Final
-  const r2s1 = ins.run(seasonId, 2, 1, null, null, 'pending');
+  // ── Round 2 — Semaine playoff 2, phase croisée (teams TBD) ─────────────────
+  // M4: G2 (winner M2) vs P3 (loser M3)
+  const r2s1 = ins.run(seasonId, 2, 1, null, null, 'pending', 1);
+  // M5: P2 (loser M2) vs G3 (winner M3)
+  const r2s2 = ins.run(seasonId, 2, 2, null, null, 'pending', 1);
 
-  // Round 3: Final (W of series1 vs W of SF)
-  const r3s1 = ins.run(seasonId, 3, 1, null, null, 'pending');
+  // ── Round 3 — Demi-finales (teams TBD) ─────────────────────────────────────
+  // M6: G1 (winner M1) vs G5 (winner M5)  — Demi-finale A
+  const r3s1 = ins.run(seasonId, 3, 1, null, null, 'pending', 1);
+  // M7: P1 (loser M1) vs G4 (winner M4)  — Demi-finale B
+  const r3s2 = ins.run(seasonId, 3, 2, null, null, 'pending', 1);
 
-  const [id1, id2, id3, id4, id5] = [r1s1, r1s2, r1s3, r2s1, r3s1].map(r => r.lastInsertRowid);
+  // ── Round 4 — Finale (best-of-3, need 2 wins) ──────────────────────────────
+  // M8/M9: G6 (winner M6) vs G7 (winner M7)
+  const r4s1 = ins.run(seasonId, 4, 1, null, null, 'pending', 3);
 
-  // Wire up bracket progression
-  db.prepare('UPDATE playoff_series SET next_series_id=?, next_series_slot=1 WHERE id=?').run(id5, id1); // W1 → Final slot 1
-  db.prepare('UPDATE playoff_series SET next_series_id=?, next_series_slot=1 WHERE id=?').run(id4, id2); // W2 → SF slot 1
-  db.prepare('UPDATE playoff_series SET next_series_id=?, next_series_slot=2 WHERE id=?').run(id4, id3); // W3 → SF slot 2
-  db.prepare('UPDATE playoff_series SET next_series_id=?, next_series_slot=2 WHERE id=?').run(id5, id4); // WSF → Final slot 2
+  const [id1, id2, id3, id4, id5, id6, id7, id8] =
+    [r1s1, r1s2, r1s3, r2s1, r2s2, r3s1, r3s2, r4s1].map(r => r.lastInsertRowid);
+
+  // ── Wire bracket progressions ───────────────────────────────────────────────
+  const wire = db.prepare(`
+    UPDATE playoff_series
+    SET next_series_id=?, next_series_slot=?, next_loser_series_id=?, next_loser_slot=?
+    WHERE id=?
+  `);
+  // M1 (1v2): winner → SF-A slot1, loser → SF-B slot1
+  wire.run(id6, 1, id7, 1, id1);
+  // M2 (3v6): winner → Cross-A slot1, loser → Cross-B slot1
+  wire.run(id4, 1, id5, 1, id2);
+  // M3 (4v5): winner → Cross-B slot2, loser → Cross-A slot2
+  wire.run(id5, 2, id4, 2, id3);
+  // M4 (G2vP3): winner → SF-B slot2, no loser path (eliminated)
+  db.prepare('UPDATE playoff_series SET next_series_id=?, next_series_slot=? WHERE id=?').run(id7, 2, id4);
+  // M5 (P2vG3): winner → SF-A slot2, no loser path (eliminated)
+  db.prepare('UPDATE playoff_series SET next_series_id=?, next_series_slot=? WHERE id=?').run(id6, 2, id5);
+  // M6 SF-A: winner → Final slot1
+  db.prepare('UPDATE playoff_series SET next_series_id=?, next_series_slot=? WHERE id=?').run(id8, 1, id6);
+  // M7 SF-B: winner → Final slot2
+  db.prepare('UPDATE playoff_series SET next_series_id=?, next_series_slot=? WHERE id=?').run(id8, 2, id7);
 
   db.prepare("UPDATE seasons SET status='playoffs' WHERE id=?").run(seasonId);
 
-  // Auto-schedule Game 1 for each active Round 1 series
-  scheduleGame1(db, id1, 1);
-  scheduleGame1(db, id2, 3);
-  scheduleGame1(db, id3, 5);
+  // Auto-schedule Round 1 games (staggered by a few days)
+  scheduleGame1(db, id1, 7);
+  scheduleGame1(db, id2, 9);
+  scheduleGame1(db, id3, 11);
 
-  res.json({ message: 'Séries éliminatoires démarrées' });
+  res.json({ message: 'Séries éliminatoires démarrées — nouveau format 6 équipes' });
 });
 
-// POST /playoffs/series/:seriesId/game — Schedule a game in a series
+// POST /playoffs/series/:seriesId/game — manually schedule next game
 router.post('/series/:seriesId/game', authenticate, requireAdmin, (req, res) => {
   const db = getDB();
   const series = db.prepare('SELECT * FROM playoff_series WHERE id=?').get(req.params.seriesId);
@@ -195,7 +241,6 @@ router.post('/series/:seriesId/game', authenticate, requireAdmin, (req, res) => 
 
   const { date, location = 'Aréna Municipal' } = req.body;
   const gameCount = db.prepare('SELECT COUNT(*) as c FROM matches WHERE playoff_series_id=?').get(series.id).c;
-  // Alternate home: team1 home for games 1,3,5; team2 home for games 2,4
   const homeId = gameCount % 2 === 0 ? series.team1_id : series.team2_id;
   const awayId = gameCount % 2 === 0 ? series.team2_id : series.team1_id;
 

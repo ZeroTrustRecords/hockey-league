@@ -207,8 +207,8 @@ router.post('/playoffs', authenticate, requireAdmin, (req, res) => {
   let gameCounter = 0;
   let totalGames  = 0;
 
-  // Process all rounds in order (1 → 2 → 3)
-  for (let round = 1; round <= 3; round++) {
+  // Process all rounds in order (1 → 2 → 3 → 4)
+  for (let round = 1; round <= 4; round++) {
     // Re-fetch series each round so bracket progression is picked up
     const allSeries = db.prepare(
       "SELECT * FROM playoff_series WHERE season_id = ? AND round = ? ORDER BY series_number"
