@@ -11,7 +11,7 @@ router.get('/', (req, res) => {
 
 router.get('/active', (req, res) => {
   const db = getDB();
-  const season = db.prepare("SELECT * FROM seasons WHERE status = 'active' ORDER BY created_at DESC LIMIT 1").get();
+  const season = db.prepare("SELECT * FROM seasons WHERE status IN ('active', 'playoffs') ORDER BY created_at DESC LIMIT 1").get();
   res.json(season || null);
 });
 

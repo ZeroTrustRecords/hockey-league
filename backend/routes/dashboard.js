@@ -68,7 +68,7 @@ router.get('/', (req, res) => {
       SUM(CASE WHEN m.home_team_id=t.id THEN m.home_score ELSE m.away_score END) as gf,
       SUM(CASE WHEN m.home_team_id=t.id THEN m.away_score ELSE m.home_score END) as ga
     FROM teams t
-    LEFT JOIN matches m ON (m.home_team_id=t.id OR m.away_team_id=t.id) AND m.validated=1
+    LEFT JOIN matches m ON (m.home_team_id=t.id OR m.away_team_id=t.id) AND m.validated=1 AND m.is_playoff=0
     GROUP BY t.id
     ORDER BY pts DESC
   `).all();
