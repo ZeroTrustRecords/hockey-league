@@ -51,6 +51,66 @@ router.post('/reset', authenticate, requireAdmin, (req, res) => {
   res.json({ message: 'Réinitialisation complète effectuée' });
 });
 
+// Generate a round-robin schedule for a season
+router.post('/:id/generate-schedule', authenticate, requireAdmin, (req, res) => {
+  const db = getDB();
+  const seasonId = parseInt(req.params.id);
+
+  const season = db.prepare('SELECT * FROM seasons WHERE id = ?').get(seasonId);
+  if (!season) return res.status(404).json({ error: 'Saison introuvable' });
+
+  const existing = db.prepare(
+    'SELECT COUNT(*) as c FROM matches WHERE season_id = ? AND is_playoff = 0'
+  ).get(seasonId).c;
+  if (existing > 0)
+    return res.status(400).json({ error: `Cette saison a déjà ${existing} match(s) planifié(s)` });
+
+  const teams = db.prepare('SELECT id FROM teams ORDER BY id').all();
+  if (teams.length < 2)
+    return res.status(400).json({ error: 'Au moins 2 équipes requises' });
+
+  const {
+    start_date,
+    rounds = 3,
+    days_between = 7,
+    times = ['21:00', '21:00', '20:00'],
+  } = req.body;
+
+  if (!start_date) return res.status(400).json({ error: 'start_date requis' });
+
+  // Build all unique pairs then repeat for each round (alternating home/away)
+  const pairs = [];
+  for (let i = 0; i < teams.length; i++)
+    for (let j = i + 1; j < teams.length; j++)
+      pairs.push([teams[i].id, teams[j].id]);
+
+  const allGames = [];
+  for (let r = 0; r < rounds; r++)
+    pairs.forEach(([t1, t2]) => allGames.push(r % 2 === 0 ? [t1, t2] : [t2, t1]));
+
+  // Group into game days: floor(teams/2) games per day, spaced days_between apart
+  const gamesPerDay = Math.floor(teams.length / 2);
+  const base = new Date(start_date);
+
+  const insert = db.prepare(`
+    INSERT INTO matches (home_team_id, away_team_id, date, location, status, season_id)
+    VALUES (?, ?, ?, 'Aréna Municipal', 'scheduled', ?)
+  `);
+
+  db.transaction(() => {
+    allGames.forEach(([home, away], idx) => {
+      const dayNum  = Math.floor(idx / gamesPerDay);
+      const slotNum = idx % gamesPerDay;
+      const d = new Date(base);
+      d.setDate(d.getDate() + dayNum * days_between);
+      const dateStr = d.toISOString().slice(0, 10) + ' ' + (times[slotNum % times.length]);
+      insert.run(home, away, dateStr, seasonId);
+    });
+  })();
+
+  res.json({ message: `${allGames.length} matchs générés`, matches: allGames.length });
+});
+
 // Import player-team assignments from CSV data (parsed on frontend)
 router.post('/import-csv', authenticate, requireAdmin, (req, res) => {
   const { assignments } = req.body;

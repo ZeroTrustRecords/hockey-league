@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { Settings, Plus, X, Users, Shield, Calendar, RefreshCw, Check, Trash2, UserCheck, Trophy, Zap, AlertTriangle, Upload, Download } from 'lucide-react';
+import { Settings, Plus, X, Users, Shield, Calendar, CalendarDays, RefreshCw, Check, Trash2, UserCheck, Trophy, Zap, AlertTriangle, Upload, Download } from 'lucide-react';
 
 function UserModal({ players, teams, onClose, onSave }) {
   const [form, setForm] = useState({ username: '', password: '', role: 'player', player_id: '', team_id: '' });
@@ -141,6 +141,8 @@ export default function Admin() {
   const [showNewSeasonForm, setShowNewSeasonForm] = useState(false);
   const [csvPreview, setCsvPreview] = useState(null); // { assignments, grouped }
   const [standings, setStandings] = useState([]);
+  const [scheduleForm, setScheduleForm] = useState({ start_date: '', rounds: 3 });
+  const [showScheduleForm, setShowScheduleForm] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -280,6 +282,20 @@ export default function Admin() {
       toast.success(res.data.message);
       console.log('Transferts simulés:', res.data.transferred);
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur de simulation'); }
+  };
+
+  const generateSchedule = async e => {
+    e.preventDefault();
+    if (!activeSeason) return;
+    try {
+      const res = await api.post(`/seasons/${activeSeason.id}/generate-schedule`, {
+        start_date: scheduleForm.start_date,
+        rounds: parseInt(scheduleForm.rounds),
+      });
+      toast.success(res.data.message);
+      setShowScheduleForm(false);
+      load();
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
 
   const simulatePrevSeason = async () => {
@@ -483,6 +499,47 @@ export default function Admin() {
                      activeSeason.status === 'playoffs' ? 'Éliminatoires' : 'Terminée'}
                   </span>
                 </div>
+
+                {activeSeason.status === 'active' && (() => {
+                  const seasonMatchCount = matches.filter(m => m.season_id === activeSeason.id && !m.is_playoff).length;
+                  return seasonMatchCount === 0 ? (
+                    <div className="border border-blue-500/30 rounded-lg p-3 bg-blue-500/5 space-y-2">
+                      <div className="text-xs text-blue-400 font-medium flex items-center gap-1.5">
+                        <CalendarDays size={13} /> Aucun match planifié — générer le calendrier
+                      </div>
+                      {!showScheduleForm ? (
+                        <button onClick={() => setShowScheduleForm(true)} className="btn-primary w-full justify-center text-sm">
+                          <CalendarDays size={14} /> Générer le calendrier
+                        </button>
+                      ) : (
+                        <form onSubmit={generateSchedule} className="space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="label text-xs">Date de début *</label>
+                              <input type="date" className="input text-sm" required
+                                value={scheduleForm.start_date}
+                                onChange={e => setScheduleForm(f => ({ ...f, start_date: e.target.value }))} />
+                            </div>
+                            <div>
+                              <label className="label text-xs">Rondes</label>
+                              <select className="select text-sm" value={scheduleForm.rounds}
+                                onChange={e => setScheduleForm(f => ({ ...f, rounds: e.target.value }))}>
+                                <option value={1}>1 (15 matchs)</option>
+                                <option value={2}>2 (30 matchs)</option>
+                                <option value={3}>3 (45 matchs)</option>
+                                <option value={4}>4 (60 matchs)</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button type="button" onClick={() => setShowScheduleForm(false)} className="btn-secondary flex-1 text-sm">Annuler</button>
+                            <button type="submit" className="btn-primary flex-1 text-sm">Générer</button>
+                          </div>
+                        </form>
+                      )}
+                    </div>
+                  ) : null;
+                })()}
 
                 {activeSeason.status === 'active' && (
                   <button onClick={startPlayoffs} disabled={playoffStarting} className="btn-primary w-full justify-center">
