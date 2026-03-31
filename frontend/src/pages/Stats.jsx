@@ -38,7 +38,8 @@ export default function Stats() {
       const s = r.data;
       setActiveSeason(s);
       // Auto-select playoffs stats if season is in playoffs phase
-      setStatType(s?.status === 'playoffs' ? 'playoffs' : 'regular');
+      // 'playoffs' = currently in playoffs; 'completed' = playoffs just finished → show playoff stats
+      setStatType((s?.status === 'playoffs' || s?.status === 'completed') ? 'playoffs' : 'regular');
     }).catch(() => setStatType('regular'));
   }, []);
 

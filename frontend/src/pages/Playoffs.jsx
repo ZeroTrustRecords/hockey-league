@@ -129,19 +129,10 @@ export default function Playoffs() {
   const load = async () => {
     setLoading(true);
     try {
-      // Try active season first
-      let season = null;
-      try { season = (await api.get('/seasons/active')).data; } catch {}
-
-      // If no active season or no playoffs data, look for a playoffs/completed season
-      if (!season || (season.status !== 'playoffs' && season.status !== 'completed')) {
-        const all = (await api.get('/seasons')).data;
-        const found = all.find(s => s.status === 'playoffs' || s.status === 'completed');
-        if (found) season = found;
-      }
-
+      // /seasons/active returns the most relevant season:
+      //   1. active/playoffs (in-progress), 2. most recently completed
+      const season = (await api.get('/seasons/active')).data;
       if (!season) { setLoading(false); return; }
-
       const r = await api.get(`/playoffs/season/${season.id}`);
       setData(r.data);
     } catch (err) {

@@ -11,7 +11,11 @@ router.get('/', (req, res) => {
 
 router.get('/active', (req, res) => {
   const db = getDB();
-  const season = db.prepare("SELECT * FROM seasons WHERE status IN ('active', 'playoffs') ORDER BY created_at DESC LIMIT 1").get();
+  // Prefer an in-progress season (active / playoffs); fall back to the most
+  // recently created completed season so the bracket stays visible after playoffs end.
+  const season =
+    db.prepare("SELECT * FROM seasons WHERE status IN ('active','playoffs') ORDER BY id DESC LIMIT 1").get() ||
+    db.prepare("SELECT * FROM seasons WHERE status = 'completed' ORDER BY id DESC LIMIT 1").get();
   res.json(season || null);
 });
 
