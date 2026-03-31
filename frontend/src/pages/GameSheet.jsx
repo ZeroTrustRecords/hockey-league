@@ -113,9 +113,15 @@ export default function GameSheet() {
       .then(([tr, pr, mr, sr]) => {
         setTeams(tr.data);
         setAllPlayers(pr.data);
-        if (isAdmin) setMatches(mr.data);
-        else if (isMarqueur) setMatches(nextMatch(mr.data));
-        else setMatches(mr.data.filter(m => !m.validated));
+        let filtered;
+        if (isAdmin) filtered = mr.data;
+        else if (isMarqueur) filtered = nextMatch(mr.data);
+        else filtered = mr.data.filter(m => !m.validated);
+        setMatches(filtered);
+        // Auto-select the single next game for marqueur (no manual selection needed)
+        if (isMarqueur && filtered.length === 1 && !id) {
+          setSelectedMatch(String(filtered[0].id));
+        }
         if (sr.data) setForm(f => ({ ...f, season_id: sr.data.id }));
       }).finally(() => setLoading(false));
   }, []);
