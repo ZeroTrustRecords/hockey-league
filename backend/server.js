@@ -1,7 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { initDB } = require('./db');
+const { initDB, getDB } = require('./db');
+const { resetState } = require('./reset-state');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -37,8 +38,9 @@ if (isProduction) {
   app.get('*', (req, res) => res.sendFile(path.join(frontendDist, 'index.html')));
 }
 
-// Initialize DB then start
+// Initialize DB, reset to clean state, then start
 initDB();
+resetState(getDB());
 
 app.listen(PORT, () => {
   console.log(`\n🏒  Ligue de hockey — Serveur démarré sur http://localhost:${PORT}\n`);
