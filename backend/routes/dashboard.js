@@ -27,6 +27,18 @@ router.get('/', (req, res) => {
     ORDER BY m.date DESC LIMIT 5
   `).all();
 
+  // Determine active season to scope leaderboard stats
+  const activeSeasonForStats = db.prepare(`
+    SELECT id, status FROM seasons
+    WHERE status IN ('active','playoffs')
+    ORDER BY created_at DESC LIMIT 1
+  `).get();
+
+  // During playoffs show playoff stats; during regular season show regular stats
+  const isPlayoffs  = activeSeasonForStats?.status === 'playoffs';
+  const playoffFlag = isPlayoffs ? 1 : 0;
+  const seasonId    = activeSeasonForStats?.id ?? 0;
+
   const playerStatsQuery = `
     SELECT p.id, p.first_name, p.last_name, p.number,
       t.name as team_name, t.color as team_color,
@@ -38,6 +50,7 @@ router.get('/', (req, res) => {
     LEFT JOIN teams t ON p.team_id = t.id
     LEFT JOIN goals g ON (g.scorer_id = p.id OR g.assist1_id = p.id OR g.assist2_id = p.id)
     LEFT JOIN matches m ON g.match_id = m.id AND m.validated = 1
+                       AND m.season_id = ${seasonId} AND m.is_playoff = ${playoffFlag}
     WHERE p.status = 'active'
     GROUP BY p.id
   `;

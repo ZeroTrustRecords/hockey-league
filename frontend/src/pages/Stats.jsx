@@ -29,12 +29,26 @@ export default function Stats() {
   const [filterTeam, setFilterTeam] = useState('');
   const [filterPos, setFilterPos] = useState('');
   const [allTeams, setAllTeams] = useState([]);
-  const [statType, setStatType] = useState('regular'); // 'regular' | 'playoffs' | 'all'
+  const [statType, setStatType] = useState(null); // null = not yet determined
+  const [activeSeason, setActiveSeason] = useState(null);
+
+  // On mount: load season to determine default stat type
+  useEffect(() => {
+    api.get('/seasons/active').then(r => {
+      const s = r.data;
+      setActiveSeason(s);
+      // Auto-select playoffs stats if season is in playoffs phase
+      setStatType(s?.status === 'playoffs' ? 'playoffs' : 'regular');
+    }).catch(() => setStatType('regular'));
+  }, []);
 
   useEffect(() => {
+    if (statType === null) return; // wait for season detection
     setLoading(true);
+    const params = { limit: 100, type: statType };
+    if (activeSeason?.id) params.season_id = activeSeason.id;
     Promise.all([
-      api.get('/stats/players', { params: { limit: 100, type: statType } }),
+      api.get('/stats/players', { params }),
       api.get('/stats/teams'),
       api.get('/stats/leaders'),
       api.get('/teams'),
@@ -44,7 +58,7 @@ export default function Stats() {
       setLeaders(lr.data);
       setAllTeams(at.data);
     }).finally(() => setLoading(false));
-  }, [statType]);
+  }, [statType, activeSeason]);
 
   const handleSort = field => {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
