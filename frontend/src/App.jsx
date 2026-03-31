@@ -1,7 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
-import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Players from './pages/Players';
 import PlayerProfile from './pages/PlayerProfile';
@@ -16,8 +15,24 @@ import GameSheet from './pages/GameSheet';
 import Schedule from './pages/Schedule';
 import Admin from './pages/Admin';
 
-function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
+// Only admin may access — silently redirects public users to home
+function AdminRoute({ children }) {
+  const { isAdmin } = useAuth();
+  if (!isAdmin) return <Navigate to="/" replace />;
+  return children;
+}
+
+// Admin or marqueur only
+function GamesheetRoute({ children }) {
+  const { isAdmin, isMarqueur } = useAuth();
+  if (!isAdmin && !isMarqueur) return <Navigate to="/" replace />;
+  return children;
+}
+
+function AppRoutes() {
+  const { loading } = useAuth();
+
+  // Wait for token validation before rendering (prevents flash)
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950">
       <div className="text-center">
@@ -26,28 +41,11 @@ function ProtectedRoute({ children }) {
       </div>
     </div>
   );
-  if (!user) return <Navigate to="/login" replace />;
-  return children;
-}
 
-function AdminRoute({ children }) {
-  const { isAdmin } = useAuth();
-  if (!isAdmin) return <Navigate to="/" replace />;
-  return children;
-}
-
-function GamesheetRoute({ children }) {
-  const { isAdmin, isMarqueur } = useAuth();
-  if (!isAdmin && !isMarqueur) return <Navigate to="/" replace />;
-  return children;
-}
-
-function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="draft" element={<ProtectedRoute><AdminRoute><Draft /></AdminRoute></ProtectedRoute>} />
-      <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+      {/* All pages are public — no login required to browse */}
+      <Route path="/" element={<Layout />}>
         <Route index element={<Dashboard />} />
         <Route path="players" element={<Players />} />
         <Route path="players/:id" element={<PlayerProfile />} />
@@ -55,12 +53,15 @@ function AppRoutes() {
         <Route path="teams/:id" element={<TeamDetail />} />
         <Route path="standings" element={<Standings />} />
         <Route path="stats" element={<Stats />} />
-        <Route path="messages" element={<Messages />} />
         <Route path="playoffs" element={<Playoffs />} />
         <Route path="schedule" element={<Schedule />} />
+        {/* Messages requires login — handled inside the page */}
+        <Route path="messages" element={<Messages />} />
+        {/* Admin-only routes */}
         <Route path="gamesheet" element={<GamesheetRoute><GameSheet /></GamesheetRoute>} />
         <Route path="gamesheet/:id" element={<GamesheetRoute><GameSheet /></GamesheetRoute>} />
         <Route path="admin" element={<AdminRoute><Admin /></AdminRoute>} />
+        <Route path="draft" element={<AdminRoute><Draft /></AdminRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

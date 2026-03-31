@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Send, Plus, X, Megaphone, Users, Globe, CheckCheck } from 'lucide-react';
+import { Send, Plus, X, Megaphone, Users, Globe, CheckCheck, Lock } from 'lucide-react';
 
 const typeLabels = { global: 'Général', team: 'Équipe', private: 'Privé' };
 const typeIcons = { global: Globe, team: Users, private: Send };
@@ -76,6 +76,21 @@ function NewMessageModal({ teams, onClose, onSend }) {
 
 export default function Messages() {
   const { user, isAdminOrCaptain } = useAuth();
+
+  // Messages are only available to logged-in users
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-gray-800 flex items-center justify-center mx-auto">
+          <Lock size={28} className="text-gray-600" />
+        </div>
+        <div>
+          <p className="text-white font-semibold">Messagerie réservée aux membres</p>
+          <p className="text-gray-500 text-sm mt-1">Connectez-vous pour accéder aux messages.</p>
+        </div>
+      </div>
+    );
+  }
   const outletContext = useOutletContext();
   const [messages, setMessages] = useState([]);
   const [teams, setTeams] = useState([]);
