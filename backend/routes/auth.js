@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { getDB } = require('../db');
-const { authenticate, JWT_SECRET } = require('../middleware/auth');
+const { authenticate, requireAdmin, JWT_SECRET } = require('../middleware/auth');
 
 // Login
 router.post('/login', (req, res) => {
@@ -40,6 +40,25 @@ router.get('/me', authenticate, (req, res) => {
     player = db.prepare('SELECT * FROM players WHERE id = ?').get(user.player_id);
   }
   res.json({ ...user, player });
+});
+
+// List all users (admin only)
+router.get('/users', authenticate, requireAdmin, (req, res) => {
+  const db = getDB();
+  const users = db.prepare(
+    'SELECT id, username, role, player_id, team_id, created_at FROM users ORDER BY role, username'
+  ).all();
+  res.json(users);
+});
+
+// Delete user (admin only, cannot delete self)
+router.delete('/users/:id', authenticate, requireAdmin, (req, res) => {
+  if (String(req.params.id) === String(req.user.id)) {
+    return res.status(400).json({ error: 'Vous ne pouvez pas supprimer votre propre compte' });
+  }
+  const db = getDB();
+  db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
+  res.json({ message: 'Compte supprimé' });
 });
 
 // Register (admin only in production, open for setup)

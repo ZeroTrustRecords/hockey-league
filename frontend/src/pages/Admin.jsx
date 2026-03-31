@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api/client';
 import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 import { Settings, Plus, X, Users, Shield, Calendar, RefreshCw, Check, Trash2, UserCheck, Trophy, Zap, AlertTriangle, Upload, Download } from 'lucide-react';
 
 function UserModal({ players, teams, onClose, onSave }) {
@@ -123,6 +124,7 @@ function ScheduleMatchModal({ teams, seasons, onClose, onSave }) {
 }
 
 export default function Admin() {
+  const { user: currentUser } = useAuth();
   const [tab, setTab] = useState('overview');
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
@@ -294,13 +296,21 @@ export default function Admin() {
 
   useEffect(() => { load(); }, []);
 
-  // Load users when needed
+  // Load users when tab is active
   useEffect(() => {
     if (tab === 'users') {
-      // We can't get users list via API without an endpoint - show create option
-      setUsers([]);
+      api.get('/auth/users').then(res => setUsers(res.data)).catch(() => {});
     }
   }, [tab]);
+
+  const deleteUser = async (id) => {
+    if (!confirm('Supprimer ce compte ?')) return;
+    try {
+      await api.delete(`/auth/users/${id}`);
+      toast.success('Compte supprimé');
+      setUsers(u => u.filter(x => x.id !== id));
+    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+  };
 
   const handleDeleteMatch = async id => {
     if (!confirm('Supprimer ce match?')) return;
@@ -584,29 +594,57 @@ export default function Admin() {
             <p className="text-sm text-gray-400">Gérer les accès utilisateurs</p>
             <button onClick={() => setShowUserModal(true)} className="btn-primary py-1.5"><Plus size={15} /> Créer un compte</button>
           </div>
-          <div className="card">
-            <div className="text-center py-8">
-              <div className="text-3xl mb-3">🔑</div>
-              <h3 className="text-white font-semibold mb-1">Comptes de démo disponibles</h3>
-              <p className="text-gray-500 text-sm mb-4">Mot de passe: <code className="text-blue-400">password123</code></p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm max-w-md mx-auto">
-                {[
-                  { user: 'admin', role: 'Administrateur', color: 'yellow' },
-                  { user: 'cap_nordiques', role: 'Capitaine — Les Nordiques', color: 'blue' },
-                  { user: 'cap_castors', role: 'Capitaine — Les Castors', color: 'red' },
-                  { user: 'cap_loups', role: 'Capitaine — Les Loups', color: 'green' },
-                  { user: 'cap_aigles', role: 'Capitaine — Les Aigles', color: 'orange' },
-                  { user: 'cap_requins', role: 'Capitaine — Les Requins', color: 'teal' },
-                  { user: 'cap_pantheres', role: 'Capitaine — Les Panthères', color: 'purple' },
-                  { user: 'joueur_nordiques', role: 'Joueur régulier', color: 'gray' },
-                ].map(u => (
-                  <div key={u.user} className="p-2.5 rounded-lg bg-gray-800 text-left">
-                    <div className="font-mono text-blue-400 text-sm">{u.user}</div>
-                    <div className="text-gray-500 text-xs">{u.role}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Utilisateur</th>
+                  <th>Rôle</th>
+                  <th>Joueur associé</th>
+                  <th>Créé le</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.length === 0 && (
+                  <tr><td colSpan={5} className="text-center text-gray-500 py-6">Aucun compte</td></tr>
+                )}
+                {users.map(u => {
+                  const roleLabel = { admin: 'Administrateur', captain: 'Capitaine', marqueur: 'Marqueur', player: 'Joueur' };
+                  const roleColor = { admin: 'text-yellow-400', captain: 'text-blue-400', marqueur: 'text-emerald-400', player: 'text-gray-400' };
+                  const linked = players.find(p => p.id === u.player_id);
+                  const isSelf = u.id === currentUser?.id;
+                  return (
+                    <tr key={u.id}>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                            style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)' }}>
+                            {u.username[0]?.toUpperCase()}
+                          </div>
+                          <span className="font-mono text-white text-sm">{u.username}</span>
+                          {isSelf && <span className="text-xs text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded">vous</span>}
+                        </div>
+                      </td>
+                      <td><span className={`text-sm font-medium ${roleColor[u.role] || 'text-gray-400'}`}>{roleLabel[u.role] || u.role}</span></td>
+                      <td className="text-gray-400 text-sm">
+                        {linked ? `${linked.first_name} ${linked.last_name}` : <span className="text-gray-600">—</span>}
+                      </td>
+                      <td className="text-gray-500 text-sm">
+                        {u.created_at ? new Date(u.created_at).toLocaleDateString('fr-CA') : '—'}
+                      </td>
+                      <td className="text-right">
+                        {!isSelf && (
+                          <button onClick={() => deleteUser(u.id)} className="text-gray-600 hover:text-red-400 transition-colors p-1" title="Supprimer">
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -664,7 +702,7 @@ export default function Admin() {
         </div>
       )}
 
-      {showUserModal && <UserModal players={players} teams={teams} onClose={() => setShowUserModal(false)} onSave={() => { setShowUserModal(false); load(); }} />}
+      {showUserModal && <UserModal players={players} teams={teams} onClose={() => setShowUserModal(false)} onSave={() => { setShowUserModal(false); api.get('/auth/users').then(res => setUsers(res.data)).catch(() => {}); }} />}
       {showMatchModal && <ScheduleMatchModal teams={teams} seasons={seasons} onClose={() => setShowMatchModal(false)} onSave={() => { setShowMatchModal(false); load(); }} />}
 
       {/* CSV Preview Modal */}

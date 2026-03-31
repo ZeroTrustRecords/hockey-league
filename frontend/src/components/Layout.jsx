@@ -15,9 +15,7 @@ const navItems = [
   { to: '/stats', icon: BarChart3, label: 'Statistiques' },
   { to: '/schedule', icon: CalendarDays, label: 'Calendrier' },
   { to: '/messages', icon: MessageSquare, label: 'Messagerie', badge: true },
-  { to: '/draft', icon: Zap, label: 'Repêchage' },
   { to: '/playoffs', icon: Star, label: 'Éliminatoires' },
-  { to: '/gamesheet', icon: FileText, label: 'Feuille de match' },
 ];
 
 function SidebarLink({ item, unreadCount, onClick }) {
@@ -44,7 +42,7 @@ function SidebarLink({ item, unreadCount, onClick }) {
 }
 
 export default function Layout() {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, isMarqueur } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -86,8 +84,20 @@ export default function Layout() {
         {navItems.map(item => (
           <SidebarLink key={item.to} item={item} unreadCount={unreadCount} onClick={() => setSidebarOpen(false)} />
         ))}
+        {(isAdmin || isMarqueur) && (
+          <SidebarLink
+            item={{ to: '/gamesheet', icon: FileText, label: 'Feuille de match' }}
+            unreadCount={0}
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
         {isAdmin && (
           <div className="pt-2 mt-2 border-t border-gray-800">
+            <SidebarLink
+              item={{ to: '/draft', icon: Zap, label: 'Repêchage' }}
+              unreadCount={0}
+              onClick={() => setSidebarOpen(false)}
+            />
             <SidebarLink
               item={{ to: '/admin', icon: Settings, label: 'Administration' }}
               unreadCount={0}

@@ -31,8 +31,14 @@ function ProtectedRoute({ children }) {
 }
 
 function AdminRoute({ children }) {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   if (!isAdmin) return <Navigate to="/" replace />;
+  return children;
+}
+
+function GamesheetRoute({ children }) {
+  const { isAdmin, isMarqueur } = useAuth();
+  if (!isAdmin && !isMarqueur) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -40,7 +46,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="draft" element={<ProtectedRoute><Draft /></ProtectedRoute>} />
+      <Route path="draft" element={<ProtectedRoute><AdminRoute><Draft /></AdminRoute></ProtectedRoute>} />
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="players" element={<Players />} />
@@ -52,8 +58,8 @@ function AppRoutes() {
         <Route path="messages" element={<Messages />} />
         <Route path="playoffs" element={<Playoffs />} />
         <Route path="schedule" element={<Schedule />} />
-        <Route path="gamesheet" element={<GameSheet />} />
-        <Route path="gamesheet/:id" element={<GameSheet />} />
+        <Route path="gamesheet" element={<GamesheetRoute><GameSheet /></GamesheetRoute>} />
+        <Route path="gamesheet/:id" element={<GamesheetRoute><GameSheet /></GamesheetRoute>} />
         <Route path="admin" element={<AdminRoute><Admin /></AdminRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
