@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -90,6 +91,7 @@ function LeaderList({ title, players, valueKey, valueLabel, icon: Icon }) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 export default function Dashboard() {
+  const { isAdmin, isMarqueur } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -120,9 +122,11 @@ export default function Dashboard() {
           <h1 className="text-2xl sm:text-4xl font-black text-white">Tableau de bord</h1>
           <p className="text-gray-500 text-sm mt-2">{activeSeason?.name || 'Saison 2024-2025'}</p>
         </div>
-        <Link to="/gamesheet" className="btn-primary hidden sm:flex mt-1">
-          <FileText size={15} /> Feuille de match
-        </Link>
+        {(isAdmin || isMarqueur) && (
+          <Link to="/gamesheet" className="btn-primary hidden sm:flex mt-1">
+            <FileText size={15} /> Feuille de match
+          </Link>
+        )}
       </div>
 
       {/* Champion banner */}
