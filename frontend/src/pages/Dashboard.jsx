@@ -143,16 +143,17 @@ export default function Dashboard() {
 
   return (
     <div className="public-shell space-y-6 max-w-6xl">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <p className="public-eyebrow">Site officiel de la ligue</p>
-          <h1 className="public-title">LHMA</h1>
-          <p className="public-subtitle max-w-2xl">
-            Résultats, prochain rendez-vous, meneurs offensifs et état de la saison au même endroit.
-          </p>
-          <div className="score-chip mt-4">{seasonLabel}</div>
+      <div className="ice-panel-soft rounded-[1.75rem] px-5 py-5 sm:px-6 sm:py-6">
+        <div className="flex items-end justify-between gap-6 flex-wrap">
+          <div className="min-w-0 flex-1">
+            <p className="public-eyebrow">Site officiel de la ligue</p>
+            <h1 className="public-title text-3xl sm:text-5xl">LHMA</h1>
+            <p className="public-subtitle max-w-4xl mt-2">
+              {'Résultats, prochain rendez-vous, meneurs offensifs et état de la saison au même endroit.'}
+            </p>
+          </div>
+          <div className="score-chip shrink-0">{seasonLabel}</div>
         </div>
-
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-5">
@@ -196,9 +197,9 @@ export default function Dashboard() {
                     <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Équipe locale</p>
                   </div>
 
-                  <div className="rounded-[1.75rem] border border-white/10 bg-gradient-to-b from-white/10 to-white/5 px-5 py-6 text-center flex flex-col justify-center">
+                  <div className="rounded-[1.75rem] border border-white/10 bg-gradient-to-b from-white/10 to-white/5 px-5 py-5 text-center flex flex-col justify-center">
                     <div className="text-xs text-gray-500 uppercase tracking-[0.26em] mb-2">Match à venir</div>
-                    <div className="text-4xl sm:text-5xl font-black text-white leading-none">VS</div>
+                    <div className="text-3xl sm:text-[2.6rem] font-black text-white leading-none">VS</div>
                   </div>
 
                   <div className="rounded-[1.6rem] border border-white/10 bg-white/5 p-5 text-center xl:text-left min-w-0 flex flex-col justify-center">
