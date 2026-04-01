@@ -22,6 +22,27 @@ function normalizeLegacyArenaNames(db) {
   `).run("Aréna de l'Assomption");
 }
 
+function normalizeLegacySeasonNames(db) {
+  const seasons = db.prepare('SELECT id, name, status FROM seasons').all();
+  const updateName = db.prepare('UPDATE seasons SET name = ? WHERE id = ?');
+
+  seasons.forEach(season => {
+    let nextName = null;
+
+    if (season.status === 'completed' && season.name === 'Saison 2024-2025') {
+      nextName = '\u00C9T\u00C9 - 2025';
+    }
+
+    if (season.status === 'active' && season.name === 'Saison 2026-2027') {
+      nextName = '\u00C9T\u00C9 - 2026';
+    }
+
+    if (nextName && nextName !== season.name) {
+      updateName.run(nextName, season.id);
+    }
+  });
+}
+
 function initializeApp(app) {
   initDB();
   const db = getDB();
@@ -36,6 +57,7 @@ function initializeApp(app) {
 
   ensureSystemAccounts(db);
   normalizeLegacyArenaNames(db);
+  normalizeLegacySeasonNames(db);
   return db;
 }
 
