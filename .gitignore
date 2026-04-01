@@ -9,3 +9,4 @@ backend/backups/
 .env
 *.log
 test-results/
+responsive-audit/

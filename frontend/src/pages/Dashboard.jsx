@@ -187,24 +187,24 @@ export default function Dashboard() {
                   {format(parseISO(featuredMatch.date), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })}
                 </div>
 
-                <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
-                  <div className="text-right">
-                    <div className="flex items-center justify-end gap-2 mb-2">
-                      <span className="text-xl sm:text-2xl font-black text-white">{featuredMatch.home_team_name}</span>
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-4 items-center">
+                  <div className="text-center sm:text-right min-w-0">
+                    <div className="flex items-center justify-center sm:justify-end gap-2 mb-2 min-w-0">
+                      <span className="text-lg sm:text-2xl font-black text-white truncate">{featuredMatch.home_team_name}</span>
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: featuredMatch.home_color }} />
                     </div>
                     <p className="text-xs text-gray-500">Équipe locale</p>
                   </div>
 
-                  <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-center">
+                  <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-center justify-self-center">
                     <div className="text-xs text-gray-500 uppercase tracking-[0.2em] mb-1">Match</div>
                     <div className="text-2xl sm:text-3xl font-black text-white">vs</div>
                   </div>
 
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
+                  <div className="min-w-0 text-center sm:text-left">
+                    <div className="flex items-center justify-center sm:justify-start gap-2 mb-2 min-w-0">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: featuredMatch.away_color }} />
-                      <span className="text-xl sm:text-2xl font-black text-white">{featuredMatch.away_team_name}</span>
+                      <span className="text-lg sm:text-2xl font-black text-white truncate">{featuredMatch.away_team_name}</span>
                     </div>
                     <p className="text-xs text-gray-500">Équipe visiteuse</p>
                   </div>

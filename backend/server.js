@@ -14,6 +14,14 @@ function ensureSystemAccounts(db) {
   db.prepare(`INSERT OR IGNORE INTO users (username, password_hash, role) VALUES ('marqueur', ?, 'marqueur')`).run(defaultHash);
 }
 
+function normalizeLegacyArenaNames(db) {
+  db.prepare(`
+    UPDATE matches
+    SET location = ?
+    WHERE location IN ('Arena Municipal', 'Aréna Municipal')
+  `).run("Aréna de l'Assomption");
+}
+
 function initializeApp(app) {
   initDB();
   const db = getDB();
@@ -27,6 +35,7 @@ function initializeApp(app) {
   }
 
   ensureSystemAccounts(db);
+  normalizeLegacyArenaNames(db);
   return db;
 }
 

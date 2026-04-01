@@ -53,6 +53,8 @@ function isValidJerseyNumber(value) {
   return Number.isInteger(parsed) && parsed >= 1 && parsed <= 99;
 }
 
+const DEFAULT_ARENA_NAME = "Aréna de l'Assomption";
+
 function assignRosterNumbers(players) {
   const playersByTeam = new Map();
   players.forEach(player => {
@@ -205,7 +207,7 @@ router.post('/:id/generate-schedule', authenticate, requireAdmin, (req, res) => 
 
   const insert = db.prepare(`
     INSERT INTO matches (home_team_id, away_team_id, date, location, status, season_id)
-    VALUES (?, ?, ?, 'Aréna Municipal', 'scheduled', ?)
+    VALUES (?, ?, ?, ?, 'scheduled', ?)
   `);
 
   db.transaction(() => {
@@ -215,7 +217,7 @@ router.post('/:id/generate-schedule', authenticate, requireAdmin, (req, res) => 
       const d = new Date(base);
       d.setDate(d.getDate() + dayNum * days_between);
       const dateStr = d.toISOString().slice(0, 10) + ' ' + (times[slotNum % times.length]);
-      insert.run(home, away, dateStr, seasonId);
+      insert.run(home, away, dateStr, DEFAULT_ARENA_NAME, seasonId);
     });
     logAudit(db, {
       user_id: req.user.id,
@@ -259,7 +261,7 @@ router.post('/:id/import-schedule', authenticate, requireAdmin, (req, res) => {
     const homeName = (match.home_team_name || '').trim();
     const awayName = (match.away_team_name || '').trim();
     const date = (match.date || '').trim();
-    const location = (match.location || '').trim() || 'Arena Municipal';
+    const location = (match.location || '').trim() || DEFAULT_ARENA_NAME;
 
     if (!homeName || !awayName || !date) {
       details.push(`Ligne ${rowNumber}: date/equipe locale/equipe visiteur manquante`);

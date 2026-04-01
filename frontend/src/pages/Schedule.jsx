@@ -12,10 +12,12 @@ function MatchRow({ match, canOpenGameSheet }) {
   const isPlayoff = Boolean(match.is_playoff);
   const content = (
     <div className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-800/30 transition-colors border-b last:border-0 group ${isPlayoff ? 'border-yellow-500/15 bg-yellow-500/3' : 'border-gray-800/40'}`}>
-      <div className="w-16 sm:w-24 flex-shrink-0">
+      <div className="w-20 sm:w-28 flex-shrink-0">
         <div className="text-xs text-gray-500">{format(date, 'EEE', { locale: fr })}</div>
         <div className="text-sm font-semibold text-gray-300">{format(date, 'd MMM', { locale: fr })}</div>
-        <div className="text-xs text-gray-600">{format(date, 'HH:mm')}</div>
+        <div className="inline-flex items-center mt-2 px-2.5 py-1 rounded-full bg-blue-500/12 border border-blue-500/20 text-sm font-black text-blue-300 tracking-wide">
+          {format(date, 'HH:mm')}
+        </div>
       </div>
 
       <div className="flex-1 flex items-center gap-2 justify-end min-w-0">
@@ -44,10 +46,10 @@ function MatchRow({ match, canOpenGameSheet }) {
         </span>
       </div>
 
-      <div className="hidden lg:flex flex-col items-end gap-0.5 min-w-[120px]">
+      <div className="hidden lg:flex flex-col items-end gap-1 min-w-[170px]">
         {isPlayoff && <span className="text-xs font-bold text-yellow-400">Éliminatoires</span>}
         {match.location && (
-          <span className="text-xs text-gray-600 flex items-center gap-1">
+          <span className="text-sm text-gray-400 flex items-center gap-1.5 text-right">
             <MapPin size={11} />
             {match.location}
           </span>
