@@ -10,6 +10,7 @@ function MatchRow({ match, canOpenGameSheet }) {
   const date = parseISO(match.date);
   const isDone = match.status === 'completed';
   const isPlayoff = Boolean(match.is_playoff);
+  const isUpcomingPlayoff = isPlayoff && !isDone;
   const statusLabel = isDone ? 'Termine' : 'A venir';
 
   const content = (
@@ -19,11 +20,23 @@ function MatchRow({ match, canOpenGameSheet }) {
       }`}
     >
       <div className="w-20 sm:w-28 flex-shrink-0">
-        <div className="text-xs text-gray-500">{format(date, 'EEE', { locale: fr })}</div>
-        <div className="text-sm font-semibold text-gray-300">{format(date, 'd MMM', { locale: fr })}</div>
-        <div className="inline-flex items-center mt-2 px-2.5 py-1 rounded-full bg-blue-500/12 border border-blue-500/20 text-sm font-black text-blue-300 tracking-wide">
-          {format(date, 'HH:mm')}
-        </div>
+        {isUpcomingPlayoff ? (
+          <>
+            <div className="text-xs text-gray-500">series</div>
+            <div className="text-sm font-semibold text-gray-300">A venir</div>
+            <div className="inline-flex items-center mt-2 px-2.5 py-1 rounded-full bg-blue-500/12 border border-blue-500/20 text-sm font-black text-blue-300 tracking-wide">
+              A venir
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="text-xs text-gray-500">{format(date, 'EEE', { locale: fr })}</div>
+            <div className="text-sm font-semibold text-gray-300">{format(date, 'd MMM', { locale: fr })}</div>
+            <div className="inline-flex items-center mt-2 px-2.5 py-1 rounded-full bg-blue-500/12 border border-blue-500/20 text-sm font-black text-blue-300 tracking-wide">
+              {format(date, 'HH:mm')}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="flex-1 flex items-center gap-2 justify-end min-w-0">
