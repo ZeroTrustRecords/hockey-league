@@ -171,7 +171,7 @@
     @apply px-4 py-2 text-sm font-medium rounded-lg transition-all duration-150 cursor-pointer;
   }
   .tab-active {
-    @apply text-white;
+    @apply tab text-white;
     background: linear-gradient(135deg, var(--lhma-blue-strong) 0%, var(--lhma-blue) 100%);
   }
   .tab-inactive {
