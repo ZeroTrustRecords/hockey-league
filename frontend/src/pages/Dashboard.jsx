@@ -199,7 +199,7 @@ export default function Dashboard() {
 
                   <div className="rounded-[1.75rem] border border-white/10 bg-gradient-to-b from-white/10 to-white/5 px-5 py-5 text-center flex flex-col justify-center">
                     <div className="text-xs text-gray-500 uppercase tracking-[0.26em] mb-2">Match à venir</div>
-                    <div className="text-3xl sm:text-[2.6rem] font-black text-white leading-none">VS</div>
+                    <div className="text-xl sm:text-2xl font-black text-white leading-none">VS</div>
                   </div>
 
                   <div className="rounded-[1.6rem] border border-white/10 bg-white/5 p-5 text-center xl:text-left min-w-0 flex flex-col justify-center">
