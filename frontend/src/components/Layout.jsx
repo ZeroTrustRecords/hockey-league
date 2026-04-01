@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Outlet, NavLink, useLocation, Link } from 'react-router-dom';
+import { Outlet, NavLink, useLocation, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import {
@@ -11,16 +11,18 @@ import toast from 'react-hot-toast';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', exact: true },
-  { to: '/players', icon: Users, label: 'Joueurs' },
-  { to: '/teams', icon: Shield, label: 'Équipes' },
   { to: '/standings', icon: Trophy, label: 'Classement' },
   { to: '/stats', icon: BarChart3, label: 'Statistiques' },
   { to: '/schedule', icon: CalendarDays, label: 'Calendrier' },
   { to: '/playoffs', icon: Star, label: 'Éliminatoires' },
+  { to: '/messages', icon: MessageSquare, label: 'Messagerie', badge: true, requiresUser: true },
+  { to: '/gamesheet', icon: FileText, label: 'Feuille de match', requiresGamesheetAccess: true },
+  { to: '/draft', icon: Zap, label: 'Repêchage', requiresAdmin: true },
+  { to: '/admin', icon: Settings, label: 'Administration', requiresAdmin: true },
 ];
 
 // ─── Inline login modal ───────────────────────────────────────────────────────
-function LoginModal({ onClose }) {
+function LoginModal({ onClose, onLoginSuccess }) {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -33,6 +35,7 @@ function LoginModal({ onClose }) {
     try {
       const user = await login(username, password);
       toast.success(`Connecté en tant que ${user.username}`);
+      onLoginSuccess?.(user);
       onClose();
     } catch {
       toast.error('Identifiants incorrects');
@@ -120,16 +123,21 @@ function SidebarLink({ item, unreadCount }) {
   );
 }
 
+function isItemVisible(item, { user, isAdmin, isMarqueur }) {
+  if (item.requiresUser && !user) return false;
+  if (item.requiresAdmin && !isAdmin) return false;
+  if (item.requiresGamesheetAccess && !(isAdmin || isMarqueur)) return false;
+  return true;
+}
+
 // ─── Mobile bottom nav ────────────────────────────────────────────────────────
 function BottomNav({ user, isAdmin, isMarqueur, unreadCount, onMoreOpen }) {
   const location = useLocation();
 
   const bottomItems = [
     { to: '/', icon: LayoutDashboard, label: 'Accueil', exact: true },
-    { to: '/schedule', icon: CalendarDays, label: 'Calendrier' },
+    { to: '/standings', icon: Trophy, label: 'Classement' },
     { to: '/stats', icon: BarChart3, label: 'Stats' },
-    // Messages only if logged in
-    ...(user ? [{ to: '/messages', icon: MessageSquare, label: 'Messages', badge: true }] : []),
   ];
 
   return (
@@ -168,18 +176,10 @@ function MoreDrawer({ user, isAdmin, isMarqueur, unreadCount, onClose, onLoginOp
   const roleLabel = { admin: 'Administrateur', captain: 'Capitaine', marqueur: 'Marqueur', player: 'Joueur' };
   const roleColor  = { admin: 'text-yellow-400', captain: 'text-blue-400', marqueur: 'text-emerald-400', player: 'text-gray-400' };
 
-  const items = [
-    { to: '/players',   icon: Users,    label: 'Joueurs' },
-    { to: '/teams',     icon: Shield,   label: 'Équipes' },
-    { to: '/standings', icon: Trophy,   label: 'Classement' },
-    { to: '/playoffs',  icon: Star,     label: 'Éliminatoires' },
-    ...(user ? [{ to: '/messages', icon: MessageSquare, label: 'Messages', badge: true }] : []),
-    ...(isAdmin || isMarqueur ? [{ to: '/gamesheet', icon: FileText, label: 'Feuille de match' }] : []),
-    ...(isAdmin ? [
-      { to: '/draft',  icon: Zap,      label: 'Repêchage' },
-      { to: '/admin',  icon: Settings, label: 'Administration' },
-    ] : []),
-  ];
+  const bottomItemPaths = ['/', '/standings', '/stats'];
+  const items = navItems.filter(
+    item => !bottomItemPaths.includes(item.to) && isItemVisible(item, { user, isAdmin, isMarqueur })
+  );
 
   return (
     <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
@@ -255,7 +255,8 @@ function MoreDrawer({ user, isAdmin, isMarqueur, unreadCount, onClose, onLoginOp
 
 // ─── Main layout ──────────────────────────────────────────────────────────────
 export default function Layout() {
-  const { user, logout, isAdmin, isMarqueur } = useAuth();
+  const { user, logout, bootstrap, isAdmin, isMarqueur } = useAuth();
+  const navigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -292,23 +293,11 @@ export default function Layout() {
 
       {/* Nav */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {navItems.map(item => (
-          <SidebarLink key={item.to} item={item} unreadCount={unreadCount} />
-        ))}
-        {/* Messages — logged-in only */}
-        {user && (
-          <SidebarLink item={{ to: '/messages', icon: MessageSquare, label: 'Messagerie', badge: true }} unreadCount={unreadCount} />
-        )}
-        {/* Admin/marqueur extras */}
-        {(isAdmin || isMarqueur) && (
-          <SidebarLink item={{ to: '/gamesheet', icon: FileText, label: 'Feuille de match' }} unreadCount={0} />
-        )}
-        {isAdmin && (
-          <div className="pt-2 mt-2 border-t border-gray-800">
-            <SidebarLink item={{ to: '/draft', icon: Zap, label: 'Repêchage' }} unreadCount={0} />
-            <SidebarLink item={{ to: '/admin', icon: Settings, label: 'Administration' }} unreadCount={0} />
-          </div>
-        )}
+        {navItems
+          .filter(item => isItemVisible(item, { user, isAdmin, isMarqueur }))
+          .map(item => (
+            <SidebarLink key={item.to} item={item} unreadCount={unreadCount} />
+          ))}
       </nav>
 
       {/* Footer: user card if logged in, login button if not */}
@@ -395,7 +384,16 @@ export default function Layout() {
         )}
 
         {/* Login modal */}
-        {loginOpen && <LoginModal onClose={() => setLoginOpen(false)} />}
+        {loginOpen && (
+          <LoginModal
+            onClose={() => setLoginOpen(false)}
+            onLoginSuccess={(loggedInUser) => {
+              if (loggedInUser.role === 'admin' && !bootstrap?.setupComplete) {
+                navigate('/admin');
+              }
+            }}
+          />
+        )}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">

@@ -1,26 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import api from '../api/client';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Calendar, Filter } from 'lucide-react';
+import { Calendar, Filter, MapPin } from 'lucide-react';
+import api from '../api/client';
+import { useAuth } from '../context/AuthContext';
 
-function MatchRow({ match }) {
+function MatchRow({ match, canOpenGameSheet }) {
   const date = parseISO(match.date);
   const isDone = match.status === 'completed';
-  const isPlayoff = !!match.is_playoff;
-
-  return (
-    <Link to={`/gamesheet/${match.id}`}
-      className={`flex items-center gap-4 px-5 py-3.5 hover:bg-gray-800/30 transition-colors border-b last:border-0 group ${isPlayoff ? 'border-yellow-500/15 bg-yellow-500/3' : 'border-gray-800/40'}`}>
-      {/* Date */}
-      <div className="w-14 sm:w-20 flex-shrink-0">
+  const isPlayoff = Boolean(match.is_playoff);
+  const content = (
+    <div className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-800/30 transition-colors border-b last:border-0 group ${isPlayoff ? 'border-yellow-500/15 bg-yellow-500/3' : 'border-gray-800/40'}`}>
+      <div className="w-16 sm:w-24 flex-shrink-0">
         <div className="text-xs text-gray-500">{format(date, 'EEE', { locale: fr })}</div>
         <div className="text-sm font-semibold text-gray-300">{format(date, 'd MMM', { locale: fr })}</div>
         <div className="text-xs text-gray-600">{format(date, 'HH:mm')}</div>
       </div>
 
-      {/* Home team */}
       <div className="flex-1 flex items-center gap-2 justify-end min-w-0">
         <span className={`text-sm font-medium truncate text-right ${isDone && match.home_score > match.away_score ? 'text-white' : 'text-gray-400'}`}>
           {match.home_team_name}
@@ -28,20 +25,18 @@ function MatchRow({ match }) {
         <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: match.home_color }} />
       </div>
 
-      {/* Score / VS */}
       {isDone ? (
-        <div className="flex items-center gap-1 bg-gray-800 rounded-lg px-3 py-1.5 flex-shrink-0 min-w-[72px] justify-center">
+        <div className="flex items-center gap-1 bg-gray-800 rounded-lg px-3 py-1.5 flex-shrink-0 min-w-[78px] justify-center">
           <span className={`text-base font-black w-5 text-center ${match.home_score > match.away_score ? 'text-white' : 'text-gray-500'}`}>{match.home_score}</span>
-          <span className="text-gray-700 text-xs mx-0.5">—</span>
+          <span className="text-gray-700 text-xs mx-0.5">-</span>
           <span className={`text-base font-black w-5 text-center ${match.away_score > match.home_score ? 'text-white' : 'text-gray-500'}`}>{match.away_score}</span>
         </div>
       ) : (
-        <div className="bg-gray-800/50 rounded-lg px-3 py-1.5 flex-shrink-0 min-w-[72px] text-center">
+        <div className="bg-gray-800/50 rounded-lg px-3 py-1.5 flex-shrink-0 min-w-[78px] text-center">
           <span className="text-xs text-gray-600 font-medium">vs</span>
         </div>
       )}
 
-      {/* Away team */}
       <div className="flex-1 flex items-center gap-2 min-w-0">
         <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: match.away_color }} />
         <span className={`text-sm font-medium truncate ${isDone && match.away_score > match.home_score ? 'text-white' : 'text-gray-400'}`}>
@@ -49,18 +44,33 @@ function MatchRow({ match }) {
         </span>
       </div>
 
-      {/* Status badge */}
-      <div className="flex-shrink-0 w-5 sm:w-24 text-right flex flex-col items-end gap-0.5">
-        {isPlayoff && <span className="hidden sm:inline text-xs font-bold text-yellow-400">🏆 Éliminatoires</span>}
-        {isDone
-          ? <span className="hidden sm:inline text-xs text-gray-600">Terminé</span>
-          : <span className="hidden sm:inline text-xs text-blue-500">À venir</span>}
+      <div className="hidden lg:flex flex-col items-end gap-0.5 min-w-[120px]">
+        {isPlayoff && <span className="text-xs font-bold text-yellow-400">Éliminatoires</span>}
+        {match.location && (
+          <span className="text-xs text-gray-600 flex items-center gap-1">
+            <MapPin size={11} />
+            {match.location}
+          </span>
+        )}
       </div>
+
+      <div className="hidden sm:block text-xs font-medium flex-shrink-0 min-w-[70px] text-right">
+        {isDone ? <span className="text-gray-600">Terminé</span> : <span className="text-blue-400">À venir</span>}
+      </div>
+    </div>
+  );
+
+  if (!canOpenGameSheet) return content;
+
+  return (
+    <Link to={`/gamesheet/${match.id}`} className="block">
+      {content}
     </Link>
   );
 }
 
 export default function Schedule() {
+  const { isAdmin, isMarqueur } = useAuth();
   const [matches, setMatches] = useState([]);
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,13 +79,12 @@ export default function Schedule() {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // Pre-select team from URL param (e.g. /schedule?team=3)
     const teamParam = searchParams.get('team');
     if (teamParam) setFilterTeam(teamParam);
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
-    api.get('/teams').then(r => setTeams(r.data)).catch(() => {});
+    api.get('/teams').then((response) => setTeams(response.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -83,86 +92,109 @@ export default function Schedule() {
     const params = {};
     if (filterTeam) params.team_id = filterTeam;
     if (filterStatus) params.status = filterStatus;
-    api.get('/matches', { params })
-      .then(r => {
-        // Sort: upcoming first (asc), then completed (desc)
-        const sorted = [...r.data].sort((a, b) => {
-          if (a.status === 'scheduled' && b.status !== 'scheduled') return -1;
-          if (b.status === 'scheduled' && a.status !== 'scheduled') return 1;
-          if (a.status === 'scheduled') return new Date(a.date) - new Date(b.date);
-          return new Date(b.date) - new Date(a.date);
-        });
-        setMatches(sorted);
-      })
-      .finally(() => setLoading(false));
+
+    api.get('/matches', { params }).then((response) => {
+      const sorted = [...response.data].sort((a, b) => {
+        if (a.status === 'scheduled' && b.status !== 'scheduled') return -1;
+        if (b.status === 'scheduled' && a.status !== 'scheduled') return 1;
+        if (a.status === 'scheduled') return new Date(a.date) - new Date(b.date);
+        return new Date(b.date) - new Date(a.date);
+      });
+      setMatches(sorted);
+    }).finally(() => setLoading(false));
   }, [filterTeam, filterStatus]);
 
-  // Group by month
-  const grouped = matches.reduce((acc, m) => {
-    const key = format(parseISO(m.date), 'MMMM yyyy', { locale: fr });
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(m);
-    return acc;
-  }, {});
+  const grouped = useMemo(() => matches.reduce((accumulator, match) => {
+    const key = format(parseISO(match.date), 'MMMM yyyy', { locale: fr });
+    if (!accumulator[key]) accumulator[key] = [];
+    accumulator[key].push(match);
+    return accumulator;
+  }, {}), [matches]);
 
-  const selectedTeam = teams.find(t => String(t.id) === filterTeam);
+  const selectedTeam = teams.find((team) => String(team.id) === filterTeam);
+  const upcomingCount = matches.filter((match) => match.status === 'scheduled').length;
+  const completedCount = matches.filter((match) => match.status === 'completed').length;
 
   return (
-    <div className="space-y-8 max-w-4xl">
-
-      {/* Header */}
+    <div className="space-y-8 max-w-6xl">
       <div>
-        <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Ligue de Hockey</p>
-        <h1 className="text-2xl sm:text-4xl font-black text-white">Calendrier</h1>
+        <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Rythme de la ligue</p>
+        <h1 className="text-3xl sm:text-5xl font-black text-white">Calendrier</h1>
+        <p className="text-gray-400 text-sm sm:text-base mt-2 max-w-2xl">
+          Tous les rendez-vous de la saison, les résultats déjà tombés et les prochaines affiches à surveiller.
+        </p>
         {selectedTeam && (
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center gap-2 mt-3">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedTeam.color }} />
-            <span className="text-gray-400 text-sm">{selectedTeam.name}</span>
+            <span className="text-sm text-gray-400">{selectedTeam.name}</span>
           </div>
         )}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center flex-wrap">
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <Filter size={13} />
-          <span>Filtrer par</span>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+          <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Total</div>
+          <div className="text-2xl font-black text-white">{matches.length}</div>
+          <div className="text-xs text-gray-500 mt-1">Matchs affichés après filtres</div>
         </div>
-        <select className="select w-full sm:w-48" value={filterTeam} onChange={e => setFilterTeam(e.target.value)}>
-          <option value="">Toutes les équipes</option>
-          {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>
-        <select className="select w-full sm:w-40" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          <option value="">Tous les matchs</option>
-          <option value="scheduled">À venir</option>
-          <option value="completed">Terminés</option>
-        </select>
-        {(filterTeam || filterStatus) && (
-          <button onClick={() => { setFilterTeam(''); setFilterStatus(''); }}
-            className="text-xs text-gray-500 hover:text-white transition-colors underline">
-            Effacer
-          </button>
-        )}
-        {!loading && (
-          <span className="text-xs text-gray-600 sm:ml-auto">{matches.length} match{matches.length !== 1 ? 's' : ''}</span>
-        )}
+        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+          <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">À venir</div>
+          <div className="text-2xl font-black text-white">{upcomingCount}</div>
+          <div className="text-xs text-gray-500 mt-1">Rencontres encore à jouer</div>
+        </div>
+        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+          <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Terminés</div>
+          <div className="text-2xl font-black text-white">{completedCount}</div>
+          <div className="text-xs text-gray-500 mt-1">Résultats déjà validés</div>
+        </div>
+        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+          <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Accès feuille</div>
+          <div className="text-lg font-black text-white">{isAdmin || isMarqueur ? 'Ouvert' : 'Public'}</div>
+          <div className="text-xs text-gray-500 mt-1">{isAdmin || isMarqueur ? 'Les matchs ouvrent la feuille de match' : 'Affichage lecture seule pour le public'}</div>
+        </div>
       </div>
 
-      {/* Matches grouped by month */}
+      <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center flex-wrap">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <Filter size={13} />
+            <span>Filtrer</span>
+          </div>
+          <select className="select w-full sm:w-48" value={filterTeam} onChange={(event) => setFilterTeam(event.target.value)}>
+            <option value="">Toutes les équipes</option>
+            {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+          </select>
+          <select className="select w-full sm:w-40" value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}>
+            <option value="">Tous les matchs</option>
+            <option value="scheduled">À venir</option>
+            <option value="completed">Terminés</option>
+          </select>
+          {(filterTeam || filterStatus) && (
+            <button onClick={() => { setFilterTeam(''); setFilterStatus(''); }} className="text-xs text-gray-500 hover:text-white transition-colors underline">
+              Effacer les filtres
+            </button>
+          )}
+        </div>
+
+        {!loading && <span className="text-xs text-gray-600">{matches.length} match{matches.length !== 1 ? 's' : ''} trouvé{matches.length !== 1 ? 's' : ''}</span>}
+      </div>
+
       {loading ? (
         <div className="text-center py-12 text-gray-600 text-sm">Chargement...</div>
       ) : matches.length === 0 ? (
-        <div className="text-center py-12 text-gray-600 text-sm">Aucun match trouvé</div>
+        <div className="text-center py-12 text-gray-600 text-sm">Aucun match trouvé avec ces filtres.</div>
       ) : (
         <div className="space-y-6">
           {Object.entries(grouped).map(([month, monthMatches]) => (
-            <div key={month} className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-              <div className="px-5 py-3 border-b border-gray-800 flex items-center gap-2">
+            <div key={month} className="bg-gray-900 rounded-3xl border border-gray-800 overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-800 flex items-center gap-2">
                 <Calendar size={13} className="text-gray-600" />
                 <span className="text-xs text-gray-500 font-medium uppercase tracking-widest capitalize">{month}</span>
                 <span className="text-xs text-gray-700 ml-auto">{monthMatches.length} match{monthMatches.length !== 1 ? 's' : ''}</span>
               </div>
-              {monthMatches.map(m => <MatchRow key={m.id} match={m} />)}
+              {monthMatches.map((match) => (
+                <MatchRow key={match.id} match={match} canOpenGameSheet={isAdmin || isMarqueur} />
+              ))}
             </div>
           ))}
         </div>

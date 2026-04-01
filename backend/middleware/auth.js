@@ -1,14 +1,9 @@
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const { getDB } = require('../db');
+const { getConfig } = require('../config');
 
-function getJwtSecret() {
-  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('JWT_SECRET must be set in production');
-  }
-  return 'dev-hockey-league-secret';
-}
-
-const JWT_SECRET = getJwtSecret();
+const JWT_SECRET = getConfig().jwtSecret;
 
 function authenticate(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -38,6 +33,21 @@ function requireCaptainOrAdmin(req, res, next) {
   next();
 }
 
+function requireAdminPassword(req, res, next) {
+  const providedPassword = req.body?.admin_password;
+  if (!providedPassword) {
+    return res.status(400).json({ error: 'Mot de passe administrateur requis' });
+  }
+
+  const db = getDB();
+  const user = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.user.id);
+  if (!user || !bcrypt.compareSync(providedPassword, user.password_hash)) {
+    return res.status(401).json({ error: 'Mot de passe administrateur incorrect' });
+  }
+
+  next();
+}
+
 // Marqueur (scorekeeper) + captain + admin can submit/validate game sheets
 function requireGamesheetAccess(req, res, next) {
   if (!['admin', 'captain', 'marqueur'].includes(req.user?.role)) {
@@ -46,4 +56,4 @@ function requireGamesheetAccess(req, res, next) {
   next();
 }
 
-module.exports = { authenticate, requireAdmin, requireCaptainOrAdmin, requireGamesheetAccess, JWT_SECRET };
+module.exports = { authenticate, requireAdmin, requireCaptainOrAdmin, requireGamesheetAccess, requireAdminPassword, JWT_SECRET };

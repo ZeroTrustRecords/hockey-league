@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { getDB } = require('../db');
 const { authenticate, requireAdmin, JWT_SECRET } = require('../middleware/auth');
+const { logAudit } = require('../lib/auditLog');
 
 // Login
 router.post('/login', (req, res) => {
@@ -58,17 +59,28 @@ router.delete('/users/:id', authenticate, requireAdmin, (req, res) => {
   }
   const db = getDB();
   const id = req.params.id;
+  const targetUser = db.prepare('SELECT id, username, role FROM users WHERE id = ?').get(id);
   db.transaction(() => {
     db.prepare('DELETE FROM message_reads WHERE user_id = ?').run(id);
     db.prepare('UPDATE messages SET sender_id = ? WHERE sender_id = ?').run(req.user.id, id);
     db.prepare('DELETE FROM messages WHERE recipient_id = ?').run(id);
     db.prepare('DELETE FROM users WHERE id = ?').run(id);
+    if (targetUser) {
+      logAudit(db, {
+        user_id: req.user.id,
+        username: req.user.username,
+        action: 'user.deleted',
+        entity_type: 'user',
+        entity_id: targetUser.id,
+        details: { username: targetUser.username, role: targetUser.role },
+      });
+    }
   })();
   res.json({ message: 'Compte supprimé' });
 });
 
-// Register (admin only in production, open for setup)
-router.post('/register', (req, res) => {
+// Register (admin only)
+router.post('/register', authenticate, requireAdmin, (req, res) => {
   const { username, email, password, role = 'player', player_id, team_id } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Username et mot de passe requis' });
 
@@ -80,6 +92,15 @@ router.post('/register', (req, res) => {
   const result = db.prepare(
     'INSERT INTO users (username, email, password_hash, role, player_id, team_id) VALUES (?, ?, ?, ?, ?, ?)'
   ).run(username, email || null, hash, role, player_id || null, team_id || null);
+
+  logAudit(db, {
+    user_id: req.user.id,
+    username: req.user.username,
+    action: 'user.created',
+    entity_type: 'user',
+    entity_id: result.lastInsertRowid,
+    details: { username, role, player_id: player_id || null, team_id: team_id || null },
+  });
 
   res.status(201).json({ id: result.lastInsertRowid, username, role });
 });

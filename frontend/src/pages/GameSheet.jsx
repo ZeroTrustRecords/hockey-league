@@ -92,9 +92,10 @@ export default function GameSheet() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAdmin, isMarqueur, canEditGamesheet } = useAuth();
+  const sortMatchesByDate = (list) => [...list].sort((a, b) => new Date(a.date) - new Date(b.date));
   // Returns the single next unvalidated match (sorted by date ascending)
   const nextMatch = (list) => {
-    const upcoming = list.filter(m => !m.validated).sort((a, b) => new Date(a.date) - new Date(b.date));
+    const upcoming = sortMatchesByDate(list.filter(m => !m.validated));
     return upcoming.slice(0, 1);
   };
   const [teams, setTeams] = useState([]);
@@ -114,9 +115,9 @@ export default function GameSheet() {
         setTeams(tr.data);
         setAllPlayers(pr.data);
         let filtered;
-        if (isAdmin) filtered = mr.data;
+        if (isAdmin) filtered = sortMatchesByDate(mr.data);
         else if (isMarqueur) filtered = nextMatch(mr.data);
-        else filtered = mr.data.filter(m => !m.validated);
+        else filtered = sortMatchesByDate(mr.data.filter(m => !m.validated));
         setMatches(filtered);
         // Auto-select the single next game for marqueur (no manual selection needed)
         if (isMarqueur && filtered.length === 1 && !id) {
@@ -143,9 +144,9 @@ export default function GameSheet() {
       const r = await api.post('/matches', form);
       const newId = String(r.data.id);
       const mr = await api.get('/matches');
-      if (isAdmin) setMatches(mr.data);
+      if (isAdmin) setMatches(sortMatchesByDate(mr.data));
       else if (isMarqueur) setMatches(nextMatch(mr.data));
-      else setMatches(mr.data.filter(m => !m.validated));
+      else setMatches(sortMatchesByDate(mr.data.filter(m => !m.validated)));
       setSelectedMatch(newId);
       toast.success('Match créé');
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }

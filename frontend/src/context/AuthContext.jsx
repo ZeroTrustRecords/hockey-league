@@ -8,18 +8,44 @@ export function AuthProvider({ children }) {
     const saved = localStorage.getItem('hockey_user');
     return saved ? JSON.parse(saved) : null;
   });
+  const [bootstrap, setBootstrap] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const clearStoredAuth = () => {
+    localStorage.removeItem('hockey_token');
+    localStorage.removeItem('hockey_user');
+    setUser(null);
+  };
+
+  const refreshBootstrap = async () => {
+    const res = await api.get('/bootstrap/status');
+    setBootstrap(res.data);
+    return res.data;
+  };
+
   useEffect(() => {
-    const token = localStorage.getItem('hockey_token');
-    if (token) {
-      api.get('/auth/me')
-        .then(res => setUser(res.data))
-        .catch(() => { localStorage.removeItem('hockey_token'); localStorage.removeItem('hockey_user'); })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    const init = async () => {
+      try {
+        const status = await refreshBootstrap();
+        const savedStartupId = localStorage.getItem('hockey_startup_id');
+        if (savedStartupId !== status.startupId) {
+          clearStoredAuth();
+          localStorage.setItem('hockey_startup_id', status.startupId);
+        }
+
+        const token = localStorage.getItem('hockey_token');
+        if (token) {
+          const res = await api.get('/auth/me');
+          setUser(res.data);
+        }
+      } catch {
+        clearStoredAuth();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    init();
   }, []);
 
   const login = async (username, password) => {
@@ -27,13 +53,12 @@ export function AuthProvider({ children }) {
     localStorage.setItem('hockey_token', res.data.token);
     localStorage.setItem('hockey_user', JSON.stringify(res.data.user));
     setUser(res.data.user);
+    await refreshBootstrap();
     return res.data.user;
   };
 
   const logout = () => {
-    localStorage.removeItem('hockey_token');
-    localStorage.removeItem('hockey_user');
-    setUser(null);
+    clearStoredAuth();
   };
 
   const isAdmin = user?.role === 'admin';
@@ -43,7 +68,7 @@ export function AuthProvider({ children }) {
   const canEditGamesheet = isAdmin || isCaptain || isMarqueur;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin, isCaptain, isMarqueur, isAdminOrCaptain, canEditGamesheet }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, bootstrap, refreshBootstrap, isAdmin, isCaptain, isMarqueur, isAdminOrCaptain, canEditGamesheet }}>
       {children}
     </AuthContext.Provider>
   );

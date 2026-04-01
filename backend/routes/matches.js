@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getDB } = require('../db');
 const { authenticate, requireAdmin, requireCaptainOrAdmin, requireGamesheetAccess } = require('../middleware/auth');
+const { logAudit } = require('../lib/auditLog');
 
 const matchQuery = `
   SELECT m.*,
@@ -13,6 +14,11 @@ const matchQuery = `
   INNER JOIN teams at2 ON m.away_team_id = at2.id
   LEFT JOIN players mvp ON m.mvp_id = mvp.id
 `;
+
+function captainCanManageMatch(user, matchLike) {
+  if (user.role !== 'captain') return true;
+  return String(user.team_id) === String(matchLike.home_team_id) || String(user.team_id) === String(matchLike.away_team_id);
+}
 
 router.get('/', (req, res) => {
   const db = getDB();
@@ -61,6 +67,9 @@ router.get('/:id', (req, res) => {
 router.post('/', authenticate, requireCaptainOrAdmin, (req, res) => {
   const { home_team_id, away_team_id, date, location, season_id } = req.body;
   if (!home_team_id || !away_team_id || !date) return res.status(400).json({ error: 'Champs requis manquants' });
+  if (!captainCanManageMatch(req.user, { home_team_id, away_team_id })) {
+    return res.status(403).json({ error: 'Vous ne pouvez créer que des matchs pour votre équipe' });
+  }
 
   const db = getDB();
   const result = db.prepare(`
@@ -68,12 +77,26 @@ router.post('/', authenticate, requireCaptainOrAdmin, (req, res) => {
     VALUES (?, ?, ?, ?, ?)
   `).run(home_team_id, away_team_id, date, location || 'Aréna Municipal', season_id || null);
 
+  logAudit(db, {
+    user_id: req.user.id,
+    username: req.user.username,
+    action: 'match.created',
+    entity_type: 'match',
+    entity_id: result.lastInsertRowid,
+    details: { home_team_id, away_team_id, season_id: season_id || null, date },
+  });
+
   res.status(201).json({ id: result.lastInsertRowid });
 });
 
 router.put('/:id', authenticate, requireCaptainOrAdmin, (req, res) => {
   const { home_team_id, away_team_id, date, location, status, season_id } = req.body;
   const db = getDB();
+  const existingMatch = db.prepare('SELECT * FROM matches WHERE id = ?').get(req.params.id);
+  if (!existingMatch) return res.status(404).json({ error: 'Match introuvable' });
+  if (!captainCanManageMatch(req.user, existingMatch) || !captainCanManageMatch(req.user, { home_team_id, away_team_id })) {
+    return res.status(403).json({ error: 'Vous ne pouvez modifier que les matchs de votre équipe' });
+  }
   db.prepare(`
     UPDATE matches SET home_team_id=?, away_team_id=?, date=?, location=?, status=?, season_id=? WHERE id=?
   `).run(home_team_id, away_team_id, date, location, status, season_id, req.params.id);
@@ -147,6 +170,15 @@ router.post('/:id/validate', authenticate, requireGamesheetAccess, (req, res) =>
     }
   }
 
+  logAudit(db, {
+    user_id: req.user.id,
+    username: req.user.username,
+    action: 'match.validated',
+    entity_type: 'match',
+    entity_id: matchId,
+    details: { season_id: match.season_id || null, is_playoff: !!match.is_playoff },
+  });
+
   res.json({ message: 'Match validé' });
 });
 
@@ -159,7 +191,22 @@ router.post('/:id/unvalidate', authenticate, requireAdmin, (req, res) => {
 
 router.delete('/:id', authenticate, requireAdmin, (req, res) => {
   const db = getDB();
+  const match = db.prepare('SELECT id, season_id, home_team_id, away_team_id FROM matches WHERE id = ?').get(req.params.id);
   db.prepare('DELETE FROM matches WHERE id = ?').run(req.params.id);
+  if (match) {
+    logAudit(db, {
+      user_id: req.user.id,
+      username: req.user.username,
+      action: 'match.deleted',
+      entity_type: 'match',
+      entity_id: match.id,
+      details: {
+        season_id: match.season_id || null,
+        home_team_id: match.home_team_id,
+        away_team_id: match.away_team_id,
+      },
+    });
+  }
   res.json({ message: 'Match supprimé' });
 });
 

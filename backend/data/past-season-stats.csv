@@ -1,0 +1,67 @@
+﻿Prénom,Nom,Position,Cote,Rating,Équipe,PJ,B,P,PTS,GPG,MOY,PUN
+Marc Antoine,Aylwin,A,B,4,Canadiens (Martin Verville),15,8,16,24,0.53,"1,60",10
+Jocelyn,Comtois,A,B,4,Canadiens (Martin Verville),14,14,16,30,1.00,"2,14",6
+Éric,De Sousa,G,B,4,Canadiens (Martin Verville),13,-,-,-,-,-,-
+Patrick,Desmeules,A,B,4,Canadiens (Martin Verville),11,2,5,7,0.18,"0,64",16
+Karl,Gravel,A,C,2,Canadiens (Martin Verville),12,-,5,5,-,"0,42",16
+Benoit,Laplante,D,B,4,Canadiens (Martin Verville),13,1,4,5,0.08,"0,38",6
+Stéphane,Martin,D,B,4,Canadiens (Martin Verville),14,3,8,11,0.21,"0,79",2
+Marc,Quesnel,A,A,5,Canadiens (Martin Verville),10,10,12,22,1.00,"2,20",-
+Gabriel,Richer,D,A+,6,Canadiens (Martin Verville),11,12,10,22,1.09,"2,00",-
+Philippe,Thibault,D,B,3,Canadiens (Martin Verville),-,-,-,-,-,-,-
+Martin,Verville,A,A,5,Canadiens (Martin Verville),15,11,26,37,0.73,"2,47",2
+Sébastien,Cool,A,B,3,Stars (Yannick Lapointe),11,6,1,7,0.55,"0,64",4
+Yannick,Lapointe,A,A+,6,Stars (Yannick Lapointe),13,27,16,43,2.08,"3,31",4
+Richard,Larouche,A,C,2,Stars (Yannick Lapointe),7,-,-,-,-,-,2
+Marc-André,Lebel,D,A,5,Stars (Yannick Lapointe),12,3,3,6,0.25,"0,50",10
+Patrick,Marcil,G,B,4,Stars (Yannick Lapointe),11,-,1,1,-,"0,09",-
+François,Noël,D,B,4,Stars (Yannick Lapointe),10,2,4,6,0.20,"0,60",10
+Charles,Noël,D,B,4,Stars (Yannick Lapointe),12,1,1,2,0.08,"0,17",2
+Marc Alexandre,Paradis,A,B,3,Stars (Yannick Lapointe),-,-,-,-,-,-,-
+Maxime,Perreault,A,A,5,Stars (Yannick Lapointe),10,4,9,13,0.40,"1,30",2
+Mathieu,Pilon,D,B,3,Stars (Yannick Lapointe),7,-,3,3,-,"0,43",8
+Shawn,Whaley,A,A,5,Stars (Yannick Lapointe),6,6,9,15,1.00,"2,50",4
+Roxanne,Beliveau,D,B,3,Flyers (Benoit Lefebvre),4,-,4,4,-,"1,00",4
+Éric,Bertrand,A,B,4,Flyers (Benoit Lefebvre),12,11,7,18,0.92,"1,50",4
+Jean Marc,Le Bouthillier,A,A,5,Flyers (Benoit Lefebvre),14,11,27,38,0.79,"2,71",2
+Alexy,Le Bouthillier,A,A+,6,Flyers (Benoit Lefebvre),15,25,24,49,1.67,"3,27",2
+Benoit,Lefebvre,A,B,3,Flyers (Benoit Lefebvre),15,2,6,8,0.13,"0,53",4
+Ghislain,Mathieu,G,B,3,Flyers (Benoit Lefebvre),13,-,1,1,-,"0,08",-
+Julien,Meunier,D,A,5,Flyers (Benoit Lefebvre),12,2,8,10,0.17,"0,83",10
+Guillaume,Parent,D,B,4,Flyers (Benoit Lefebvre),6,4,4,8,0.67,"1,33",2
+Malick,Plante-Girard,A,B,4,Flyers (Benoit Lefebvre),14,3,6,9,0.21,"0,64",11
+Fils,Poulin,A,A+,6,Flyers (Benoit Lefebvre),12,15,19,34,1.25,"2,83",6
+Bruno,Poulin,D,C,1,Flyers (Benoit Lefebvre),11,-,5,5,-,"0,45",8
+Nicolas,Fortin,A,B,4,Rangers (Keven Messier),9,9,3,12,1.00,"1,33",4
+Bruno,Labrecque,A,B,3,Rangers (Keven Messier),-,-,-,-,-,-,-
+Julien,Lacerte,D,B,4,Rangers (Keven Messier),9,2,6,8,0.22,"0,89",10
+Keven,Messier,A,A,5,Rangers (Keven Messier),13,6,16,22,0.46,"1,69",14
+Yannick,Peccia,A,B,3,Rangers (Keven Messier),12,2,5,7,0.17,"0,58",2
+Renaud,Petitclerc,A,B,4,Rangers (Keven Messier),12,8,19,27,0.67,"2,25",6
+Alexandre,Plante,A,A+,6,Rangers (Keven Messier),14,18,18,36,1.29,"2,57",4
+Julien,Prescott,D,B,4,Rangers (Keven Messier),11,3,7,10,0.27,"0,91",4
+Daomi,Rousseau,D,A+,6,Rangers (Keven Messier),7,2,2,4,0.29,"0,57",2
+Martin,Tousignant,D,B,4,Rangers (Keven Messier),-,-,-,-,-,-,-
+Benoit,Tremblay,G,C,2,Rangers (Keven Messier),15,-,-,-,-,-,-
+Alex,Barbusci,A,B,4,Bruins (Alex Barbusci),13,7,7,14,0.54,"1,08",-
+Sébastien,Belhumeur,D,B,4,Bruins (Alex Barbusci),13,4,9,13,0.31,"1,00",2
+Robert,Blanchette,A,B,4,Bruins (Alex Barbusci),7,4,12,16,0.57,"2,29",6
+Steve,Caney,D,A,5,Bruins (Alex Barbusci),15,6,12,18,0.40,"1,20",6
+Frédéric,Charest,A,A,5,Bruins (Alex Barbusci),10,12,8,20,1.20,"2,00",4
+Jean Christophe,Dubé,A,B,3,Bruins (Alex Barbusci),-,-,-,-,-,-,-
+Olivier,Duchesne,A,B,3,Bruins (Alex Barbusci),10,6,8,14,0.60,"1,40",4
+Simon,Gaudreault,D,B,4,Bruins (Alex Barbusci),8,3,4,7,0.38,"0,88",4
+Jocelyn,Mathieu,D,C,1,Bruins (Alex Barbusci),12,1,3,4,0.08,"0,33",-
+Jean Philippe,Perreault,G,A+,6,Bruins (Alex Barbusci),12,-,-,-,-,-,-
+Jean-Philippe,Savard,A,A,5,Bruins (Alex Barbusci),8,7,9,16,0.88,"2,00",2
+Guillaume,Beaudoin,A,A,5,Blues (Juan Bolivar),12,13,14,27,1.08,"2,25",8
+Patrick,Binet,A,B,4,Blues (Juan Bolivar),14,8,14,22,0.57,"1,57",8
+Juan,Bolivar,D,A,5,Blues (Juan Bolivar),11,5,8,13,0.45,"1,18",10
+Maxime,Duchesneau,D,B,4,Blues (Juan Bolivar),10,3,6,9,0.30,"0,90",4
+Jasmin,Landry,A,A,5,Blues (Juan Bolivar),11,9,12,21,0.82,"1,91",-
+Pierre-Olivier,Lauzon,A,A,5,Blues (Juan Bolivar),13,15,15,30,1.15,"2,31",3
+Serge,Lauzon,A,C,1,Blues (Juan Bolivar),13,4,4,8,0.31,"0,62",-
+Michael,Mc lean,G,A+,6,Blues (Juan Bolivar),14,-,1,1,-,"0,07",-
+Bruno,Mercure,D,B,3,Blues (Juan Bolivar),13,1,6,7,0.08,"0,54",6
+Nicolas,Teasdale,A,B,4,Blues (Juan Bolivar),9,5,15,20,0.56,"2,22",4
+Fred,Yergeau,D,C,2,Blues (Juan Bolivar),13,-,4,4,-,"0,31",8

@@ -7,9 +7,11 @@
     "install:all": "cd backend && npm install && cd ../frontend && npm install",
     "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
     "seed": "cd backend && node seed.js",
-    "start": "concurrently \"cd backend && npm start\" \"cd frontend && npm run dev\""
+    "start": "concurrently \"cd backend && npm start\" \"cd frontend && npm run dev\"",
+    "test:smoke": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "concurrently": "^8.2.2"
   }
 }

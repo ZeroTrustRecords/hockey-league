@@ -1,0 +1,25 @@
+app = "lhma-hockey"
+primary_region = "yyz"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3001"
+  APP_STARTUP_MODE = "persistent"
+  HOCKEY_DB_PATH = "/data/hockey_league.db"
+  LOG_DIR = "/data/logs"
+  BACKUP_DIR = "/data/backups"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[mounts]]
+  source = "lhma_data"
+  destination = "/data"

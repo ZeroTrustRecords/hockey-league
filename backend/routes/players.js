@@ -2,6 +2,25 @@ const express = require('express');
 const router = express.Router();
 const { getDB } = require('../db');
 const { authenticate, requireAdmin, requireCaptainOrAdmin } = require('../middleware/auth');
+const { logAudit } = require('../lib/auditLog');
+
+function getVisibleSeason(db) {
+  const seasons = db.prepare(`
+    SELECT s.*,
+      (SELECT COUNT(*) FROM matches m WHERE m.season_id = s.id) AS total_matches,
+      (SELECT COUNT(*) FROM matches m WHERE m.season_id = s.id AND m.is_playoff = 1) AS playoff_matches
+    FROM seasons s
+    ORDER BY s.id DESC
+  `).all();
+  const season =
+    seasons.find(s => s.status === 'playoffs') ||
+    seasons.find(s => s.status === 'completed' && (s.playoff_matches > 0 || s.champion_team_id)) ||
+    seasons.find(s => s.status === 'active' && s.total_matches > 0) ||
+    seasons.find(s => s.status === 'active') ||
+    seasons.find(s => s.status === 'completed');
+
+  return season || null;
+}
 
 // Get all players with optional filters
 router.get('/', (req, res) => {
@@ -41,25 +60,35 @@ router.get('/:id', (req, res) => {
 
   if (!player) return res.status(404).json({ error: 'Joueur introuvable' });
 
-  // Stats from goals
-  const stats = db.prepare(`
+  const currentSeason = getVisibleSeason(db);
+  const currentPhase = currentSeason && (currentSeason.status === 'playoffs' || currentSeason.playoff_matches > 0) ? 1 : 0;
+
+  const emptyStats = { matches_played: 0, goals: 0, assists: 0, points: 0 };
+  const stats = currentSeason ? db.prepare(`
     SELECT
       COUNT(DISTINCT g.match_id) as matches_played,
-      SUM(CASE WHEN g.scorer_id = ? THEN 1 ELSE 0 END) as goals,
-      SUM(CASE WHEN g.assist1_id = ? OR g.assist2_id = ? THEN 1 ELSE 0 END) as assists,
-      SUM(CASE WHEN g.scorer_id = ? THEN 1 ELSE 0 END) +
-      SUM(CASE WHEN g.assist1_id = ? OR g.assist2_id = ? THEN 1 ELSE 0 END) as points
+      COALESCE(SUM(CASE WHEN g.scorer_id = ? THEN 1 ELSE 0 END), 0) as goals,
+      COALESCE(SUM(CASE WHEN g.assist1_id = ? OR g.assist2_id = ? THEN 1 ELSE 0 END), 0) as assists,
+      COALESCE(SUM(CASE WHEN g.scorer_id = ? THEN 1 ELSE 0 END), 0) +
+      COALESCE(SUM(CASE WHEN g.assist1_id = ? OR g.assist2_id = ? THEN 1 ELSE 0 END), 0) as points
     FROM goals g
     INNER JOIN matches m ON g.match_id = m.id
-    WHERE m.validated = 1 AND (g.scorer_id = ? OR g.assist1_id = ? OR g.assist2_id = ?)
-  `).get(player.id, player.id, player.id, player.id, player.id, player.id, player.id, player.id, player.id);
+    WHERE m.validated = 1 AND m.season_id = ? AND m.is_playoff = ?
+      AND (g.scorer_id = ? OR g.assist1_id = ? OR g.assist2_id = ?)
+  `).get(
+    player.id, player.id, player.id,
+    player.id, player.id, player.id,
+    currentSeason.id,
+    currentPhase,
+    player.id, player.id, player.id
+  ) : emptyStats;
 
   // Actual matches played
-  const matchesPlayed = db.prepare(`
+  const matchesPlayed = currentSeason ? db.prepare(`
     SELECT COUNT(DISTINCT m.id) as count
     FROM matches m
-    WHERE m.validated = 1 AND (m.home_team_id = ? OR m.away_team_id = ?)
-  `).get(player.team_id || 0, player.team_id || 0);
+    WHERE m.validated = 1 AND m.season_id = ? AND m.is_playoff = ? AND (m.home_team_id = ? OR m.away_team_id = ?)
+  `).get(currentSeason.id, currentPhase, player.team_id || 0, player.team_id || 0) : { count: 0 };
 
   // Recent goals
   const recentGoals = db.prepare(`
@@ -76,7 +105,14 @@ router.get('/:id', (req, res) => {
     LIMIT 10
   `).all(player.id, player.id, player.id);
 
-  res.json({ ...player, stats, recentGoals });
+  res.json({
+    ...player,
+    stats: {
+      ...stats,
+      matches_played: matchesPlayed.count || 0,
+    },
+    recentGoals,
+  });
 });
 
 // Create player
@@ -114,6 +150,48 @@ router.patch('/:id/team', authenticate, requireAdmin, (req, res) => {
   res.json({ message: 'Équipe mise à jour' });
 });
 
+router.patch('/:id/jersey-number', authenticate, requireAdmin, (req, res) => {
+  const db = getDB();
+  const playerId = parseInt(req.params.id, 10);
+  const rawNumber = req.body?.number;
+  const player = db.prepare('SELECT id, team_id FROM players WHERE id = ?').get(playerId);
+
+  if (!player) return res.status(404).json({ error: 'Joueur introuvable' });
+
+  if (rawNumber === '' || rawNumber == null) {
+    db.prepare('UPDATE players SET number = NULL WHERE id = ?').run(playerId);
+    return res.json({ message: 'Numero retire', number: null });
+  }
+
+  const number = parseInt(rawNumber, 10);
+  if (!Number.isInteger(number) || number < 1 || number > 99) {
+    return res.status(400).json({ error: 'Le numero doit etre entre 1 et 99' });
+  }
+
+  if (player.team_id) {
+    const duplicate = db.prepare(`
+      SELECT id FROM players
+      WHERE team_id = ? AND number = ? AND id != ? AND status = 'active'
+      LIMIT 1
+    `).get(player.team_id, number, playerId);
+
+    if (duplicate) {
+      return res.status(400).json({ error: 'Ce numero est deja utilise dans cette equipe' });
+    }
+  }
+
+  db.prepare('UPDATE players SET number = ? WHERE id = ?').run(number, playerId);
+  logAudit(db, {
+    user_id: req.user.id,
+    username: req.user.username,
+    action: 'player.jersey-number.updated',
+    entity_type: 'player',
+    entity_id: playerId,
+    details: { number, team_id: player.team_id || null },
+  });
+  res.json({ message: 'Numero mis a jour', number });
+});
+
 // Delete player
 router.delete('/:id', authenticate, requireAdmin, (req, res) => {
   const db = getDB();
@@ -132,8 +210,10 @@ router.delete('/:id/hard', authenticate, requireAdmin, (req, res) => {
 router.get('/:id/history', (req, res) => {
   const db = getDB();
   const playerId = parseInt(req.params.id);
+  const player = db.prepare('SELECT id, team_id FROM players WHERE id = ?').get(playerId);
+  if (!player) return res.status(404).json({ error: 'Joueur introuvable' });
 
-  const rows = db.prepare(`
+  const rowsFromGoals = db.prepare(`
     SELECT
       s.id        AS season_id,
       s.name      AS season_name,
@@ -142,19 +222,97 @@ router.get('/:id/history', (req, res) => {
       t.name      AS team_name,
       t.color     AS team_color,
       COUNT(DISTINCT m.id) AS matches_played,
-      SUM(CASE WHEN g.scorer_id = ? THEN 1 ELSE 0 END)                      AS goals,
-      SUM(CASE WHEN g.assist1_id = ? OR g.assist2_id = ? THEN 1 ELSE 0 END) AS assists
+      COALESCE(SUM(CASE WHEN g.scorer_id = ? THEN 1 ELSE 0 END), 0)                      AS goals,
+      COALESCE(SUM(CASE WHEN g.assist1_id = ? OR g.assist2_id = ? THEN 1 ELSE 0 END), 0) AS assists
     FROM goals g
     JOIN matches m ON g.match_id  = m.id
     JOIN seasons s ON m.season_id = s.id
     JOIN teams   t ON g.team_id   = t.id
     WHERE m.validated = 1
       AND (g.scorer_id = ? OR g.assist1_id = ? OR g.assist2_id = ?)
-    GROUP BY s.id, m.is_playoff, g.team_id
-    ORDER BY s.start_date DESC, s.id DESC, m.is_playoff ASC
+    GROUP BY s.id, s.name, m.is_playoff, g.team_id, t.name, t.color
+    ORDER BY s.start_date DESC, s.id DESC, m.is_playoff ASC, t.name ASC
   `).all(playerId, playerId, playerId, playerId, playerId, playerId);
 
-  res.json(rows.map(r => ({ ...r, points: r.goals + r.assists })));
+  const teamSeasonRows = player.team_id ? db.prepare(`
+    SELECT
+      s.id        AS season_id,
+      s.name      AS season_name,
+      m.is_playoff,
+      COALESCE(pss.team_id, ?) AS team_id,
+      t.name      AS team_name,
+      t.color     AS team_color,
+      COUNT(DISTINCT m.id) AS matches_played,
+      COALESCE(SUM(CASE WHEN g.scorer_id = ? THEN 1 ELSE 0 END), 0)                      AS goals,
+      COALESCE(SUM(CASE WHEN g.assist1_id = ? OR g.assist2_id = ? THEN 1 ELSE 0 END), 0) AS assists
+    FROM matches m
+    JOIN seasons s ON m.season_id = s.id
+    LEFT JOIN player_season_stats pss ON pss.player_id = ? AND pss.season_id = s.id AND m.is_playoff = 0
+    LEFT JOIN teams t ON t.id = COALESCE(pss.team_id, ?)
+    LEFT JOIN goals g ON g.match_id = m.id
+    WHERE m.validated = 1
+      AND (
+        m.home_team_id = COALESCE(pss.team_id, ?)
+        OR m.away_team_id = COALESCE(pss.team_id, ?)
+      )
+    GROUP BY s.id, s.name, m.is_playoff, COALESCE(pss.team_id, ?), t.name, t.color
+  `).all(
+    player.team_id,
+    playerId,
+    playerId,
+    playerId,
+    playerId,
+    player.team_id,
+    player.team_id,
+    player.team_id,
+    player.team_id
+  ) : [];
+
+  const archivedRows = db.prepare(`
+    SELECT
+      s.id        AS season_id,
+      s.name      AS season_name,
+      0           AS is_playoff,
+      pss.team_id,
+      t.name      AS team_name,
+      t.color     AS team_color,
+      pss.games_played AS matches_played,
+      pss.goals,
+      pss.assists,
+      pss.points
+    FROM player_season_stats pss
+    JOIN seasons s ON pss.season_id = s.id
+    LEFT JOIN teams t ON pss.team_id = t.id
+    WHERE pss.player_id = ?
+      AND NOT EXISTS (
+        SELECT 1 FROM matches m
+        WHERE m.season_id = pss.season_id AND m.validated = 1 AND m.is_playoff = 0
+      )
+  `).all(playerId);
+
+  const deduped = new Map();
+  [...rowsFromGoals.map(r => ({ ...r, points: r.goals + r.assists })), ...teamSeasonRows.map(r => ({ ...r, points: r.goals + r.assists })), ...archivedRows]
+    .forEach(row => {
+      const key = `${row.season_id}|${row.is_playoff}|${row.team_id || 'none'}`;
+      const existing = deduped.get(key);
+      if (!existing || (existing.goals + existing.assists) < (row.goals + row.assists) || existing.matches_played < row.matches_played) {
+        deduped.set(key, row);
+      }
+    });
+
+  const rows = [...deduped.values()]
+    .sort((a, b) => {
+      const aYears = (a.season_name || '').match(/(\d{4})-(\d{4})/);
+      const bYears = (b.season_name || '').match(/(\d{4})-(\d{4})/);
+      const aStartYear = aYears ? parseInt(aYears[1], 10) : 0;
+      const bStartYear = bYears ? parseInt(bYears[1], 10) : 0;
+      if (aStartYear !== bStartYear) return bStartYear - aStartYear;
+      if (a.season_id !== b.season_id) return b.season_id - a.season_id;
+      if (a.is_playoff !== b.is_playoff) return b.is_playoff - a.is_playoff;
+      return (a.team_name || '').localeCompare(b.team_name || '');
+    });
+
+  res.json(rows);
 });
 
 module.exports = router;

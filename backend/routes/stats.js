@@ -2,33 +2,74 @@ const express = require('express');
 const router = express.Router();
 const { getDB } = require('../db');
 
+function resolveSeasonContext(db, seasonId, requestedType = null) {
+  const seasons = db.prepare(`
+    SELECT s.id, s.status, s.name, s.champion_team_id,
+      (SELECT COUNT(*) FROM matches m WHERE m.season_id = s.id) AS total_matches,
+      (SELECT COUNT(*) FROM matches m WHERE m.season_id = s.id AND m.is_playoff = 1) AS playoff_matches
+    FROM seasons s
+    ORDER BY s.id DESC
+  `).all();
+  const activeSeason =
+    seasons.find(s => s.status === 'playoffs') ||
+    seasons.find(s => s.status === 'completed' && (s.playoff_matches > 0 || s.champion_team_id)) ||
+    seasons.find(s => s.status === 'active' && s.total_matches > 0) ||
+    seasons.find(s => s.status === 'active') ||
+    seasons.find(s => s.status === 'completed');
+  const requestedSeason = seasonId ? seasons.find(season => String(season.id) === String(seasonId)) : null;
+  const resolvedSeason = requestedSeason || activeSeason || null;
+  return {
+    seasonId: resolvedSeason?.id || null,
+    type: requestedType || ((resolvedSeason?.status === 'playoffs' || resolvedSeason?.playoff_matches > 0) ? 'playoffs' : 'regular'),
+  };
+}
+
 // Individual stats leaderboard
 router.get('/players', (req, res) => {
   const db = getDB();
   // type: 'regular' (default) | 'playoffs' | 'all'
-  const { season_id, limit = 50, sort = 'points', type = 'regular' } = req.query;
+  const { season_id, limit = 50, sort = 'points', type } = req.query;
+  const context = resolveSeasonContext(db, season_id, type);
 
-  const filters = [];
-  const params  = [];
+  const goalFilters = [];
+  const goalParams = [];
+  const teamFilters = [];
+  const teamParams = [];
 
-  if (season_id) {
-    filters.push('m.season_id = ?');
-    params.push(season_id, season_id, season_id, season_id);
+  if (context.seasonId) {
+    goalFilters.push('m.season_id = ?');
+    teamFilters.push('tm.season_id = ?');
+    goalParams.push(context.seasonId);
+    teamParams.push(context.seasonId);
   }
-  if (type === 'regular')  { filters.push('m.is_playoff = 0'); }
-  if (type === 'playoffs') { filters.push('m.is_playoff = 1'); }
+  if (context.type === 'regular') {
+    goalFilters.push('m.is_playoff = 0');
+    teamFilters.push('tm.is_playoff = 0');
+  }
+  if (context.type === 'playoffs') {
+    goalFilters.push('m.is_playoff = 1');
+    teamFilters.push('tm.is_playoff = 1');
+  }
 
-  const seasonFilter = filters.length ? 'AND ' + filters.join(' AND ') : '';
+  const goalFilter = goalFilters.length ? ` AND ${goalFilters.join(' AND ')}` : '';
+  const teamFilter = teamFilters.length ? ` AND ${teamFilters.join(' AND ')}` : '';
 
   const rows = db.prepare(`
     SELECT
       p.id, p.first_name, p.last_name, p.nickname, p.number, p.position,
       p.team_id, t.name as team_name, t.color as team_color,
-      COUNT(DISTINCT CASE WHEN (g.scorer_id = p.id OR g.assist1_id = p.id OR g.assist2_id = p.id) THEN m.id END) as matches_played,
-      SUM(CASE WHEN g.scorer_id = p.id AND m.validated = 1 ${seasonFilter} THEN 1 ELSE 0 END) as goals,
-      SUM(CASE WHEN (g.assist1_id = p.id OR g.assist2_id = p.id) AND m.validated = 1 ${seasonFilter} THEN 1 ELSE 0 END) as assists,
-      SUM(CASE WHEN g.scorer_id = p.id AND m.validated = 1 ${seasonFilter} THEN 1 ELSE 0 END) +
-      SUM(CASE WHEN (g.assist1_id = p.id OR g.assist2_id = p.id) AND m.validated = 1 ${seasonFilter} THEN 1 ELSE 0 END) as points
+      (
+        SELECT COUNT(DISTINCT tm.id)
+        FROM matches tm
+        WHERE tm.validated = 1
+          AND p.team_id IS NOT NULL
+          AND (tm.home_team_id = p.team_id OR tm.away_team_id = p.team_id)
+          ${teamFilter}
+      ) as matches_played,
+      COALESCE(SUM(CASE WHEN g.scorer_id = p.id AND m.validated = 1 ${goalFilter} THEN 1 ELSE 0 END), 0) as goals,
+      COALESCE(SUM(CASE WHEN (g.assist1_id = p.id OR g.assist2_id = p.id) AND m.validated = 1 ${goalFilter} THEN 1 ELSE 0 END), 0) as assists,
+      COALESCE(SUM(CASE WHEN g.scorer_id = p.id AND m.validated = 1 ${goalFilter} THEN 1 ELSE 0 END), 0) +
+      COALESCE(SUM(CASE WHEN (g.assist1_id = p.id OR g.assist2_id = p.id) AND m.validated = 1 ${goalFilter} THEN 1 ELSE 0 END), 0) as points
     FROM players p
     LEFT JOIN teams t ON p.team_id = t.id
     LEFT JOIN goals g ON (g.scorer_id = p.id OR g.assist1_id = p.id OR g.assist2_id = p.id)
@@ -37,7 +78,14 @@ router.get('/players', (req, res) => {
     GROUP BY p.id
     ORDER BY points DESC, goals DESC, assists DESC
     LIMIT ?
-  `).all(...(params.length ? params : []), parseInt(limit));
+  `).all(
+    ...teamParams,
+    ...goalParams,
+    ...goalParams,
+    ...goalParams,
+    ...goalParams,
+    parseInt(limit)
+  );
 
   res.json(rows);
 });
@@ -45,17 +93,19 @@ router.get('/players', (req, res) => {
 // Team stats
 router.get('/teams', (req, res) => {
   const db = getDB();
-  const { season_id } = req.query;
+  const { season_id, type } = req.query;
+  const context = resolveSeasonContext(db, season_id, type);
+  const playoffFlag = context.type === 'playoffs' ? 1 : 0;
 
   const teams = db.prepare('SELECT * FROM teams ORDER BY name').all();
 
   let matchQuery = `
     SELECT home_team_id, away_team_id, home_score, away_score
     FROM matches
-    WHERE validated = 1 AND is_playoff = 0
+    WHERE validated = 1 AND is_playoff = ?
   `;
-  const params = [];
-  if (season_id) { matchQuery += ' AND season_id = ?'; params.push(season_id); }
+  const params = [playoffFlag];
+  if (context.seasonId) { matchQuery += ' AND season_id = ?'; params.push(context.seasonId); }
   matchQuery += ' ORDER BY date ASC';
 
   const matches = db.prepare(matchQuery).all(...params);
@@ -98,13 +148,21 @@ router.get('/teams', (req, res) => {
 // Leaders (top 5 in each category)
 router.get('/leaders', (req, res) => {
   const db = getDB();
+  const { season_id, type } = req.query;
+  const context = resolveSeasonContext(db, season_id, type);
+
+  const filters = [];
+  if (context.seasonId) filters.push(`m.season_id = ${Number(context.seasonId)}`);
+  if (context.type === 'regular') filters.push('m.is_playoff = 0');
+  if (context.type === 'playoffs') filters.push('m.is_playoff = 1');
+  const whereClause = filters.length ? ` AND ${filters.join(' AND ')}` : '';
 
   const query = (order) => db.prepare(`
     SELECT p.id, p.first_name, p.last_name, p.number, t.name as team_name, t.color as team_color,
-      SUM(CASE WHEN g.scorer_id = p.id THEN 1 ELSE 0 END) as goals,
-      SUM(CASE WHEN g.assist1_id = p.id OR g.assist2_id = p.id THEN 1 ELSE 0 END) as assists,
-      SUM(CASE WHEN g.scorer_id = p.id THEN 1 ELSE 0 END) +
-      SUM(CASE WHEN g.assist1_id = p.id OR g.assist2_id = p.id THEN 1 ELSE 0 END) as points
+      SUM(CASE WHEN m.validated = 1 ${whereClause} AND g.scorer_id = p.id THEN 1 ELSE 0 END) as goals,
+      SUM(CASE WHEN m.validated = 1 ${whereClause} AND (g.assist1_id = p.id OR g.assist2_id = p.id) THEN 1 ELSE 0 END) as assists,
+      SUM(CASE WHEN m.validated = 1 ${whereClause} AND g.scorer_id = p.id THEN 1 ELSE 0 END) +
+      SUM(CASE WHEN m.validated = 1 ${whereClause} AND (g.assist1_id = p.id OR g.assist2_id = p.id) THEN 1 ELSE 0 END) as points
     FROM players p
     LEFT JOIN teams t ON p.team_id = t.id
     LEFT JOIN goals g ON (g.scorer_id = p.id OR g.assist1_id = p.id OR g.assist2_id = p.id)
@@ -123,3 +181,4 @@ router.get('/leaders', (req, res) => {
 });
 
 module.exports = router;
+module.exports.resolveSeasonContext = resolveSeasonContext;

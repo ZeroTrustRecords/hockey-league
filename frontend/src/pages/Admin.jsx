@@ -3,128 +3,13 @@ import api from '../api/client';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { Settings, Plus, X, Users, Shield, Calendar, CalendarDays, RefreshCw, Check, Trash2, UserCheck, Trophy, Zap, AlertTriangle, Upload, Download } from 'lucide-react';
-
-function UserModal({ players, teams, onClose, onSave }) {
-  const [form, setForm] = useState({ username: '', password: '', role: 'player', player_id: '', team_id: '' });
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  const handleSubmit = async e => {
-    e.preventDefault();
-    try {
-      await api.post('/auth/register', form);
-      toast.success('Compte créé');
-      onSave();
-    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
-  };
-
-  return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
-        <div className="modal-header">
-          <h3 className="text-lg font-bold text-white">Créer un compte</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-white"><X size={20} /></button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><label className="label">Nom d'utilisateur *</label><input className="input" value={form.username} onChange={e => set('username', e.target.value)} required /></div>
-              <div><label className="label">Mot de passe *</label><input className="input" type="password" value={form.password} onChange={e => set('password', e.target.value)} required /></div>
-            </div>
-            <div>
-              <label className="label">Rôle</label>
-              <select className="select" value={form.role} onChange={e => set('role', e.target.value)}>
-                <option value="player">Joueur</option>
-                <option value="captain">Capitaine</option>
-                <option value="marqueur">Marqueur (feuille de match)</option>
-                <option value="admin">Administrateur</option>
-              </select>
-            </div>
-            <div>
-              <label className="label">Joueur associé</label>
-              <select className="select" value={form.player_id} onChange={e => set('player_id', e.target.value)}>
-                <option value="">Aucun</option>
-                {players.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
-              </select>
-            </div>
-            {form.role === 'captain' && (
-              <div>
-                <label className="label">Équipe</label>
-                <select className="select" value={form.team_id} onChange={e => set('team_id', e.target.value)}>
-                  <option value="">Aucune</option>
-                  {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
-              </div>
-            )}
-          </div>
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} className="btn-secondary">Annuler</button>
-            <button type="submit" className="btn-primary">Créer</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function ScheduleMatchModal({ teams, seasons, onClose, onSave }) {
-  const [form, setForm] = useState({ home_team_id: '', away_team_id: '', date: '', location: 'Aréna Municipal', season_id: seasons[0]?.id || '' });
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  const handleSubmit = async e => {
-    e.preventDefault();
-    try {
-      await api.post('/matches', form);
-      toast.success('Match planifié');
-      onSave();
-    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
-  };
-
-  return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
-        <div className="modal-header">
-          <h3 className="text-lg font-bold text-white">Planifier un match</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-white"><X size={20} /></button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="label">Équipe locale *</label>
-                <select className="select" value={form.home_team_id} onChange={e => set('home_team_id', e.target.value)} required>
-                  <option value="">Sélectionner...</option>
-                  {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="label">Équipe visiteur *</label>
-                <select className="select" value={form.away_team_id} onChange={e => set('away_team_id', e.target.value)} required>
-                  <option value="">Sélectionner...</option>
-                  {teams.filter(t => String(t.id) !== String(form.home_team_id)).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
-              </div>
-            </div>
-            <div><label className="label">Date et heure *</label><input type="datetime-local" className="input" value={form.date} onChange={e => set('date', e.target.value)} required /></div>
-            <div><label className="label">Endroit</label><input className="input" value={form.location} onChange={e => set('location', e.target.value)} /></div>
-            <div>
-              <label className="label">Saison</label>
-              <select className="select" value={form.season_id} onChange={e => set('season_id', e.target.value)}>
-                {seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} className="btn-secondary">Annuler</button>
-            <button type="submit" className="btn-primary"><Plus size={15} /> Planifier</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
+import * as XLSX from 'xlsx';
+import { UserModal, ScheduleMatchModal, AdminPasswordModal, ConfirmActionModal } from '../components/admin/AdminModals';
+import AdminActivityPanel from '../components/admin/AdminActivityPanel';
+import { AdminSetupModal, CsvPreviewModal, SchedulePreviewModal } from '../components/admin/AdminImportModals';
 
 export default function Admin() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, bootstrap, refreshBootstrap } = useAuth();
   const [tab, setTab] = useState('overview');
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
@@ -139,10 +24,22 @@ export default function Admin() {
   const [playoffStarting, setPlayoffStarting] = useState(false);
   const [newSeasonForm, setNewSeasonForm] = useState({ name: '', start_date: '' });
   const [showNewSeasonForm, setShowNewSeasonForm] = useState(false);
-  const [csvPreview, setCsvPreview] = useState(null); // { assignments, grouped }
+  const [csvPreview, setCsvPreview] = useState(null); // { players, grouped }
+  const [schedulePreview, setSchedulePreview] = useState(null); // { matches, errors }
   const [standings, setStandings] = useState([]);
   const [scheduleForm, setScheduleForm] = useState({ start_date: '', rounds: 3 });
   const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [jerseyNumbers, setJerseyNumbers] = useState({});
+  const [savingJerseyId, setSavingJerseyId] = useState(null);
+  const [protectedAction, setProtectedAction] = useState(null);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [submittingProtectedAction, setSubmittingProtectedAction] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [submittingConfirmAction, setSubmittingConfirmAction] = useState(false);
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [importSummary, setImportSummary] = useState(null);
+  const [pendingRestoreSnapshot, setPendingRestoreSnapshot] = useState(null);
+  const [pendingRestoreFilename, setPendingRestoreFilename] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -153,47 +50,152 @@ export default function Admin() {
       api.get('/seasons'),
       api.get('/matches'),
       api.get('/standings'),
-    ]).then(([dr, tr, pr, sr, mr, stdr]) => {
+      api.get('/admin/activity?limit=12'),
+    ]).then(([dr, tr, pr, sr, mr, stdr, ar]) => {
       setStats(dr.data.counts);
       setTeams(tr.data);
       setPlayers(pr.data);
+      setJerseyNumbers(Object.fromEntries(pr.data.map(player => [player.id, player.number ?? ''])));
       setSeasons(sr.data);
       setMatches(mr.data);
       setStandings(stdr.data);
+      setActivityLogs(ar.data || []);
       const current = sr.data.find(s => s.status === 'active' || s.status === 'playoffs') || sr.data[0] || null;
       setActiveSeason(current);
+    }).catch(() => {
+      setActivityLogs([]);
     }).finally(() => setLoading(false));
+  };
+
+  const openProtectedAction = action => {
+    setAdminPassword('');
+    setProtectedAction(action);
+  };
+
+  const closeProtectedAction = () => {
+    setAdminPassword('');
+    setProtectedAction(null);
+    setSubmittingProtectedAction(false);
+  };
+
+  const openConfirmAction = config => {
+    setSubmittingConfirmAction(false);
+    setConfirmAction(config);
+  };
+
+  const closeConfirmAction = () => {
+    setSubmittingConfirmAction(false);
+    setConfirmAction(null);
+  };
+
+  const runConfirmAction = async () => {
+    if (!confirmAction?.onConfirm) return;
+    setSubmittingConfirmAction(true);
+    try {
+      await confirmAction.onConfirm();
+      closeConfirmAction();
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.message || 'Erreur');
+      setSubmittingConfirmAction(false);
+    }
+  };
+
+  const executeProtectedAction = async e => {
+    e.preventDefault();
+    if (!protectedAction) return;
+    setSubmittingProtectedAction(true);
+
+    try {
+      if (protectedAction.key === 'reset-league') {
+        await api.post('/seasons/reset', { admin_password: adminPassword });
+        toast.success('Réinitialisation effectuée');
+        load();
+      }
+
+      if (protectedAction.key === 'next-season') {
+        const res = await api.post('/simulate/next-season', { admin_password: adminPassword });
+        toast.success(res.data.message);
+        await refreshBootstrap();
+        load();
+      }
+
+      if (protectedAction.key === 'create-server-backup') {
+        const res = await api.post('/admin/backup', { admin_password: adminPassword });
+        toast.success(res.data.message || 'Sauvegarde serveur créée');
+        load();
+      }
+
+      if (protectedAction.key === 'restore-backup') {
+        await api.post('/admin/restore', {
+          admin_password: adminPassword,
+          snapshot: pendingRestoreSnapshot,
+        });
+        toast.success('Restauration effectuée');
+        setPendingRestoreSnapshot(null);
+        setPendingRestoreFilename('');
+        await refreshBootstrap();
+        load();
+      }
+
+      closeProtectedAction();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur');
+      setSubmittingProtectedAction(false);
+    }
+  };
+
+  const updateJerseyDraft = (playerId, value) => {
+    if (value === '') {
+      setJerseyNumbers(prev => ({ ...prev, [playerId]: '' }));
+      return;
+    }
+
+    const sanitized = value.replace(/[^0-9]/g, '').slice(0, 2);
+    setJerseyNumbers(prev => ({ ...prev, [playerId]: sanitized }));
+  };
+
+  const saveJerseyNumber = async player => {
+    const rawValue = jerseyNumbers[player.id];
+    if (rawValue !== '' && (!Number.isInteger(Number(rawValue)) || Number(rawValue) < 1 || Number(rawValue) > 99)) {
+      toast.error('Le numéro doit être entre 1 et 99');
+      setJerseyNumbers(prev => ({ ...prev, [player.id]: player.number ?? '' }));
+      return;
+    }
+
+    setSavingJerseyId(player.id);
+    try {
+      await api.patch(`/players/${player.id}/jersey-number`, { number: rawValue });
+      setPlayers(prev => prev.map(current => current.id === player.id ? { ...current, number: rawValue === '' ? null : Number(rawValue) } : current));
+      toast.success('Numéro mis à jour');
+    } catch (err) {
+      setJerseyNumbers(prev => ({ ...prev, [player.id]: player.number ?? '' }));
+      toast.error(err.response?.data?.error || 'Erreur');
+    } finally {
+      setSavingJerseyId(null);
+    }
   };
 
   const startPlayoffs = async () => {
     if (!activeSeason) return;
-    if (!confirm('Démarrer les séries éliminatoires ? Les statistiques de saison régulière seront archivées.')) return;
-    setPlayoffStarting(true);
-    try {
-      await api.post(`/playoffs/season/${activeSeason.id}/start`);
-      toast.success('Séries éliminatoires démarrées !');
-      load();
-    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
-    finally { setPlayoffStarting(false); }
-  };
-
-  // Download CSV template with current player list
-  const downloadTemplate = async () => {
-    // Fetch fresh player data with team assignments
-    const res = await api.get('/players');
-    const allPlayers = res.data;
-    const teamNames = teams.map(t => t.name).join(' / ');
-    const comment = `# Modèle d'assignation — Équipes disponibles: ${teamNames}\n`;
-    const header  = 'Prénom,Nom,Équipe\n';
-    const rows = allPlayers
-      .sort((a, b) => a.last_name.localeCompare(b.last_name))
-      .map(p => `"${p.first_name}","${p.last_name}","${p.team_name || ''}"`)
-      .join('\n');
-    const blob = new Blob(['\uFEFF' + comment + header + rows], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'modele_assignation_joueurs.csv'; a.click();
-    URL.revokeObjectURL(url);
+    openConfirmAction({
+      title: 'Démarrer les éliminatoires',
+      confirmLabel: 'Démarrer',
+      message: 'Les statistiques de saison régulière seront archivées et le tableau éliminatoire sera généré.',
+      details: [
+        `Saison ciblée : ${activeSeason.name}`,
+        `Matchs validés : ${validatedRegularMatches}`,
+      ],
+      onConfirm: async () => {
+        setPlayoffStarting(true);
+        try {
+          await api.post(`/playoffs/season/${activeSeason.id}/start`);
+          toast.success('Séries éliminatoires démarrées');
+          load();
+        } finally {
+          setPlayoffStarting(false);
+        }
+      },
+    });
   };
 
   // Parse CSV row into columns (handles quoted fields)
@@ -209,61 +211,115 @@ export default function Admin() {
     return cols;
   };
 
+  const normalizeHeader = value => (value || '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+  const readSpreadsheetRows = async file => {
+    const lowerName = file.name.toLowerCase();
+    if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      return XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' })
+        .map(row => row.map(cell => (cell ?? '').toString().trim()));
+    }
+
+    const text = await file.text();
+    return text
+      .replace(/^\uFEFF/, '')
+      .split(/\r?\n/)
+      .filter(line => line.trim() && !line.startsWith('#'))
+      .map(parseCSVLine);
+  };
+
+  const normalizeTimeValue = (timeValue = '21:00') => {
+    const raw = (timeValue || '21:00').trim().toLowerCase().replace(/\s+/g, '');
+    const match = raw.match(/^(\d{1,2})(?:h|:)?(\d{2})?$/);
+    if (!match) return '21:00';
+    return `${match[1].padStart(2, '0')}:${(match[2] || '00').padStart(2, '0')}`;
+  };
+
   // Strip "(Captain Name)" from team names like "Canadiens (Martin Verville)"
   const cleanTeamName = name => name.replace(/\s*\(.*\)$/, '').trim();
 
-  // Read CSV file and show preview modal
-  const handleCSVImport = async e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    e.target.value = '';
-    try {
-      const text = await file.text();
-      const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => !l.startsWith('#'));
-      const headerIdx = lines.findIndex(l => /prénom|prenom|first.name/i.test(l));
-      if (headerIdx === -1) { toast.error('Format CSV invalide — colonne Prénom introuvable'); return; }
-      const headers = parseCSVLine(lines[headerIdx]).map(h => h.toLowerCase());
-      const fnIdx   = headers.findIndex(h => /prénom|prenom|first.name/i.test(h));
-      const lnIdx   = headers.findIndex(h => /^nom$|last.name/i.test(h));
-      const teamIdx = headers.findIndex(h => /équipe|equipe|team/i.test(h));
-      if (fnIdx === -1 || lnIdx === -1 || teamIdx === -1) {
-        toast.error('Colonnes requises: Prénom, Nom, Équipe'); return;
+  const normalizeDateValue = (dateValue, timeValue = '21:00') => {
+    const rawDate = (dateValue || '').trim();
+    const rawTime = normalizeTimeValue(timeValue);
+    if (!rawDate) return null;
+
+    const normalizedDate = normalizeHeader(rawDate);
+    const frenchMonthMatch = normalizedDate.match(/^(\d{1,2}) ([a-z0-9»]+) (\d{4})$/);
+    if (frenchMonthMatch) {
+      const monthToken = frenchMonthMatch[2];
+      const monthEntries = [
+        ['jan', '01'],
+        ['fev', '02'],
+        ['mar', '03'],
+        ['avr', '04'],
+        ['mai', '05'],
+        ['jui', monthToken.includes('l') ? '07' : '06'],
+        ['aou', '08'],
+        ['ao', '08'],
+        ['sep', '09'],
+        ['oct', '10'],
+        ['nov', '11'],
+        ['dec', '12'],
+      ];
+      const month = monthEntries.find(([prefix]) => monthToken.startsWith(prefix) || monthToken.includes(prefix))?.[1];
+      if (month) {
+        return `${frenchMonthMatch[3]}-${month}-${frenchMonthMatch[1].padStart(2, '0')} ${rawTime}`;
       }
-      const assignments = lines.slice(headerIdx + 1)
-        .filter(l => l.trim())
-        .map(l => {
-          const cols = parseCSVLine(l);
-          return {
-            first_name: (cols[fnIdx]   || '').trim(),
-            last_name:  (cols[lnIdx]   || '').trim(),
-            team_name:  cleanTeamName(cols[teamIdx] || ''),
-          };
-        })
-        .filter(r => r.first_name && r.last_name);
-
-      if (assignments.length === 0) { toast.error('Aucun joueur trouvé dans le fichier'); return; }
-
-      // Group by team for preview
-      const grouped = assignments.reduce((acc, a) => {
-        const key = a.team_name || '— Sans équipe';
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(a);
-        return acc;
-      }, {});
-
-      setCsvPreview({ assignments, grouped });
-    } catch (err) {
-      toast.error('Erreur lors de la lecture du fichier');
     }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+      return `${rawDate} ${rawTime}`;
+    }
+
+    const slashMatch = rawDate.match(/^(\d{1,4})[\/\-](\d{1,2})[\/\-](\d{1,4})$/);
+    if (!slashMatch) return null;
+
+    let year;
+    let month;
+    let day;
+
+    if (slashMatch[1].length === 4) {
+      year = slashMatch[1];
+      month = slashMatch[2];
+      day = slashMatch[3];
+    } else {
+      day = slashMatch[1];
+      month = slashMatch[2];
+      year = slashMatch[3];
+    }
+
+    return `${year.padStart(4, '0')}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${rawTime}`;
   };
 
   // Apply the previewed assignments
   const applyCSVImport = async () => {
     if (!csvPreview) return;
+    if (csvPreview.players) {
+      await applyRosterImport();
+      return;
+    }
     try {
       const r = await api.post('/seasons/import-csv', { assignments: csvPreview.assignments });
       const { updated, not_found_players, not_found_teams } = r.data;
       toast.success(`${updated} joueur(s) assigné(s) avec succès`);
+      setImportSummary({
+        type: 'roster-assignment',
+        title: 'Assignations mises à jour',
+        stats: [
+          { label: 'Joueurs mis à jour', value: updated },
+          { label: 'Joueurs introuvables', value: not_found_players.length },
+          { label: 'Équipes introuvables', value: [...new Set(not_found_teams)].length },
+        ],
+      });
       if (not_found_players.length > 0)
         toast.error(`Joueurs introuvables:\n${not_found_players.join(', ')}`, { duration: 8000 });
       if (not_found_teams.length > 0)
@@ -275,13 +331,255 @@ export default function Admin() {
     }
   };
 
-  const simulateSeason = async () => {
-    if (!confirm('Générer des données simulées pour la Saison 2024-2025 ? Cela permettra de tester l\'historique des joueurs.')) return;
+  const downloadRosterTemplate = () => {
+    const comment = '# Modèle d importation roster - format LHMA_Equipe2026\n';
+    const header = 'Prénom,Nom,Position,Cote,Rating,Équipe,PJ,B,P,PTS,GPG,MOY,PUN,capitain,Numéro\n';
+    const rows = [
+      '"Jean","Tremblay","A","B","4","Rangers","","","","","","","","","91"',
+      '"Marc","Gagnon","D","A","5","Canadiens","","","","","","","","","4"',
+    ].join('\n');
+    const blob = new Blob(['\uFEFF' + comment + header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'modele_roster_lhma.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadScheduleTemplate = () => {
+    const comment = '# Modele d importation calendrier - format Schedule 2026\n';
+    const header = 'Jour,Date,Heure,Local,Visiteur,Endroit\n';
+    const rows = [
+      '"Lundi","2026-06-01","21:00","Rangers","Canadiens","Arena Municipal"',
+      '"Mercredi","2026-06-03","21:00","Bruins","Blues","Arena Municipal"',
+    ].join('\n');
+    const blob = new Blob(['\uFEFF' + comment + header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'modele_calendrier.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRosterImportFile = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = '';
     try {
-      const res = await api.post('/simulate/season');
-      toast.success(res.data.message);
-      console.log('Transferts simulés:', res.data.transferred);
-    } catch (err) { toast.error(err.response?.data?.error || 'Erreur de simulation'); }
+      const rows = await readSpreadsheetRows(file);
+      const headerIdx = rows.findIndex(row => {
+        const headers = row.map(normalizeHeader);
+        return headers.includes('prenom') && headers.includes('nom') && headers.includes('equipe');
+      });
+      if (headerIdx === -1) {
+        toast.error('Colonnes requises : Prénom, Nom, Équipe');
+        return;
+      }
+
+      const headers = rows[headerIdx].map(normalizeHeader);
+      const fnIdx = headers.findIndex(h => h === 'prenom' || h === 'first name');
+      const lnIdx = headers.findIndex(h => h === 'nom' || h === 'last name');
+      const teamIdx = headers.findIndex(h => h === 'equipe' || h === 'team');
+      const positionIdx = headers.findIndex(h => h === 'position' || h === 'pos');
+      const numberIdx = headers.findIndex(h => h === 'numero' || h === 'numéro' || h === 'number');
+      const ratingIdx = headers.findIndex(h => h === 'cote');
+      const ratingScoreIdx = headers.findIndex(h => h === 'rating');
+
+      const players = rows.slice(headerIdx + 1)
+        .filter(cols => cols.some(value => `${value}`.trim()))
+        .map(cols => ({
+          first_name: (cols[fnIdx] || '').trim(),
+          last_name: (cols[lnIdx] || '').trim(),
+          team_name: cleanTeamName(cols[teamIdx] || ''),
+          position: positionIdx >= 0 ? (cols[positionIdx] || '').trim() : 'A',
+          number: numberIdx >= 0 ? (cols[numberIdx] || '').trim() : '',
+          rating: ratingIdx >= 0 ? (cols[ratingIdx] || '').trim() : 'C',
+          rating_score: ratingScoreIdx >= 0 ? (cols[ratingScoreIdx] || '').trim() : '',
+        }))
+        .filter(player => player.first_name && player.last_name && player.team_name);
+
+      if (players.length === 0) {
+        toast.error('Aucun joueur trouvé dans le fichier');
+        return;
+      }
+
+      const grouped = players.reduce((acc, player) => {
+        if (!acc[player.team_name]) acc[player.team_name] = [];
+        acc[player.team_name].push(player);
+        return acc;
+      }, {});
+
+      setCsvPreview({ assignments: players, players, grouped });
+    } catch (err) {
+      toast.error('Erreur lors de la lecture du roster');
+    }
+  };
+
+  const applyRosterImport = async () => {
+    if (!csvPreview?.players) return;
+    try {
+      const response = await api.post('/seasons/import-roster', { players: csvPreview.players });
+      toast.success(response.data.message);
+      setImportSummary({
+        type: 'roster',
+        title: 'Import du roster terminé',
+        stats: [
+          { label: 'Joueurs importés', value: response.data.players || csvPreview.players.length },
+          { label: 'Équipes créées', value: response.data.teams || Object.keys(csvPreview.grouped || {}).length },
+          { label: 'Saison active', value: '1' },
+        ],
+      });
+      setCsvPreview(null);
+      await refreshBootstrap();
+      load();
+    } catch (err) {
+      const details = err.response?.data?.details;
+      if (Array.isArray(details) && details.length > 0) {
+        toast.error(details.slice(0, 3).join('\n'), { duration: 8000 });
+      } else {
+        toast.error(err.response?.data?.error || 'Erreur lors de l\'importation du roster');
+      }
+    }
+  };
+
+  const handleScheduleImportFile = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = '';
+
+    try {
+      const rows = await readSpreadsheetRows(file);
+      const headerIdx = rows.findIndex(row => {
+        const headers = row.map(normalizeHeader);
+        return headers.includes('date') && headers.includes('local') && headers.includes('visiteur');
+      });
+      if (headerIdx === -1) {
+        toast.error('Colonnes requises: Jour, Date, Heure, Local, Visiteur');
+        return;
+      }
+
+      const headers = rows[headerIdx].map(normalizeHeader);
+      const dateIdx = headers.findIndex(h => h === 'date');
+      const timeIdx = headers.findIndex(h => h === 'heure' || h === 'time');
+      const homeIdx = headers.findIndex(h => h === 'local' || h === 'home');
+      const awayIdx = headers.findIndex(h => h === 'visiteur' || h === 'away');
+      const locationIdx = headers.findIndex(h => ['endroit', 'arena', 'location', 'lieu'].includes(h));
+
+      const parsedMatches = [];
+      const errors = [];
+
+      rows.slice(headerIdx + 1).forEach((cols, index) => {
+        if (!cols.some(value => `${value}`.trim())) return;
+        const rawDate = cols[dateIdx] || '';
+        const rawTime = timeIdx >= 0 ? cols[timeIdx] || '21:00' : '21:00';
+        const normalizedDate = normalizeDateValue(rawDate, rawTime);
+        const homeTeamName = cleanTeamName(cols[homeIdx] || '');
+        const awayTeamName = cleanTeamName(cols[awayIdx] || '');
+        const location = (locationIdx >= 0 ? cols[locationIdx] : '') || 'Arena Municipal';
+
+        if (!normalizedDate || !homeTeamName || !awayTeamName) {
+          errors.push(`Ligne ${headerIdx + index + 2}: information manquante ou date invalide`);
+          return;
+        }
+
+        parsedMatches.push({
+          date: normalizedDate,
+          home_team_name: homeTeamName,
+          away_team_name: awayTeamName,
+          location: location.toString().trim(),
+        });
+      });
+
+      if (parsedMatches.length === 0) {
+        toast.error('Aucun match valide trouvé dans le fichier');
+        return;
+      }
+
+      setSchedulePreview({ matches: parsedMatches, errors });
+    } catch (err) {
+      toast.error('Erreur lors de la lecture du calendrier');
+    }
+  };
+
+  const applyScheduleImport = async () => {
+    if (!schedulePreview || !activeSeason) return;
+    try {
+      const response = await api.post(`/seasons/${activeSeason.id}/import-schedule`, {
+        matches: schedulePreview.matches,
+      });
+      toast.success(response.data.message);
+      setImportSummary({
+        type: 'schedule',
+        title: 'Import du calendrier terminé',
+        stats: [
+          { label: 'Matchs importés', value: response.data.matches || schedulePreview.matches.length },
+          { label: 'Erreurs bloquantes', value: 0 },
+          { label: 'Saison', value: activeSeason.name },
+        ],
+      });
+      setSchedulePreview(null);
+      setShowScheduleForm(false);
+      await refreshBootstrap();
+      load();
+    } catch (err) {
+      const details = err.response?.data?.details;
+      if (Array.isArray(details) && details.length > 0) {
+        toast.error(details.slice(0, 3).join('\n'), { duration: 8000 });
+      } else {
+        toast.error(err.response?.data?.error || 'Erreur lors de l\'importation du calendrier');
+      }
+    }
+  };
+
+  const exportLeagueBackup = async () => {
+    try {
+      const response = await api.get('/admin/export', { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `lhma-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Sauvegarde exportée');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erreur lors de l’export');
+    }
+  };
+
+  const createServerBackup = () => {
+    openProtectedAction({
+      key: 'create-server-backup',
+      title: 'Créer une sauvegarde serveur',
+      message: 'Une sauvegarde complète sera écrite sur le serveur. Confirmez avec votre mot de passe administrateur.',
+      confirmLabel: 'Créer la sauvegarde',
+      danger: false,
+    });
+  };
+
+  const handleRestoreBackupFile = async e => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    try {
+      const snapshot = JSON.parse(await file.text());
+      setPendingRestoreSnapshot(snapshot);
+      setPendingRestoreFilename(file.name);
+      openProtectedAction({
+        key: 'restore-backup',
+        title: 'Restaurer une sauvegarde',
+        message: `La sauvegarde ${file.name} remplacera l'état actuel de la ligue. Confirmez avec votre mot de passe administrateur.`,
+        confirmLabel: 'Restaurer',
+        danger: true,
+      });
+    } catch {
+      setPendingRestoreSnapshot(null);
+      setPendingRestoreFilename('');
+      toast.error('Fichier de sauvegarde invalide');
+    }
   };
 
   const generateSchedule = async e => {
@@ -293,45 +591,66 @@ export default function Admin() {
         rounds: parseInt(scheduleForm.rounds),
       });
       toast.success(res.data.message);
+      setImportSummary({
+        type: 'generated-schedule',
+        title: 'Calendrier généré',
+        stats: [
+          { label: 'Matchs générés', value: res.data.matches || 0 },
+          { label: 'Rondes', value: parseInt(scheduleForm.rounds, 10) },
+          { label: 'Début', value: scheduleForm.start_date },
+        ],
+      });
       setShowScheduleForm(false);
       load();
     } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
   };
 
-  const simulatePrevSeason = async () => {
-    if (!confirm('Générer des données simulées pour la Saison 2024-2025 ?\nPermet de tester l\'historique des joueurs avec transferts.')) return;
-    try {
-      const res = await api.post('/simulate/season');
-      toast.success(res.data.message);
-    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
-  };
-
-  const simulateCurrentSeason = async () => {
-    if (!confirm('Valider tous les matchs restants de la saison en cours avec des scores simulés ?')) return;
-    try {
-      const res = await api.post('/simulate/current-season');
-      toast.success(res.data.message);
-      load();
-    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
-  };
-
   const simulatePlayoffs = async () => {
-    if (!confirm('Simuler toutes les séries éliminatoires jusqu\'au champion ?\nLes séries doivent déjà être démarrées.')) return;
-    try {
-      const res = await api.post('/simulate/playoffs');
-      toast.success(`${res.data.message} — Champion : ${res.data.champion}`);
-      load();
-    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    openConfirmAction({
+      title: 'Simuler les éliminatoires',
+      confirmLabel: 'Lancer la simulation',
+      message: 'Tous les matchs restants des éliminatoires seront simulés jusqu’au champion.',
+      details: ['Les séries doivent déjà être démarrées.'],
+      onConfirm: async () => {
+        const res = await api.post('/simulate/playoffs');
+        toast.success(`${res.data.message} — Champion : ${res.data.champion}`);
+        load();
+      },
+    });
+  };
+
+  const simulateSeasonFlow = async () => {
+    openConfirmAction({
+      title: 'Simuler la saison active',
+      confirmLabel: 'Simuler',
+      message: 'Tous les matchs réguliers planifiés de la saison active seront validés avec des scores simulés.',
+      details: [activeSeason ? `Saison ciblée : ${activeSeason.name}` : 'Aucune saison active'],
+      onConfirm: async () => {
+        const res = await api.post('/simulate/season');
+        toast.success(res.data.message);
+        load();
+      },
+    });
+  };
+
+  const advanceToNextSeason = async () => {
+    openProtectedAction({
+      key: 'next-season',
+      title: 'Créer la prochaine saison',
+      message: 'Cette action prépare une nouvelle saison active et retire les assignations actuelles pour permettre un nouveau roster. Confirmez avec votre mot de passe administrateur.',
+      confirmLabel: 'Créer la saison',
+      danger: false,
+    });
   };
 
   const handleReset = async () => {
-    if (!confirm('⚠️ RÉINITIALISATION COMPLÈTE\n\nCeci va effacer:\n- Tous les matchs et buts\n- Le repêchage\n- Les séries éliminatoires\n- Les assignations de joueurs aux équipes\n\nLes joueurs et équipes seront conservés.\n\nÊtes-vous certain?')) return;
-    if (!confirm('Dernière confirmation — cette action est irréversible. Continuer?')) return;
-    try {
-      await api.post('/seasons/reset');
-      toast.success('Réinitialisation effectuée');
-      load();
-    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    openProtectedAction({
+      key: 'reset-league',
+      title: "Réinitialiser l'état de la ligue",
+      message: 'Cette action supprime les matchs, buts, séries, repêchage et assignations en conservant les joueurs et les équipes. Elle est irréversible.',
+      confirmLabel: 'Réinitialiser',
+      danger: true,
+    });
   };
 
   const createNewSeason = async e => {
@@ -355,21 +674,35 @@ export default function Admin() {
   }, [tab]);
 
   const deleteUser = async (id) => {
-    if (!confirm('Supprimer ce compte ?')) return;
-    try {
-      await api.delete(`/auth/users/${id}`);
-      toast.success('Compte supprimé');
-      setUsers(u => u.filter(x => x.id !== id));
-    } catch (err) { toast.error(err.response?.data?.error || 'Erreur'); }
+    const targetUser = users.find(entry => entry.id === id);
+    openConfirmAction({
+      title: 'Supprimer le compte',
+      confirmLabel: 'Supprimer',
+      danger: true,
+      message: 'Ce compte utilisateur sera supprimé définitivement.',
+      details: targetUser ? [`Utilisateur : ${targetUser.username}`, `Rôle : ${targetUser.role}`] : [],
+      onConfirm: async () => {
+        await api.delete(`/auth/users/${id}`);
+        toast.success('Compte supprimé');
+        setUsers(u => u.filter(x => x.id !== id));
+      },
+    });
   };
 
   const handleDeleteMatch = async id => {
-    if (!confirm('Supprimer ce match?')) return;
-    try {
-      await api.delete(`/matches/${id}`);
-      toast.success('Match supprimé');
-      load();
-    } catch { toast.error('Erreur'); }
+    const targetMatch = matches.find(match => match.id === id);
+    openConfirmAction({
+      title: 'Supprimer le match',
+      confirmLabel: 'Supprimer',
+      danger: true,
+      message: 'Ce match et sa feuille associée seront supprimés.',
+      details: targetMatch ? [`${targetMatch.home_team_name} vs ${targetMatch.away_team_name}`, `${targetMatch.date?.slice(0, 16).replace('T', ' ') || 'Date inconnue'}`] : [],
+      onConfirm: async () => {
+        await api.delete(`/matches/${id}`);
+        toast.success('Match supprimé');
+        load();
+      },
+    });
   };
 
   const handleValidateMatch = async id => {
@@ -387,6 +720,33 @@ export default function Admin() {
       load();
     } catch { toast.error('Erreur'); }
   };
+
+  const needsSetup = Boolean(bootstrap) && !bootstrap.setupComplete;
+  const previewCount = csvPreview?.players?.length || csvPreview?.assignments?.length || 0;
+  const activeSeasonRegularMatches = activeSeason
+    ? matches.filter(m => m.season_id === activeSeason.id && !m.is_playoff)
+    : [];
+  const scheduledRegularMatches = activeSeasonRegularMatches.filter(m => m.status === 'scheduled').length;
+  const pendingValidationMatches = activeSeasonRegularMatches.filter(m => m.status === 'completed' && !m.validated).length;
+  const validatedRegularMatches = activeSeasonRegularMatches.filter(m => m.validated).length;
+  const canStartPlayoffs = Boolean(
+    activeSeason &&
+    activeSeason.status === 'active' &&
+    activeSeasonRegularMatches.length > 0 &&
+    scheduledRegularMatches === 0 &&
+    pendingValidationMatches === 0
+  );
+  const playoffReadinessLabel = !activeSeason || activeSeason.status !== 'active'
+    ? 'Les séries sont disponibles seulement pendant une saison régulière active.'
+    : activeSeasonRegularMatches.length === 0
+      ? 'Importez ou générez le calendrier avant de démarrer les éliminatoires.'
+      : scheduledRegularMatches > 0
+        ? `${scheduledRegularMatches} match(s) de saison régulière restent à jouer.`
+        : pendingValidationMatches > 0
+          ? `${pendingValidationMatches} match(s) terminés doivent encore être validés.`
+          : 'La saison régulière est complète. Les éliminatoires peuvent démarrer.';
+  const canSimulatePlayoffs = activeSeason?.status === 'playoffs';
+  const startupModeLabel = bootstrap?.startupMode === 'persistent' ? 'Mode persistant' : 'Mode test réinitialisé';
 
   if (loading) return <div className="text-center py-12 text-gray-500 animate-pulse">Chargement...</div>;
 
@@ -436,7 +796,12 @@ export default function Admin() {
       {tab === 'overview' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="card">
-            <h3 className="section-title mb-3">Actions rapides</h3>
+            <h3 className="section-title mb-1">Centre d'administration</h3>
+            <p className="text-sm text-gray-400 mb-3">Pilotez les opérations clés, les importations et les actions sensibles depuis un espace plus structuré.</p>
+            <div className="rounded-lg border border-gray-800 bg-gray-900/60 px-3 py-2 text-sm text-gray-300 mb-3 flex items-center justify-between gap-3">
+              <span>État de l'instance</span>
+              <span className="text-xs font-semibold rounded-full px-2 py-1 bg-blue-500/10 text-blue-300 border border-blue-500/20">{startupModeLabel}</span>
+            </div>
             <div className="space-y-2">
               <button onClick={() => setShowMatchModal(true)} className="btn-primary w-full justify-start">
                 <Calendar size={16} /> Planifier un match
@@ -447,35 +812,78 @@ export default function Admin() {
               <button onClick={load} className="btn-secondary w-full justify-start">
                 <RefreshCw size={16} /> Actualiser les données
               </button>
+              <button onClick={exportLeagueBackup} className="btn-secondary w-full justify-start">
+                <Download size={16} /> Exporter la sauvegarde JSON
+              </button>
+              <button onClick={createServerBackup} className="btn-secondary w-full justify-start">
+                <Download size={16} /> Créer une sauvegarde serveur
+              </button>
+              <label className="btn-secondary w-full justify-start cursor-pointer">
+                <Upload size={16} /> Restaurer une sauvegarde JSON
+                <input type="file" accept=".json,application/json" className="hidden" onChange={handleRestoreBackupFile} />
+              </label>
+              {pendingRestoreFilename && (
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                  Sauvegarde sélectionnée : {pendingRestoreFilename}
+                </div>
+              )}
               <div className="pt-2 border-t border-gray-800 space-y-2">
-                <div className="text-xs text-gray-500 font-medium uppercase tracking-wide px-1 pt-1">Importation CSV</div>
-                <button onClick={downloadTemplate} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 border border-gray-700 transition-colors">
-                  <Download size={16} /> Télécharger le modèle
+                <div className="text-xs text-gray-500 font-medium uppercase tracking-wide px-1 pt-1">Modèles & importation</div>
+                <div className="rounded-lg border border-gray-800 bg-gray-900/60 p-3 space-y-2 text-sm text-gray-300">
+                  <div className="font-medium text-white">Modèle roster attendu</div>
+                      <div className="text-xs text-gray-400">Colonnes minimales : <span className="text-gray-200">Prénom, Nom, Équipe</span>. Colonnes reconnues en plus : <span className="text-gray-200">Position, Cote, Rating, Numéro</span>.</div>
+                  <div className="font-medium text-white pt-1">Modèle calendrier attendu</div>
+                  <div className="text-xs text-gray-400">Colonnes minimales : <span className="text-gray-200">Jour, Date, Heure, Local, Visiteur</span>. Colonne optionnelle : <span className="text-gray-200">Endroit</span>.</div>
+                </div>
+                <button onClick={downloadRosterTemplate} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 border border-gray-700 transition-colors">
+                  <Download size={16} /> Télécharger le modèle roster
+                </button>
+                <button onClick={downloadScheduleTemplate} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 border border-gray-700 transition-colors">
+                  <CalendarDays size={16} /> Télécharger le modèle calendrier
                 </button>
                 <label className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-blue-400 hover:bg-blue-500/10 border border-blue-500/20 transition-colors cursor-pointer">
-                  <Upload size={16} /> Importer CSV (équipes)
-                  <input type="file" accept=".csv" className="hidden" onChange={handleCSVImport} />
+                  <Upload size={16} /> Importer le roster (CSV/XLSX)
+                  <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleRosterImportFile} />
                 </label>
+                <label className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/20 transition-colors cursor-pointer">
+                  <CalendarDays size={16} /> Importer le calendrier (CSV/XLSX)
+                  <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleScheduleImportFile} />
+                </label>
+                {importSummary && (
+                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3">
+                    <div className="text-sm font-semibold text-white">{importSummary.title}</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+                      {importSummary.stats.map(stat => (
+                        <div key={stat.label} className="rounded-md bg-gray-950/40 px-3 py-2">
+                          <div className="text-xs text-gray-400">{stat.label}</div>
+                          <div className="text-sm font-semibold text-white">{stat.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="pt-2 border-t border-gray-800 space-y-1">
-                <div className="text-xs text-gray-500 font-medium uppercase tracking-wide px-1 pt-1">🧪 Simulation & Tests</div>
-                <button onClick={simulatePrevSeason} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-purple-400 hover:bg-purple-500/10 border border-purple-500/20 transition-colors">
-                  <Zap size={16} /> 1. Simuler saison précédente
+                <div className="text-xs text-gray-500 font-medium uppercase tracking-wide px-1 pt-1">Cycle de saison</div>
+                <button onClick={simulateSeasonFlow} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-purple-400 hover:bg-purple-500/10 border border-purple-500/20 transition-colors">
+                  <Zap size={16} /> 1. Simuler la saison active
                 </button>
-                <button onClick={simulateCurrentSeason} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-purple-400 hover:bg-purple-500/10 border border-purple-500/20 transition-colors">
-                  <Zap size={16} /> 2. Simuler saison en cours
+                <button onClick={advanceToNextSeason} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-cyan-400 hover:bg-cyan-500/10 border border-cyan-500/20 transition-colors">
+                  <RefreshCw size={16} /> 2. Créer la prochaine saison
                 </button>
-                <button onClick={simulatePlayoffs} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-yellow-400 hover:bg-yellow-500/10 border border-yellow-500/20 transition-colors">
+                <button onClick={simulatePlayoffs} disabled={!canSimulatePlayoffs} className={`w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${canSimulatePlayoffs ? 'text-yellow-400 hover:bg-yellow-500/10 border-yellow-500/20' : 'text-gray-600 border-gray-800 cursor-not-allowed opacity-70'}`}>
                   <Trophy size={16} /> 3. Simuler les éliminatoires
                 </button>
               </div>
-              <div className="pt-1 border-t border-gray-800">
+              <div className="pt-2 border-t border-gray-800 space-y-2">
+                <div className="text-xs text-red-300/80 font-medium uppercase tracking-wide px-1 pt-1">Actions sensibles</div>
                 <button onClick={handleReset} className="w-full flex items-center gap-2 justify-start px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors">
                   <AlertTriangle size={16} /> Réinitialiser la ligue
                 </button>
               </div>
             </div>
           </div>
+          <AdminActivityPanel activityLogs={activityLogs} />
           {/* Season lifecycle */}
           <div className="card col-span-1 sm:col-span-2">
             <h3 className="section-title mb-3 flex items-center gap-2"><Trophy size={15} className="text-yellow-400" /> Saison & Éliminatoires</h3>
@@ -541,10 +949,22 @@ export default function Admin() {
                   ) : null;
                 })()}
 
+                {activeSeason.status === 'active' && matches.filter(m => m.season_id === activeSeason.id && !m.is_playoff).length === 0 && (
+                  <label className="btn-secondary w-full justify-center cursor-pointer">
+                    <Upload size={15} /> Importer un calendrier CSV
+                    <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleScheduleImportFile} />
+                  </label>
+                )}
+
                 {activeSeason.status === 'active' && (
-                  <button onClick={startPlayoffs} disabled={playoffStarting} className="btn-primary w-full justify-center">
-                    <Trophy size={15} /> {playoffStarting ? 'Démarrage...' : 'Démarrer les séries éliminatoires'}
-                  </button>
+                  <div className="space-y-2">
+                    <div className={`rounded-lg border px-3 py-2 text-sm ${canStartPlayoffs ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200' : 'border-yellow-500/20 bg-yellow-500/10 text-yellow-200'}`}>
+                      {playoffReadinessLabel}
+                    </div>
+                    <button onClick={startPlayoffs} disabled={playoffStarting || !canStartPlayoffs} className={`w-full justify-center ${canStartPlayoffs ? 'btn-primary' : 'btn-secondary opacity-60 cursor-not-allowed'}`}>
+                      <Trophy size={15} /> {playoffStarting ? 'Démarrage...' : 'Démarrer les séries éliminatoires'}
+                    </button>
+                  </div>
                 )}
 
                 {activeSeason.status === 'playoffs' && (
@@ -806,47 +1226,93 @@ export default function Admin() {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
 
-      {showUserModal && <UserModal players={players} teams={teams} onClose={() => setShowUserModal(false)} onSave={() => { setShowUserModal(false); api.get('/auth/users').then(res => setUsers(res.data)).catch(() => {}); }} />}
-      {showMatchModal && <ScheduleMatchModal teams={teams} seasons={seasons} onClose={() => setShowMatchModal(false)} onSave={() => { setShowMatchModal(false); load(); }} />}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {teams.map(t => {
+              const teamPlayers = players
+                .filter(p => p.team_id === t.id && p.status === 'active')
+                .sort((a, b) => a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name));
 
-      {/* CSV Preview Modal */}
-      {csvPreview && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setCsvPreview(null)}>
-          <div className="modal max-w-2xl w-full">
-            <div className="modal-header">
-              <h3 className="text-lg font-bold text-white">Confirmer l'importation CSV</h3>
-              <button onClick={() => setCsvPreview(null)} className="text-gray-500 hover:text-white"><X size={20} /></button>
-            </div>
-            <div className="modal-body max-h-[60vh] overflow-y-auto space-y-4">
-              <p className="text-sm text-gray-400">
-                <span className="font-semibold text-white">{csvPreview.assignments.length} joueurs</span> détectés dans le fichier.
-                Vérifiez les assignations ci-dessous avant d'appliquer.
-              </p>
-              {Object.entries(csvPreview.grouped).map(([team, players]) => (
-                <div key={team}>
-                  <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">{team} — {players.length} joueurs</div>
-                  <div className="grid grid-cols-2 gap-1">
-                    {players.map((p, i) => (
-                      <div key={i} className="text-sm text-gray-300 bg-gray-800/50 rounded px-2 py-1">
-                        {p.first_name} {p.last_name}
+              return (
+                <div key={`jersey-${t.id}`} className="card space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: t.color }} />
+                    <h3 className="section-title !mb-0">{t.name}</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {teamPlayers.length === 0 && (
+                      <div className="text-sm text-gray-500">Aucun joueur assigné</div>
+                    )}
+                    {teamPlayers.map(player => (
+                      <div key={player.id} className="flex items-center gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-3 py-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm text-white truncate">{player.first_name} {player.last_name}</div>
+                          <div className="text-xs text-gray-500">{player.position || 'Joueur'}</div>
+                        </div>
+                        <input
+                          className="input w-20 text-center"
+                          inputMode="numeric"
+                          placeholder="1-99"
+                          value={jerseyNumbers[player.id] ?? ''}
+                          onChange={e => updateJerseyDraft(player.id, e.target.value)}
+                          onBlur={() => saveJerseyNumber(player)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => saveJerseyNumber(player)}
+                          disabled={savingJerseyId === player.id}
+                          className="btn-secondary py-2 px-3"
+                        >
+                          {savingJerseyId === player.id ? '...' : 'OK'}
+                        </button>
                       </div>
                     ))}
                   </div>
                 </div>
-              ))}
-            </div>
-            <div className="modal-footer">
-              <button onClick={() => setCsvPreview(null)} className="btn-secondary">Annuler</button>
-              <button onClick={applyCSVImport} className="btn-primary">
-                <Check size={15} /> Appliquer les assignations
-              </button>
-            </div>
+              );
+            })}
           </div>
         </div>
       )}
+
+      <AdminPasswordModal
+        config={protectedAction}
+        password={adminPassword}
+        setPassword={setAdminPassword}
+        submitting={submittingProtectedAction}
+        onClose={closeProtectedAction}
+        onConfirm={executeProtectedAction}
+      />
+      <ConfirmActionModal
+        config={confirmAction}
+        submitting={submittingConfirmAction}
+        onClose={closeConfirmAction}
+        onConfirm={runConfirmAction}
+      />
+
+      {showUserModal && <UserModal players={players} teams={teams} onClose={() => setShowUserModal(false)} onSave={() => { setShowUserModal(false); api.get('/auth/users').then(res => setUsers(res.data)).catch(() => {}); }} />}
+      {showMatchModal && <ScheduleMatchModal teams={teams} seasons={seasons} onClose={() => setShowMatchModal(false)} onSave={() => { setShowMatchModal(false); load(); }} />}
+      <AdminSetupModal
+        needsSetup={needsSetup}
+        currentUser={currentUser}
+        bootstrap={bootstrap}
+        activeSeason={activeSeason}
+        downloadRosterTemplate={downloadRosterTemplate}
+        downloadScheduleTemplate={downloadScheduleTemplate}
+        handleRosterImportFile={handleRosterImportFile}
+        handleScheduleImportFile={handleScheduleImportFile}
+      />
+      <CsvPreviewModal
+        csvPreview={csvPreview}
+        setCsvPreview={setCsvPreview}
+        applyCSVImport={applyCSVImport}
+      />
+      <SchedulePreviewModal
+        schedulePreview={schedulePreview}
+        setSchedulePreview={setSchedulePreview}
+        activeSeason={activeSeason}
+        applyScheduleImport={applyScheduleImport}
+      />
     </div>
   );
 }

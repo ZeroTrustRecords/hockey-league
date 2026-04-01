@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getDB } = require('../db');
 const { authenticate, requireAdmin } = require('../middleware/auth');
+const { logAudit } = require('../lib/auditLog');
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,170 @@ function archiveSeasonStats(db, seasonId) {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(player.id, seasonId, player.team_id, stats.gp, stats.goals||0, stats.assists||0, (stats.goals||0)+(stats.assists||0));
   }
+}
+
+function isRegularSeasonReadyForPlayoffs(counts) {
+  return Boolean(
+    counts &&
+    counts.total_games > 0 &&
+    Number(counts.scheduled_games || 0) === 0 &&
+    Number(counts.pending_validation_games || 0) === 0
+  );
+}
+
+function getRegularSeasonCounts(db, seasonId) {
+  return db.prepare(`
+    SELECT
+      COUNT(*) AS total_games,
+      SUM(CASE WHEN status = 'scheduled' THEN 1 ELSE 0 END) AS scheduled_games,
+      SUM(CASE WHEN status = 'completed' AND validated = 0 THEN 1 ELSE 0 END) AS pending_validation_games
+    FROM matches
+    WHERE season_id = ? AND is_playoff = 0
+  `).get(seasonId);
+}
+
+function buildPreviewSeries(standings) {
+  if (!standings || standings.length < 6) return [];
+  const seeds = standings.slice(0, 6);
+
+  return [
+    {
+      id: 'preview-r1-s1',
+      round: 1,
+      series_number: 1,
+      best_of: 1,
+      status: 'preview',
+      wins1: 0,
+      wins2: 0,
+      winner_id: null,
+      team1_id: seeds[0].team_id,
+      team1_name: seeds[0].team_name,
+      team1_color: seeds[0].team_color,
+      team2_id: seeds[1].team_id,
+      team2_name: seeds[1].team_name,
+      team2_color: seeds[1].team_color,
+      games: [],
+    },
+    {
+      id: 'preview-r1-s2',
+      round: 1,
+      series_number: 2,
+      best_of: 1,
+      status: 'preview',
+      wins1: 0,
+      wins2: 0,
+      winner_id: null,
+      team1_id: seeds[2].team_id,
+      team1_name: seeds[2].team_name,
+      team1_color: seeds[2].team_color,
+      team2_id: seeds[5].team_id,
+      team2_name: seeds[5].team_name,
+      team2_color: seeds[5].team_color,
+      games: [],
+    },
+    {
+      id: 'preview-r1-s3',
+      round: 1,
+      series_number: 3,
+      best_of: 1,
+      status: 'preview',
+      wins1: 0,
+      wins2: 0,
+      winner_id: null,
+      team1_id: seeds[3].team_id,
+      team1_name: seeds[3].team_name,
+      team1_color: seeds[3].team_color,
+      team2_id: seeds[4].team_id,
+      team2_name: seeds[4].team_name,
+      team2_color: seeds[4].team_color,
+      games: [],
+    },
+    {
+      id: 'preview-r2-s1',
+      round: 2,
+      series_number: 1,
+      best_of: 1,
+      status: 'pending',
+      wins1: 0,
+      wins2: 0,
+      winner_id: null,
+      team1_id: null,
+      team1_name: null,
+      team1_color: null,
+      team2_id: null,
+      team2_name: null,
+      team2_color: null,
+      games: [],
+    },
+    {
+      id: 'preview-r2-s2',
+      round: 2,
+      series_number: 2,
+      best_of: 1,
+      status: 'pending',
+      wins1: 0,
+      wins2: 0,
+      winner_id: null,
+      team1_id: null,
+      team1_name: null,
+      team1_color: null,
+      team2_id: null,
+      team2_name: null,
+      team2_color: null,
+      games: [],
+    },
+    {
+      id: 'preview-r3-s1',
+      round: 3,
+      series_number: 1,
+      best_of: 1,
+      status: 'pending',
+      wins1: 0,
+      wins2: 0,
+      winner_id: null,
+      team1_id: null,
+      team1_name: null,
+      team1_color: null,
+      team2_id: null,
+      team2_name: null,
+      team2_color: null,
+      games: [],
+    },
+    {
+      id: 'preview-r3-s2',
+      round: 3,
+      series_number: 2,
+      best_of: 1,
+      status: 'pending',
+      wins1: 0,
+      wins2: 0,
+      winner_id: null,
+      team1_id: null,
+      team1_name: null,
+      team1_color: null,
+      team2_id: null,
+      team2_name: null,
+      team2_color: null,
+      games: [],
+    },
+    {
+      id: 'preview-r4-s1',
+      round: 4,
+      series_number: 1,
+      best_of: 3,
+      status: 'pending',
+      wins1: 0,
+      wins2: 0,
+      winner_id: null,
+      team1_id: null,
+      team1_name: null,
+      team1_color: null,
+      team2_id: null,
+      team2_name: null,
+      team2_color: null,
+      games: [],
+    },
+  ];
 }
 
 /**
@@ -144,8 +309,23 @@ router.get('/season/:seasonId', (req, res) => {
     `).all(s.id);
     return { ...s, games };
   });
+  if (seriesWithGames.length > 0) {
+    return res.json({ season, series: seriesWithGames, is_preview: false, playoffs_coming_soon: false });
+  }
 
-  res.json({ season, series: seriesWithGames });
+  const regularSeasonCounts = getRegularSeasonCounts(db, seasonId);
+  const readyForPlayoffs = season.status === 'active' && isRegularSeasonReadyForPlayoffs(regularSeasonCounts);
+  if (!readyForPlayoffs) {
+    return res.json({ season, series: [], is_preview: false, playoffs_coming_soon: false });
+  }
+
+  const previewSeries = buildPreviewSeries(computeStandings(db, seasonId));
+  return res.json({
+    season,
+    series: previewSeries,
+    is_preview: true,
+    playoffs_coming_soon: true,
+  });
 });
 
 // POST /playoffs/season/:seasonId/start
@@ -157,6 +337,18 @@ router.post('/season/:seasonId/start', authenticate, requireAdmin, (req, res) =>
   if (!season) return res.status(404).json({ error: 'Saison introuvable' });
   if (season.status === 'playoffs') return res.status(400).json({ error: 'Séries déjà démarrées' });
   if (season.status === 'completed') return res.status(400).json({ error: 'Saison terminée' });
+
+  const regularSeasonCounts = getRegularSeasonCounts(db, seasonId);
+
+  if (!regularSeasonCounts.total_games) {
+    return res.status(400).json({ error: 'Aucun match de saison reguliere n est disponible pour demarrer les series' });
+  }
+
+  if (!isRegularSeasonReadyForPlayoffs(regularSeasonCounts)) {
+    return res.status(400).json({
+      error: 'La saison reguliere doit etre completement jouee et validee avant de demarrer les series',
+    });
+  }
 
   const standings = computeStandings(db, seasonId);
   if (standings.length < 6) return res.status(400).json({ error: 'Il faut au moins 6 équipes classées pour démarrer les séries' });
@@ -226,6 +418,15 @@ router.post('/season/:seasonId/start', authenticate, requireAdmin, (req, res) =>
   scheduleGame1(db, id2, 9);
   scheduleGame1(db, id3, 11);
 
+  logAudit(db, {
+    user_id: req.user.id,
+    username: req.user.username,
+    action: 'playoffs.started',
+    entity_type: 'season',
+    entity_id: seasonId,
+    details: { seeds: seeds.map(seed => ({ team_id: seed.team_id, pts: seed.pts })) },
+  });
+
   res.json({ message: 'Séries éliminatoires démarrées — nouveau format 6 équipes' });
 });
 
@@ -253,4 +454,5 @@ router.post('/series/:seriesId/game', authenticate, requireAdmin, (req, res) => 
 });
 
 router.recalcSeries = recalcSeries;
+router.isRegularSeasonReadyForPlayoffs = isRegularSeasonReadyForPlayoffs;
 module.exports = router;

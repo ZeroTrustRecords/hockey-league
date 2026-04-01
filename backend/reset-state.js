@@ -1,70 +1,39 @@
-/**
- * reset-state.js
- * Resets the app to a clean baseline state when explicitly enabled.
- *
- * PRESERVED:  teams, players (with team assignments), users,
- *             completed seasons with ALL their goals/matches (historical record)
- * RESET:      active season — goals cleared, matches → scheduled,
- *             playoff series, draft picks, messages, attendance
- */
-
-function shouldResetOnStartup() {
-  return process.env.RESET_ON_STARTUP === 'true';
-}
-
 function resetState(db) {
-  console.log('🔄  Resetting app to clean state...');
+  console.log('Resetting app to fresh startup state...');
 
   db.transaction(() => {
-    // Find the current active/playoff season (most recently created)
-    const activeSeason = db.prepare(`
-      SELECT id FROM seasons
-      WHERE status IN ('active', 'playoffs')
-      ORDER BY created_at DESC LIMIT 1
-    `).get();
-
-    if (activeSeason) {
-      // Clear goals only for the active season's matches
-      db.prepare(`
-        DELETE FROM goals
-        WHERE match_id IN (SELECT id FROM matches WHERE season_id = ?)
-      `).run(activeSeason.id);
-
-      // Reset active season matches to scheduled
-      db.prepare(`
-        UPDATE matches
-        SET status     = 'scheduled',
-            home_score = 0,
-            away_score = 0,
-            validated  = 0,
-            mvp_id     = NULL,
-            notes      = NULL
-        WHERE season_id = ?
-      `).run(activeSeason.id);
-
-      // Reset season back to active (not playoffs) with no champion
-      db.prepare(`
-        UPDATE seasons SET status = 'active', champion_team_id = NULL WHERE id = ?
-      `).run(activeSeason.id);
-
-      // Clear playoff series for active season only
-      db.prepare('DELETE FROM playoff_series WHERE season_id = ?').run(activeSeason.id);
-    }
-
-    // Clear draft picks and reset settings (team assignments on players are kept)
-    db.prepare('DELETE FROM draft_picks').run();
-    db.prepare(`
-      UPDATE draft_settings SET current_round = 1, current_pick = 1, status = 'completed'
-    `).run();
-
-    // Clear attendance and messages (not season-specific)
     db.prepare('DELETE FROM attendance').run();
     db.prepare('DELETE FROM message_reads').run();
     db.prepare('DELETE FROM messages').run();
-
+    db.prepare('DELETE FROM goals').run();
+    db.prepare('DELETE FROM matches').run();
+    db.prepare('DELETE FROM playoff_series').run();
+    db.prepare('DELETE FROM draft_picks').run();
+    db.prepare('DELETE FROM draft_settings').run();
+    db.prepare('DELETE FROM player_season_stats').run();
+    db.prepare('DELETE FROM team_staff').run();
+    db.prepare("UPDATE users SET role = CASE username WHEN 'admin' THEN 'admin' WHEN 'marqueur' THEN 'marqueur' ELSE role END, player_id = NULL, team_id = NULL WHERE username IN ('admin', 'marqueur')").run();
+    db.prepare("DELETE FROM users WHERE username NOT IN ('admin', 'marqueur')").run();
+    db.prepare('DELETE FROM players').run();
+    db.prepare('DELETE FROM teams').run();
+    db.prepare('DELETE FROM seasons').run();
   })();
 
-  console.log('✅  Clean state restored.');
+  console.log('Fresh startup state restored.');
+}
+
+function shouldResetOnStartup() {
+  const mode = (process.env.APP_STARTUP_MODE || process.env.LEAGUE_STARTUP_MODE || 'persistent')
+    .trim()
+    .toLowerCase();
+
+  if (process.env.RESET_ON_STARTUP != null) {
+    return ['1', 'true', 'yes', 'on'].includes(
+      String(process.env.RESET_ON_STARTUP).trim().toLowerCase()
+    );
+  }
+
+  return mode !== 'persistent';
 }
 
 module.exports = { resetState, shouldResetOnStartup };

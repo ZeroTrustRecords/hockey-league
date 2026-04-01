@@ -1,16 +1,26 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, 'hockey_league.db');
 let db;
+
+function resolveDbPath() {
+  return process.env.HOCKEY_DB_PATH || process.env.DB_PATH || path.join(__dirname, 'hockey_league.db');
+}
 
 function getDB() {
   if (!db) {
-    db = new Database(DB_PATH);
+    db = new Database(resolveDbPath());
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
   }
   return db;
+}
+
+function closeDB() {
+  if (db) {
+    db.close();
+    db = null;
+  }
 }
 
 function initDB() {
@@ -167,6 +177,18 @@ function initDB() {
       FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      username TEXT,
+      action TEXT NOT NULL,
+      entity_type TEXT,
+      entity_id TEXT,
+      details TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
     CREATE TABLE IF NOT EXISTS draft_settings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       season_id INTEGER NOT NULL UNIQUE,
@@ -270,6 +292,8 @@ function initDB() {
     CREATE INDEX IF NOT EXISTS idx_draft_picks_season ON draft_picks(season_id);
     CREATE INDEX IF NOT EXISTS idx_draft_picks_team ON draft_picks(team_id);
     CREATE INDEX IF NOT EXISTS idx_draft_picks_player ON draft_picks(player_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
   `);
 
   // Migrations — safe to re-run, silently ignored if column already exists
@@ -286,4 +310,4 @@ function initDB() {
   return db;
 }
 
-module.exports = { getDB, initDB };
+module.exports = { getDB, initDB, closeDB };

@@ -1,272 +1,500 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import api from '../api/client';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Trophy, Users, Zap, FileText, Target, TrendingUp, Calendar, MessageSquare, CheckCircle, Star, ArrowRight, CalendarDays } from 'lucide-react';
+import {
+  ArrowRight,
+  CalendarDays,
+  CheckCircle,
+  MessageSquare,
+  Shield,
+  Star,
+  Target,
+  TrendingUp,
+  Trophy,
+  Users,
+  Zap,
+} from 'lucide-react';
+import api from '../api/client';
 
-// ─── Stat card ────────────────────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, color = 'blue' }) {
-  const colors = { blue: 'text-blue-400', green: 'text-emerald-400', yellow: 'text-yellow-400', purple: 'text-purple-400' };
+  const colors = {
+    blue: 'text-blue-400',
+    green: 'text-emerald-400',
+    yellow: 'text-yellow-400',
+    purple: 'text-purple-400',
+  };
+
   return (
-    <div className="bg-gray-900 rounded-2xl p-3 sm:p-5 border border-gray-800">
-      <Icon size={18} className={`${colors[color]} mb-2 sm:mb-3`} />
+    <div className="bg-gray-900 rounded-2xl p-4 sm:p-5 border border-gray-800">
+      <Icon size={18} className={`${colors[color]} mb-3`} />
       <div className="text-2xl sm:text-3xl font-black text-white">{value}</div>
       <div className="text-xs text-gray-500 mt-1">{label}</div>
     </div>
   );
 }
 
-// ─── Match row (results + upcoming) ───────────────────────────────────────────
 function MatchRow({ match, showResult }) {
   const date = parseISO(match.date);
-  const isPlayoff = !!match.is_playoff;
+  const isPlayoff = Boolean(match.is_playoff);
+
   return (
-    <div className={`py-2.5 border-b last:border-0 ${isPlayoff ? 'border-yellow-500/20' : 'border-gray-800/60'}`}>
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <span className="text-[10px] sm:text-xs text-gray-600 truncate">{format(date, 'EEE d MMM · HH:mm', { locale: fr })}</span>
+    <div className={`py-3 border-b last:border-0 ${isPlayoff ? 'border-yellow-500/20' : 'border-gray-800/60'}`}>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[11px] sm:text-xs text-gray-500 truncate">
+          {format(date, "EEE d MMM '·' HH:mm", { locale: fr })}
+        </span>
         {isPlayoff && (
-          <span className="text-xs px-1.5 py-0.5 rounded font-bold bg-yellow-500/15 text-yellow-400 leading-none">🏆 Éliminatoires</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-yellow-500/15 text-yellow-400 leading-none">
+            Éliminatoires
+          </span>
         )}
       </div>
+
       <div className="flex items-center gap-2">
         <div className="flex-1 flex items-center gap-1.5 justify-end min-w-0">
-          <span className={`text-xs sm:text-sm font-medium truncate text-right ${isPlayoff ? 'text-yellow-100' : 'text-white'}`}>{match.home_team_name}</span>
+          <span className={`text-sm font-medium truncate text-right ${isPlayoff ? 'text-yellow-100' : 'text-white'}`}>
+            {match.home_team_name}
+          </span>
           <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: match.home_color }} />
         </div>
+
         {showResult ? (
-          <div className={`flex items-center gap-1 flex-shrink-0 rounded-lg px-2.5 py-1 ${isPlayoff ? 'bg-yellow-500/10 border border-yellow-500/20' : 'bg-gray-800'}`}>
+          <div className={`flex items-center gap-1 flex-shrink-0 rounded-lg px-3 py-1 ${isPlayoff ? 'bg-yellow-500/10 border border-yellow-500/20' : 'bg-gray-800'}`}>
             <span className="text-sm font-black text-white w-4 text-center">{match.home_score}</span>
-            <span className="text-gray-600 text-xs">—</span>
+            <span className="text-gray-600 text-xs">-</span>
             <span className="text-sm font-black text-white w-4 text-center">{match.away_score}</span>
           </div>
         ) : (
           <div className="flex-shrink-0 text-xs text-gray-600 font-medium w-8 text-center">vs</div>
         )}
+
         <div className="flex-1 flex items-center gap-1.5 min-w-0">
           <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: match.away_color }} />
-          <span className={`text-xs sm:text-sm truncate ${isPlayoff ? 'text-yellow-100/70' : 'text-gray-400'}`}>{match.away_team_name}</span>
+          <span className={`text-sm truncate ${isPlayoff ? 'text-yellow-100/80' : 'text-gray-400'}`}>
+            {match.away_team_name}
+          </span>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Leader list column ────────────────────────────────────────────────────────
-function LeaderList({ title, players, valueKey, valueLabel, icon: Icon }) {
+function LeaderList({ title, subtitle, players, valueKey, valueLabel, icon: Icon }) {
   const max = players[0]?.[valueKey] || 1;
+
   return (
-    <div className="bg-gray-900 rounded-2xl p-4 sm:p-5 border border-gray-800">
-      <div className="flex items-center gap-2 mb-3 sm:mb-4">
+    <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
+      <div className="flex items-center gap-2 mb-1">
         <Icon size={15} className="text-gray-500" />
         <span className="text-sm font-semibold text-white">{title}</span>
       </div>
+      <p className="text-xs text-gray-500 mb-4">{subtitle}</p>
+
       <div className="space-y-3">
-        {players.slice(0, 5).map((p, i) => (
-          <Link to={`/players/${p.id}`} key={p.id} className="block group">
+        {players.slice(0, 5).map((player, index) => (
+          <Link to={`/players/${player.id}`} key={player.id} className="block group">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs text-gray-600 w-4 text-right">{i + 1}</span>
-              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.team_color }} />
+              <span className="text-xs text-gray-600 w-4 text-right">{index + 1}</span>
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: player.team_color }} />
               <span className="text-sm text-gray-300 group-hover:text-white transition-colors flex-1 truncate">
-                {p.first_name} {p.last_name}
+                {player.first_name} {player.last_name}
               </span>
               <span className="text-sm font-bold text-white">
-                {p[valueKey]} <span className="text-gray-600 font-normal text-xs">{valueLabel}</span>
+                {player[valueKey]} <span className="text-gray-600 font-normal text-xs">{valueLabel}</span>
               </span>
             </div>
             <div className="ml-6 h-1 bg-gray-800 rounded-full overflow-hidden">
-              <div className="h-full bg-gray-500 rounded-full group-hover:bg-gray-400 transition-colors"
-                style={{ width: `${(p[valueKey] / max) * 100}%` }} />
+              <div
+                className="h-full bg-gray-500 rounded-full group-hover:bg-gray-400 transition-colors"
+                style={{ width: `${(player[valueKey] / max) * 100}%` }}
+              />
             </div>
           </Link>
         ))}
-        {players.length === 0 && (
-          <p className="text-gray-600 text-sm text-center py-3">Aucune statistique</p>
-        )}
+
+        {players.length === 0 && <p className="text-gray-600 text-sm text-center py-3">Aucune statistique disponible</p>}
       </div>
     </div>
   );
 }
 
-// ─── Main component ────────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const { isAdmin, isMarqueur } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/dashboard').then(r => setData(r.data)).finally(() => setLoading(false));
+    api.get('/dashboard').then((response) => setData(response.data)).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="text-gray-600 text-sm">Chargement...</div>
-    </div>
-  );
-
   const {
-    upcoming = [], recentResults = [],
-    topScorers = [], topGoals = [], topAssists = [],
-    standings = [], announcements = [],
-    counts = {}, activeSeason,
+    upcoming = [],
+    recentResults = [],
+    topScorers = [],
+    topGoals = [],
+    topAssists = [],
+    standings = [],
+    announcements = [],
+    counts = {},
+    activeSeason,
+    playoffsComingSoon,
   } = data || {};
 
-  return (
-    <div className="space-y-6 max-w-5xl">
+  const featuredMatch = upcoming[0] || null;
+  const podium = standings.slice(0, 3);
+  const playoffPreviewSeeds = standings.slice(0, 6);
 
-      {/* Header */}
-      <div className="flex items-start justify-between">
+  const seasonLabel = useMemo(() => {
+    if (!activeSeason?.name) return 'Saison en cours';
+    if (activeSeason.status === 'playoffs') return `${activeSeason.name} · Éliminatoires en cours`;
+    if (activeSeason.status === 'completed') return `${activeSeason.name} · Saison terminée`;
+    return `${activeSeason.name} · Saison régulière`;
+  }, [activeSeason]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-600 text-sm">Chargement...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 max-w-6xl">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Ligue de Hockey</p>
-          <h1 className="text-2xl sm:text-4xl font-black text-white">Tableau de bord</h1>
-          <p className="text-gray-500 text-sm mt-2">{activeSeason?.name || 'Saison 2024-2025'}</p>
+          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Site officiel de la ligue</p>
+          <h1 className="text-3xl sm:text-5xl font-black text-white">LHMA</h1>
+          <p className="text-gray-400 text-sm sm:text-base mt-2 max-w-2xl">
+            Résultats, prochain rendez-vous, meneurs offensifs et état de la saison au même endroit.
+          </p>
+          <p className="text-xs text-gray-500 mt-3">{seasonLabel}</p>
         </div>
-        {(isAdmin || isMarqueur) && (
-          <Link to="/gamesheet" className="btn-primary hidden sm:flex mt-1">
-            <FileText size={15} /> Feuille de match
-          </Link>
-        )}
+
       </div>
 
-      {/* Champion banner */}
-      {activeSeason?.status === 'completed' && activeSeason?.champion_name && (
-        <Link to="/playoffs"
-          className="flex items-center gap-4 p-5 rounded-2xl border hover:opacity-90 transition-opacity"
-          style={{ borderColor: activeSeason.champion_color + '40', background: activeSeason.champion_color + '10' }}>
-          <span className="text-2xl">🏆</span>
-          <div>
-            <div className="font-black text-white text-lg">{activeSeason.champion_name}</div>
-            <div className="text-sm text-gray-400">Champions {activeSeason.name}</div>
+      <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-5">
+        <div className="rounded-3xl border border-gray-800 bg-gradient-to-br from-gray-900 via-gray-900 to-blue-950/40 overflow-hidden">
+          <div className="p-6 sm:p-7">
+            <div className="flex items-center gap-2 mb-3">
+              <CalendarDays size={16} className="text-blue-400" />
+              <span className="text-xs uppercase tracking-[0.25em] text-blue-300/80 font-semibold">Prochain rendez-vous</span>
+            </div>
+
+            {featuredMatch ? (
+              <>
+                <div className="text-sm text-gray-400 mb-5">
+                  {format(parseISO(featuredMatch.date), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })}
+                </div>
+
+                <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
+                  <div className="text-right">
+                    <div className="flex items-center justify-end gap-2 mb-2">
+                      <span className="text-xl sm:text-2xl font-black text-white">{featuredMatch.home_team_name}</span>
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: featuredMatch.home_color }} />
+                    </div>
+                    <p className="text-xs text-gray-500">Équipe locale</p>
+                  </div>
+
+                  <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-center">
+                    <div className="text-xs text-gray-500 uppercase tracking-[0.2em] mb-1">Match</div>
+                    <div className="text-2xl sm:text-3xl font-black text-white">vs</div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: featuredMatch.away_color }} />
+                      <span className="text-xl sm:text-2xl font-black text-white">{featuredMatch.away_team_name}</span>
+                    </div>
+                    <p className="text-xs text-gray-500">Équipe visiteuse</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 flex-wrap mt-6">
+                  <Link to="/schedule" className="btn-primary">
+                    Voir le calendrier
+                  </Link>
+                  <Link to="/standings" className="btn-secondary">
+                    Voir le classement
+                  </Link>
+                </div>
+              </>
+            ) : playoffsComingSoon ? (
+              <>
+                <div className="text-sm text-gray-400 mb-5">
+                  Le classement final est connu. Voici l'affiche initiale des eliminatoires a venir.
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[
+                    [playoffPreviewSeeds[0], playoffPreviewSeeds[1], 'Match 1', 1, 2],
+                    [playoffPreviewSeeds[2], playoffPreviewSeeds[5], 'Match 2', 3, 6],
+                    [playoffPreviewSeeds[3], playoffPreviewSeeds[4], 'Match 3', 4, 5],
+                  ].filter(([home, away]) => home && away).map(([home, away, label, homeSeed, awaySeed]) => (
+                    <Link
+                      key={label}
+                      to="/playoffs"
+                      className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 hover:bg-blue-500/10 transition-colors"
+                    >
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-blue-300/80 font-semibold mb-3">{label}</div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: home.team_color }} />
+                            <span className="text-sm font-semibold text-white truncate">{home.team_name}</span>
+                          </div>
+                          <span className="text-xs text-gray-500">#{homeSeed}</span>
+                        </div>
+                        <div className="flex items-center justify-center text-xs text-gray-600 uppercase tracking-widest">vs</div>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: away.team_color }} />
+                            <span className="text-sm font-semibold text-white truncate">{away.team_name}</span>
+                          </div>
+                          <span className="text-xs text-gray-500">#{awaySeed}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-3 flex-wrap mt-6">
+                  <Link to="/playoffs" className="btn-primary">
+                    Voir le tableau
+                  </Link>
+                  <Link to="/standings" className="btn-secondary">
+                    Voir le classement final
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <div className="py-8">
+                <div className="text-lg font-bold text-white mb-2">Aucun match à l’horaire pour le moment</div>
+                <p className="text-sm text-gray-500">Le prochain rendez-vous apparaîtra ici dès qu’une rencontre sera planifiée.</p>
+              </div>
+            )}
           </div>
-          <ArrowRight size={16} className="text-gray-500 ml-auto" />
-        </Link>
-      )}
+        </div>
 
-      {/* Playoffs banner */}
-      {activeSeason?.status === 'playoffs' && (
-        <Link to="/playoffs" className="flex items-center gap-3 p-4 rounded-2xl border border-yellow-500/20 bg-yellow-500/5 hover:bg-yellow-500/8 transition-colors">
-          <Star size={16} className="text-yellow-500 flex-shrink-0" />
-          <div className="flex-1 text-sm">
-            <span className="font-semibold text-white">Séries éliminatoires en cours</span>
-            <span className="text-gray-500 ml-2">· {activeSeason.name}</span>
+        <div className="bg-gray-900 rounded-3xl border border-gray-800 p-5 sm:p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <Trophy size={16} className="text-yellow-400" />
+            <h2 className="text-lg font-bold text-white">Portrait de saison</h2>
           </div>
-          <ArrowRight size={15} className="text-gray-500" />
-        </Link>
-      )}
+          <p className="text-sm text-gray-500 mb-5">Le haut du classement et le contexte actuel de la ligue.</p>
 
-      {/* ── ROW 1: Classement + Derniers résultats + Prochains matchs ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr] gap-3 sm:gap-5">
+          {activeSeason?.status === 'completed' && activeSeason?.champion_name && (
+            <Link
+              to="/playoffs"
+              className="flex items-center gap-3 p-4 rounded-2xl border mb-4 hover:opacity-90 transition-opacity"
+              style={{ borderColor: `${activeSeason.champion_color}40`, background: `${activeSeason.champion_color}12` }}
+            >
+              <Trophy size={18} className="text-yellow-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <div className="font-black text-white truncate">{activeSeason.champion_name}</div>
+                <div className="text-xs text-gray-400">Champions {activeSeason.name}</div>
+              </div>
+              <ArrowRight size={16} className="text-gray-500 ml-auto" />
+            </Link>
+          )}
 
-        {/* Classement */}
+          {activeSeason?.status === 'playoffs' && (
+            <Link to="/playoffs" className="flex items-center gap-3 p-4 rounded-2xl border border-yellow-500/20 bg-yellow-500/5 mb-4 hover:bg-yellow-500/10 transition-colors">
+              <Star size={16} className="text-yellow-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <div className="font-semibold text-white">Les éliminatoires sont en cours</div>
+                <div className="text-xs text-gray-400">{activeSeason.name}</div>
+              </div>
+              <ArrowRight size={16} className="text-gray-500 ml-auto" />
+            </Link>
+          )}
+
+          {playoffsComingSoon && (
+            <Link to="/playoffs" className="flex items-center gap-3 p-4 rounded-2xl border border-blue-500/20 bg-blue-500/5 mb-4 hover:bg-blue-500/10 transition-colors">
+              <Trophy size={16} className="text-blue-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <div className="font-semibold text-white">Les eliminatoires arrivent bientot</div>
+                <div className="text-xs text-gray-400">{playoffsComingSoon.message}</div>
+              </div>
+              <ArrowRight size={16} className="text-gray-500 ml-auto" />
+            </Link>
+          )}
+
+          <div className="space-y-3">
+            {podium.length === 0 ? (
+              <p className="text-sm text-gray-600 py-6 text-center">Le classement apparaîtra ici après les premiers matchs.</p>
+            ) : (
+              podium.map((team, index) => (
+                <Link
+                  to={`/teams/${team.team_id}`}
+                  key={team.team_id}
+                  className="flex items-center gap-3 p-3 rounded-2xl bg-gray-800/60 hover:bg-gray-800 transition-colors"
+                >
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm"
+                    style={{ color: team.team_color, backgroundColor: `${team.team_color}22`, border: `1px solid ${team.team_color}` }}
+                  >
+                    {index + 1}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: team.team_color }} />
+                      <span className="font-semibold text-white truncate">{team.team_name}</span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {team.w} V · {team.l} D · Diff {team.diff > 0 ? '+' : ''}{team.diff}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xl font-black text-white">{team.pts}</div>
+                    <div className="text-[10px] text-gray-600 uppercase tracking-wider">PTS</div>
+                  </div>
+                </Link>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard icon={Users} label="Joueurs actifs" value={counts.players || 0} color="blue" />
+        <StatCard icon={Trophy} label="Matchs validés" value={counts.matches_played || 0} color="green" />
+        <StatCard icon={Target} label="Buts inscrits" value={counts.goals_total || 0} color="yellow" />
+        <StatCard icon={Zap} label="Équipes engagées" value={counts.teams || 0} color="purple" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr_1fr] gap-5">
         <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-            <div className="flex items-center gap-2">
-              <Trophy size={15} className="text-gray-500" />
-              <span className="text-sm font-semibold text-white">Classement</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <Shield size={15} className="text-gray-500" />
+                <span className="text-sm font-semibold text-white">Classement complet</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Une lecture rapide de la course au sommet.</p>
             </div>
-            <Link to="/standings" className="text-xs text-gray-500 hover:text-white transition-colors">Voir complet →</Link>
+            <Link to="/standings" className="text-xs text-gray-500 hover:text-white transition-colors">
+              Voir la page
+            </Link>
           </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[320px]">
               <thead>
                 <tr className="border-b border-gray-800">
-                  <th className="text-left py-2.5 px-5 text-xs text-gray-600 font-medium w-7">#</th>
-                  <th className="text-left py-2.5 text-xs text-gray-600 font-medium">Équipe</th>
-                  <th className="text-center py-2.5 text-xs text-gray-600 font-medium w-9">PJ</th>
-                  <th className="hidden sm:table-cell text-center py-2.5 text-xs text-gray-600 font-medium w-9">V</th>
-                  <th className="hidden sm:table-cell text-center py-2.5 text-xs text-gray-600 font-medium w-9">D</th>
-                  <th className="text-center py-2.5 pr-5 text-xs text-gray-500 font-semibold w-11">PTS</th>
+                  <th className="text-left py-3 px-5 text-xs text-gray-600 font-medium w-7">#</th>
+                  <th className="text-left py-3 text-xs text-gray-600 font-medium">Équipe</th>
+                  <th className="text-center py-3 text-xs text-gray-600 font-medium w-9">PJ</th>
+                  <th className="hidden sm:table-cell text-center py-3 text-xs text-gray-600 font-medium w-9">V</th>
+                  <th className="hidden sm:table-cell text-center py-3 text-xs text-gray-600 font-medium w-9">D</th>
+                  <th className="text-center py-3 pr-5 text-xs text-gray-500 font-semibold w-11">PTS</th>
                 </tr>
               </thead>
               <tbody>
-                {standings.map((s, i) => (
-                  <tr key={s.team_id} className="border-b border-gray-800/40 hover:bg-gray-800/30 transition-colors last:border-0">
-                    <td className="py-2.5 px-5 text-gray-600 text-xs">{i + 1}</td>
-                    <td className="py-2.5">
+                {standings.map((standing, index) => (
+                  <tr key={standing.team_id} className="border-b border-gray-800/40 hover:bg-gray-800/30 transition-colors last:border-0">
+                    <td className="py-3 px-5 text-gray-600 text-xs">{index + 1}</td>
+                    <td className="py-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.team_color }} />
-                        <Link to={`/teams/${s.team_id}`} className="text-gray-300 hover:text-white transition-colors font-medium text-sm">{s.team_name}</Link>
+                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: standing.team_color }} />
+                        <Link to={`/teams/${standing.team_id}`} className="text-gray-300 hover:text-white transition-colors font-medium text-sm">
+                          {standing.team_name}
+                        </Link>
                       </div>
                     </td>
-                    <td className="py-2.5 text-center text-gray-600 text-xs">{s.gp}</td>
-                    <td className="hidden sm:table-cell py-2.5 text-center text-gray-300 text-sm">{s.w}</td>
-                    <td className="hidden sm:table-cell py-2.5 text-center text-gray-500 text-sm">{s.l}</td>
-                    <td className="py-2.5 pr-5 text-center font-black text-white">{s.pts}</td>
+                    <td className="py-3 text-center text-gray-600 text-xs">{standing.gp}</td>
+                    <td className="hidden sm:table-cell py-3 text-center text-gray-300 text-sm">{standing.w}</td>
+                    <td className="hidden sm:table-cell py-3 text-center text-gray-500 text-sm">{standing.l}</td>
+                    <td className="py-3 pr-5 text-center font-black text-white">{standing.pts}</td>
                   </tr>
                 ))}
+
+                {standings.length === 0 && (
+                  <tr>
+                    <td colSpan="6" className="py-8 text-center text-sm text-gray-600">
+                      Le classement sera visible dès que des matchs seront validés.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Derniers résultats */}
         <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle size={15} className="text-gray-500" />
-              <span className="text-sm font-semibold text-white">Derniers résultats</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <CheckCircle size={15} className="text-gray-500" />
+                <span className="text-sm font-semibold text-white">Derniers résultats</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Ce qui vient de tomber.</p>
             </div>
-            <Link to="/schedule?status=completed" className="text-xs text-gray-500 hover:text-white transition-colors">Tous →</Link>
+            <Link to="/schedule?status=completed" className="text-xs text-gray-500 hover:text-white transition-colors">
+              Tout voir
+            </Link>
           </div>
-          {recentResults.length === 0
-            ? <p className="text-gray-600 text-sm py-4 text-center">Aucun résultat</p>
-            : recentResults.map(m => <MatchRow key={m.id} match={m} showResult={true} />)}
+          {recentResults.length === 0 ? (
+            <p className="text-gray-600 text-sm py-4 text-center">Aucun résultat pour le moment</p>
+          ) : (
+            recentResults.map((match) => <MatchRow key={match.id} match={match} showResult />)
+          )}
         </div>
 
-        {/* Prochains matchs */}
         <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <CalendarDays size={15} className="text-gray-500" />
-              <span className="text-sm font-semibold text-white">Match à venir</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <CalendarDays size={15} className="text-gray-500" />
+                <span className="text-sm font-semibold text-white">À l’horaire</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Les prochains rendez-vous à ne pas manquer.</p>
             </div>
-            <Link to="/schedule" className="text-xs text-gray-500 hover:text-white transition-colors">Calendrier →</Link>
+            <Link to="/schedule" className="text-xs text-gray-500 hover:text-white transition-colors">
+              Calendrier
+            </Link>
           </div>
-          {upcoming.length === 0
-            ? <p className="text-gray-600 text-sm py-4 text-center">Aucun match à venir</p>
-            : upcoming.map(m => <MatchRow key={m.id} match={m} showResult={false} />)}
+          {upcoming.length === 0 ? (
+            <p className="text-gray-600 text-sm py-4 text-center">Aucun match à venir</p>
+          ) : (
+            upcoming.map((match) => <MatchRow key={match.id} match={match} showResult={false} />)
+          )}
         </div>
       </div>
 
-      {/* ── ROW 2: Leaders PTS + Buts + Passes ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <LeaderList title="Leaders PTS"   players={topScorers} valueKey="points"  valueLabel="pts"  icon={TrendingUp} />
-        <LeaderList title="Leaders Buts"  players={topGoals}   valueKey="goals"   valueLabel="B"    icon={Target} />
-        <LeaderList title="Leaders Passes" players={topAssists} valueKey="assists" valueLabel="A"    icon={Star} />
+        <LeaderList title="Meneurs au total" subtitle="Les meilleurs pointeurs du moment." players={topScorers} valueKey="points" valueLabel="pts" icon={TrendingUp} />
+        <LeaderList title="Meneurs au but" subtitle="Les meilleurs finisseurs." players={topGoals} valueKey="goals" valueLabel="B" icon={Target} />
+        <LeaderList title="Meneurs à la passe" subtitle="Les créateurs de jeu en tête." players={topAssists} valueKey="assists" valueLabel="A" icon={Star} />
       </div>
 
-      {/* ── ROW 3: Messages ── */}
       <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <MessageSquare size={15} className="text-gray-500" />
-            <span className="text-sm font-semibold text-white">Messages</span>
+          <div>
+            <div className="flex items-center gap-2">
+              <MessageSquare size={15} className="text-gray-500" />
+              <span className="text-sm font-semibold text-white">Vie de ligue</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Les annonces et messages importants.</p>
           </div>
-          <Link to="/messages" className="text-xs text-gray-500 hover:text-white transition-colors">Voir tout →</Link>
+          <Link to="/messages" className="text-xs text-gray-500 hover:text-white transition-colors">
+            Voir tout
+          </Link>
         </div>
+
         {announcements.length === 0 ? (
-          <p className="text-gray-600 text-sm py-3 text-center">Aucun message</p>
+          <p className="text-gray-600 text-sm py-3 text-center">Aucun message publié.</p>
         ) : (
           <div className="divide-y divide-gray-800/60">
-            {announcements.slice(0, 4).map(ann => (
-              <div key={ann.id} className="py-3 first:pt-0 last:pb-0">
-                {ann.title && <div className="text-sm font-semibold text-white mb-0.5">{ann.title}</div>}
-                <div className="text-xs text-gray-500">{ann.content}</div>
+            {announcements.slice(0, 4).map((announcement) => (
+              <div key={announcement.id} className="py-3 first:pt-0 last:pb-0">
+                {announcement.title && <div className="text-sm font-semibold text-white mb-1">{announcement.title}</div>}
+                <div className="text-sm text-gray-400">{announcement.content}</div>
               </div>
             ))}
           </div>
         )}
       </div>
-
-      {/* ── ROW 4: Stat cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Users}   label="Joueurs actifs"  value={counts.players || 0}       color="blue" />
-        <StatCard icon={Trophy}  label="Matchs joués"    value={counts.matches_played || 0} color="green" />
-        <StatCard icon={Target}  label="Buts marqués"    value={counts.goals_total || 0}    color="yellow" />
-        <StatCard icon={Zap}     label="Équipes"          value={counts.teams || 0}           color="purple" />
-      </div>
-
     </div>
   );
 }

@@ -1,6 +1,11 @@
 node_modules/
 frontend/dist/
 backend/hockey_league.db
+backend/hockey_league.db-shm
+backend/hockey_league.db-wal
 backend/uploads/
+backend/logs/
+backend/backups/
 .env
 *.log
+test-results/

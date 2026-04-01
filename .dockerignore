@@ -1,0 +1,14 @@
+node_modules
+frontend/node_modules
+backend/node_modules
+frontend/dist
+backend/hockey_league.db
+backend/hockey_league.db-shm
+backend/hockey_league.db-wal
+backend/logs
+backend/backups
+test-results
+tests
+.git
+.env
+npm-debug.log

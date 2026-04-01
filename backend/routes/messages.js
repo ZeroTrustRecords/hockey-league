@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getDB } = require('../db');
-const { authenticate, requireAdmin, requireCaptainOrAdmin } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 
 // Get messages for current user
 router.get('/', authenticate, (req, res) => {
@@ -25,7 +25,10 @@ router.get('/', authenticate, (req, res) => {
   `;
   const params = [user.id, user.team_id || 0, user.id, user.id];
 
-  if (type) { query += ' AND m.type = ?'; params.push(type); }
+  if (type) {
+    query += ' AND m.type = ?';
+    params.push(type);
+  }
   query += ' ORDER BY m.created_at DESC LIMIT 50';
 
   res.json(db.prepare(query).all(...params));
@@ -53,14 +56,19 @@ router.post('/', authenticate, (req, res) => {
   const { type = 'global', team_id, recipient_id, title, content, is_announcement = 0 } = req.body;
   if (!content) return res.status(400).json({ error: 'Contenu requis' });
 
-  // Only admin can send global announcements
   if (is_announcement && req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Seul un admin peut créer des annonces' });
+    return res.status(403).json({ error: 'Seul un admin peut creer des annonces' });
   }
 
-  // Only captain/admin can send team messages
   if (type === 'team' && !['admin', 'captain'].includes(req.user.role)) {
-    return res.status(403).json({ error: 'Accès refusé' });
+    return res.status(403).json({ error: 'Acces refuse' });
+  }
+
+  if (type === 'team') {
+    if (!team_id) return res.status(400).json({ error: 'team_id requis pour un message d equipe' });
+    if (req.user.role === 'captain' && String(req.user.team_id) !== String(team_id)) {
+      return res.status(403).json({ error: 'Vous ne pouvez envoyer des messages qu a votre equipe' });
+    }
   }
 
   const db = getDB();
@@ -76,7 +84,7 @@ router.post('/', authenticate, (req, res) => {
 router.post('/:id/read', authenticate, (req, res) => {
   const db = getDB();
   db.prepare('INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)').run(req.params.id, req.user.id);
-  res.json({ message: 'Marqué comme lu' });
+  res.json({ message: 'Marque comme lu' });
 });
 
 // Mark all as read
@@ -94,9 +102,9 @@ router.post('/read-all', authenticate, (req, res) => {
   `).all(user.id, user.team_id || 0, user.id, user.id);
 
   const insert = db.prepare('INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)');
-  for (const m of messages) insert.run(m.id, user.id);
+  for (const message of messages) insert.run(message.id, user.id);
 
-  res.json({ message: 'Tous marqués comme lus' });
+  res.json({ message: 'Tous marques comme lus' });
 });
 
 router.delete('/:id', authenticate, (req, res) => {
@@ -104,10 +112,15 @@ router.delete('/:id', authenticate, (req, res) => {
   const msg = db.prepare('SELECT * FROM messages WHERE id = ?').get(req.params.id);
   if (!msg) return res.status(404).json({ error: 'Message introuvable' });
   if (msg.sender_id !== req.user.id && req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Accès refusé' });
+    return res.status(403).json({ error: 'Acces refuse' });
   }
-  db.prepare('DELETE FROM messages WHERE id = ?').run(req.params.id);
-  res.json({ message: 'Message supprimé' });
+
+  db.transaction(() => {
+    db.prepare('DELETE FROM message_reads WHERE message_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM messages WHERE id = ?').run(req.params.id);
+  })();
+
+  res.json({ message: 'Message supprime' });
 });
 
 module.exports = router;
