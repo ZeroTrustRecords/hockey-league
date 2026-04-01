@@ -182,50 +182,82 @@ export default function Dashboard() {
             </div>
 
             {featuredMatch ? (
-              <>
-                <div className="text-sm text-gray-400 mb-5">
-                  {format(parseISO(featuredMatch.date), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-4 items-center">
-                  <div className="text-center sm:text-right min-w-0">
-                    <div className="flex items-center justify-center sm:justify-end gap-2 mb-2 min-w-0">
-                      <span className="text-lg sm:text-2xl font-black text-white truncate">{featuredMatch.home_team_name}</span>
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: featuredMatch.home_color }} />
+              <div className="space-y-5">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div>
+                    <div className="text-sm text-gray-400">
+                      {format(parseISO(featuredMatch.date), "EEEE d MMMM yyyy '\u00E0' HH:mm", { locale: fr })}
                     </div>
-                    <p className="text-xs text-gray-500">Équipe locale</p>
+                    {featuredMatch.location && (
+                      <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-300">
+                        {featuredMatch.location}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-center justify-self-center">
-                    <div className="text-xs text-gray-500 uppercase tracking-[0.2em] mb-1">Match</div>
-                    <div className="text-2xl sm:text-3xl font-black text-white">vs</div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Link to="/schedule" className="btn-primary">
+                      Voir le calendrier
+                    </Link>
+                    <Link to="/standings" className="btn-secondary">
+                      Voir le classement
+                    </Link>
                   </div>
+                </div>
 
-                  <div className="min-w-0 text-center sm:text-left">
-                    <div className="flex items-center justify-center sm:justify-start gap-2 mb-2 min-w-0">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: featuredMatch.away_color }} />
-                      <span className="text-lg sm:text-2xl font-black text-white truncate">{featuredMatch.away_team_name}</span>
+                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_180px_minmax(0,1fr)] gap-4 items-stretch">
+                  <div className="rounded-[1.6rem] border border-white/10 bg-white/5 p-5 text-center xl:text-right min-w-0 flex flex-col justify-center">
+                    <div className="flex items-center justify-center xl:justify-end gap-2 mb-3 min-w-0">
+                      <span className="text-2xl sm:text-3xl font-black text-white truncate">{featuredMatch.home_team_name}</span>
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: featuredMatch.home_color }} />
                     </div>
-                    <p className="text-xs text-gray-500">Équipe visiteuse</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-gray-500">\u00C9quipe locale</p>
+                  </div>
+
+                  <div className="rounded-[1.75rem] border border-white/10 bg-gradient-to-b from-white/10 to-white/5 px-5 py-6 text-center flex flex-col justify-center">
+                    <div className="text-xs text-gray-500 uppercase tracking-[0.26em] mb-2">Match \u00E0 venir</div>
+                    <div className="text-4xl sm:text-5xl font-black text-white leading-none">VS</div>
+                  </div>
+
+                  <div className="rounded-[1.6rem] border border-white/10 bg-white/5 p-5 text-center xl:text-left min-w-0 flex flex-col justify-center">
+                    <div className="flex items-center justify-center xl:justify-start gap-2 mb-3 min-w-0">
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: featuredMatch.away_color }} />
+                      <span className="text-2xl sm:text-3xl font-black text-white truncate">{featuredMatch.away_team_name}</span>
+                    </div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-gray-500">\u00C9quipe visiteuse</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 flex-wrap mt-6">
-                  <Link to="/schedule" className="btn-primary">
-                    Voir le calendrier
-                  </Link>
-                  <Link to="/standings" className="btn-secondary">
-                    Voir le classement
-                  </Link>
+                <div className="rounded-[1.35rem] border border-white/10 bg-white/5 px-4 py-3">
+                  <div className="text-sm font-semibold text-white">Le prochain match approche</div>
+                  <div className="mt-1 text-sm text-gray-400">
+                    Retrouve le calendrier complet et le classement actuel pour suivre l'\u00E9volution de la saison.
+                  </div>
                 </div>
-              </>
+              </div>
             ) : playoffsComingSoon ? (
-              <>
-                <div className="text-sm text-gray-400 mb-5">
-                  Le classement final est connu. Voici l'affiche initiale des eliminatoires a venir.
+              <div className="space-y-5">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div>
+                    <div className="text-sm text-gray-400">
+                      Le classement final est connu. Voici l'affiche initiale des eliminatoires a venir.
+                    </div>
+                    <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">
+                      Tableau preliminaire
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Link to="/playoffs" className="btn-primary">
+                      Voir le tableau
+                    </Link>
+                    <Link to="/standings" className="btn-secondary">
+                      Voir le classement final
+                    </Link>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   {[
                     [playoffPreviewSeeds[0], playoffPreviewSeeds[1], 'Match 1', 1, 2],
                     [playoffPreviewSeeds[2], playoffPreviewSeeds[5], 'Match 2', 3, 6],
@@ -234,39 +266,46 @@ export default function Dashboard() {
                     <Link
                       key={label}
                       to="/playoffs"
-                      className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 hover:bg-blue-500/10 transition-colors"
+                      className="rounded-[1.6rem] border border-blue-500/20 bg-blue-500/5 p-5 hover:bg-blue-500/10 transition-colors"
                     >
-                      <div className="text-[10px] uppercase tracking-[0.2em] text-blue-300/80 font-semibold mb-3">{label}</div>
-                      <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-blue-300/80 font-semibold">{label}</div>
+                        <div className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
+                          Serie
+                        </div>
+                      </div>
+                      <div className="space-y-3">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 min-w-0">
                             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: home.team_color }} />
-                            <span className="text-sm font-semibold text-white truncate">{home.team_name}</span>
+                            <span className="text-base font-bold text-white truncate">{home.team_name}</span>
                           </div>
-                          <span className="text-xs text-gray-500">#{homeSeed}</span>
+                          <span className="rounded-full bg-white/5 px-2 py-1 text-xs text-gray-400">#{homeSeed}</span>
                         </div>
-                        <div className="flex items-center justify-center text-xs text-gray-600 uppercase tracking-widest">vs</div>
+                        <div className="flex items-center gap-3">
+                          <div className="h-px flex-1 bg-white/10" />
+                          <div className="text-xs text-gray-600 uppercase tracking-[0.35em]">vs</div>
+                          <div className="h-px flex-1 bg-white/10" />
+                        </div>
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 min-w-0">
                             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: away.team_color }} />
-                            <span className="text-sm font-semibold text-white truncate">{away.team_name}</span>
+                            <span className="text-base font-bold text-white truncate">{away.team_name}</span>
                           </div>
-                          <span className="text-xs text-gray-500">#{awaySeed}</span>
+                          <span className="rounded-full bg-white/5 px-2 py-1 text-xs text-gray-400">#{awaySeed}</span>
                         </div>
                       </div>
                     </Link>
                   ))}
                 </div>
 
-                <div className="flex items-center gap-3 flex-wrap mt-6">
-                  <Link to="/playoffs" className="btn-primary">
-                    Voir le tableau
-                  </Link>
-                  <Link to="/standings" className="btn-secondary">
-                    Voir le classement final
-                  </Link>
+                <div className="rounded-[1.35rem] border border-white/10 bg-white/5 px-4 py-3">
+                  <div className="text-sm font-semibold text-white">Les series debutent bientot</div>
+                  <div className="mt-1 text-sm text-gray-400">
+                    Les positions 1 a 6 sont verrouillees. Le tableau complet apparaitra ici et dans l'onglet Eliminatoires.
+                  </div>
                 </div>
-              </>
+              </div>
             ) : (
               <div className="py-8">
                 <div className="text-lg font-bold text-white mb-2">Aucun match à l’horaire pour le moment</div>
