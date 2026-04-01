@@ -49,9 +49,10 @@ export default function PlayerProfile() {
   const pointsPerGame = stats.matches_played > 0 ? (points / stats.matches_played).toFixed(2) : '0.00';
 
   const careerTotals = useMemo(() => {
+    const matches = history.reduce((sum, row) => sum + row.matches_played, 0);
     const goals = history.reduce((sum, row) => sum + row.goals, 0);
     const assists = history.reduce((sum, row) => sum + row.assists, 0);
-    return { goals, assists, points: goals + assists };
+    return { matches, goals, assists, points: goals + assists };
   }, [history]);
 
   if (loading) return <div className="text-center py-12 text-gray-500 animate-pulse">Chargement...</div>;
@@ -141,6 +142,7 @@ export default function PlayerProfile() {
             </div>
             {history.length > 1 && (
               <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                <span className="text-gray-300 font-bold">{careerTotals.matches}MJ</span>
                 <span className="text-red-400 font-bold">{careerTotals.goals}B</span>
                 <span className="text-blue-400 font-bold">{careerTotals.assists}P</span>
                 <span className="text-yellow-400 font-bold">{careerTotals.points}PTS</span>

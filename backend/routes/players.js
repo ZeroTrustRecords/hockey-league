@@ -302,11 +302,11 @@ router.get('/:id/history', (req, res) => {
 
   const rows = [...deduped.values()]
     .sort((a, b) => {
-      const aYears = (a.season_name || '').match(/(\d{4})-(\d{4})/);
-      const bYears = (b.season_name || '').match(/(\d{4})-(\d{4})/);
-      const aStartYear = aYears ? parseInt(aYears[1], 10) : 0;
-      const bStartYear = bYears ? parseInt(bYears[1], 10) : 0;
-      if (aStartYear !== bStartYear) return bStartYear - aStartYear;
+      const aYearMatch = (a.season_name || '').match(/(\d{4})/);
+      const bYearMatch = (b.season_name || '').match(/(\d{4})/);
+      const aYear = aYearMatch ? parseInt(aYearMatch[1], 10) : 0;
+      const bYear = bYearMatch ? parseInt(bYearMatch[1], 10) : 0;
+      if (aYear !== bYear) return bYear - aYear;
       if (a.season_id !== b.season_id) return b.season_id - a.season_id;
       if (a.is_playoff !== b.is_playoff) return b.is_playoff - a.is_playoff;
       return (a.team_name || '').localeCompare(b.team_name || '');
