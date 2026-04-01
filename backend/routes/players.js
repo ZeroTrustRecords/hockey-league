@@ -1,8 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const { getDB } = require('../db');
-const { authenticate, requireAdmin, requireCaptainOrAdmin } = require('../middleware/auth');
+const { authenticate, authenticateOptional, requireAdmin, requireCaptainOrAdmin } = require('../middleware/auth');
 const { logAudit } = require('../lib/auditLog');
+
+function sanitizePlayerForRole(player, role) {
+  if (!player) return player;
+  if (role === 'admin') return player;
+  const { rating, rating_score, ...safePlayer } = player;
+  return safePlayer;
+}
 
 function getVisibleSeason(db) {
   const seasons = db.prepare(`
@@ -23,7 +30,7 @@ function getVisibleSeason(db) {
 }
 
 // Get all players with optional filters
-router.get('/', (req, res) => {
+router.get('/', authenticateOptional, (req, res) => {
   const db = getDB();
   const { team_id, position, status, search } = req.query;
 
@@ -44,12 +51,12 @@ router.get('/', (req, res) => {
   }
 
   query += ' ORDER BY p.last_name, p.first_name';
-  const players = db.prepare(query).all(...params);
+  const players = db.prepare(query).all(...params).map((player) => sanitizePlayerForRole(player, req.user?.role));
   res.json(players);
 });
 
 // Get single player with stats
-router.get('/:id', (req, res) => {
+router.get('/:id', authenticateOptional, (req, res) => {
   const db = getDB();
   const player = db.prepare(`
     SELECT p.*, t.name as team_name, t.color as team_color
@@ -106,7 +113,7 @@ router.get('/:id', (req, res) => {
   `).all(player.id, player.id, player.id);
 
   res.json({
-    ...player,
+    ...sanitizePlayerForRole(player, req.user?.role),
     stats: {
       ...stats,
       matches_played: matchesPlayed.count || 0,

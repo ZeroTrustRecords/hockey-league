@@ -19,6 +19,23 @@ function authenticate(req, res, next) {
   }
 }
 
+function authenticateOptional(req, _res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) {
+    req.user = null;
+    return next();
+  }
+
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+  } catch {
+    req.user = null;
+  }
+
+  next();
+}
+
 function requireAdmin(req, res, next) {
   if (req.user?.role !== 'admin') {
     return res.status(403).json({ error: 'Accès administrateur requis' });
@@ -56,4 +73,4 @@ function requireGamesheetAccess(req, res, next) {
   next();
 }
 
-module.exports = { authenticate, requireAdmin, requireCaptainOrAdmin, requireGamesheetAccess, requireAdminPassword, JWT_SECRET };
+module.exports = { authenticate, authenticateOptional, requireAdmin, requireCaptainOrAdmin, requireGamesheetAccess, requireAdminPassword, JWT_SECRET };

@@ -1,9 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const { getDB } = require('../db');
-const { authenticate, requireAdmin, requireCaptainOrAdmin } = require('../middleware/auth');
+const { authenticate, authenticateOptional, requireAdmin, requireCaptainOrAdmin } = require('../middleware/auth');
 
-router.get('/', (req, res) => {
+function sanitizePlayerForRole(player, role) {
+  if (!player) return player;
+  if (role === 'admin') return player;
+  const { rating, rating_score, ...safePlayer } = player;
+  return safePlayer;
+}
+
+router.get('/', authenticateOptional, (req, res) => {
   const db = getDB();
   const teams = db.prepare('SELECT * FROM teams ORDER BY name').all();
 
@@ -32,7 +39,7 @@ router.get('/', (req, res) => {
   res.json(result);
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', authenticateOptional, (req, res) => {
   const db = getDB();
   const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(req.params.id);
   if (!team) return res.status(404).json({ error: 'Équipe introuvable' });
@@ -43,7 +50,7 @@ router.get('/:id', (req, res) => {
     LEFT JOIN team_staff ts ON ts.player_id = p.id AND ts.team_id = ?
     WHERE p.team_id = ? AND p.status = 'active'
     ORDER BY p.last_name
-  `).all(team.id, team.id);
+  `).all(team.id, team.id).map((player) => sanitizePlayerForRole(player, req.user?.role));
 
   const staff = db.prepare(`
     SELECT ts.role, p.id, p.first_name, p.last_name

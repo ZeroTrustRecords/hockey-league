@@ -4,6 +4,7 @@ import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
   ArrowRight,
+  Bell,
   CalendarDays,
   CheckCircle,
   MessageSquare,
@@ -12,6 +13,7 @@ import {
   Target,
   TrendingUp,
   Trophy,
+  X,
 } from 'lucide-react';
 import api from '../api/client';
 import { getTeamAbbreviation } from '../lib/teamAbbreviations';
@@ -104,6 +106,7 @@ function LeaderList({ title, subtitle, players, valueKey, valueLabel, icon: Icon
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
 
   useEffect(() => {
     api.get('/dashboard').then((response) => setData(response.data)).finally(() => setLoading(false));
@@ -125,6 +128,7 @@ export default function Dashboard() {
   const featuredMatch = upcoming[0] || null;
   const podium = standings.slice(0, 3);
   const playoffPreviewSeeds = standings.slice(0, 6);
+  const featuredAnnouncement = announcements[0] || null;
 
   const seasonLabel = useMemo(() => {
     if (!activeSeason?.name) return 'Saison en cours';
@@ -143,6 +147,37 @@ export default function Dashboard() {
 
   return (
     <div className="public-shell space-y-6 max-w-6xl">
+      {featuredAnnouncement && (
+        <button
+          type="button"
+          onClick={() => setSelectedAnnouncement(featuredAnnouncement)}
+          className="w-full rounded-[1.5rem] border border-amber-500/25 bg-amber-500/8 px-5 py-4 text-left hover:bg-amber-500/12 transition-colors"
+        >
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-300 flex-shrink-0">
+              <Bell size={18} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs uppercase tracking-[0.22em] font-semibold text-amber-300">Message de la ligue</span>
+                <span className="text-xs text-gray-500">
+                  {featuredAnnouncement.created_at
+                    ? format(parseISO(featuredAnnouncement.created_at), 'd MMM yyyy', { locale: fr })
+                    : ''}
+                </span>
+              </div>
+              <div className="mt-1 text-lg font-bold text-white">
+                {featuredAnnouncement.title || 'Nouvelle annonce'}
+              </div>
+              <div className="mt-1 text-sm text-gray-300 line-clamp-2">
+                {featuredAnnouncement.content}
+              </div>
+            </div>
+            <ArrowRight size={16} className="text-amber-300 flex-shrink-0 mt-1" />
+          </div>
+        </button>
+      )}
+
       <div className="ice-panel-soft rounded-[1.75rem] px-5 py-5 sm:px-6 sm:py-6">
         <div className="flex items-end justify-between gap-6 flex-wrap">
           <div className="min-w-0 flex-1">
@@ -510,6 +545,43 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {selectedAnnouncement && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setSelectedAnnouncement(null);
+          }}
+        >
+          <div className="w-full max-w-2xl rounded-[1.75rem] border border-amber-500/20 bg-[#111827] overflow-hidden shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
+              <div>
+                <div className="text-xs uppercase tracking-[0.22em] font-semibold text-amber-300">Message de la ligue</div>
+                <h3 className="mt-2 text-2xl font-black text-white">
+                  {selectedAnnouncement.title || 'Nouvelle annonce'}
+                </h3>
+                <div className="mt-2 text-xs text-gray-500">
+                  {selectedAnnouncement.created_at
+                    ? format(parseISO(selectedAnnouncement.created_at), "d MMMM yyyy 'a' HH:mm", { locale: fr })
+                    : ''}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAnnouncement(null)}
+                className="text-gray-500 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-sm leading-7 text-gray-200 whitespace-pre-wrap">
+                {selectedAnnouncement.content}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
