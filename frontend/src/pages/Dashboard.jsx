@@ -12,27 +12,9 @@ import {
   Target,
   TrendingUp,
   Trophy,
-  Users,
-  Zap,
 } from 'lucide-react';
 import api from '../api/client';
-
-function StatCard({ icon: Icon, label, value, color = 'blue' }) {
-  const colors = {
-    blue: 'text-blue-400',
-    green: 'text-emerald-400',
-    yellow: 'text-yellow-400',
-    purple: 'text-purple-400',
-  };
-
-  return (
-    <div className="bg-gray-900 rounded-2xl p-4 sm:p-5 border border-gray-800">
-      <Icon size={18} className={`${colors[color]} mb-3`} />
-      <div className="text-2xl sm:text-3xl font-black text-white">{value}</div>
-      <div className="text-xs text-gray-500 mt-1">{label}</div>
-    </div>
-  );
-}
+import { getTeamAbbreviation } from '../lib/teamAbbreviations';
 
 function MatchRow({ match, showResult }) {
   const date = parseISO(match.date);
@@ -208,30 +190,30 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_180px_minmax(0,1fr)] gap-4 items-stretch">
                   <div className="rounded-[1.6rem] border border-white/10 bg-white/5 p-5 text-center xl:text-right min-w-0 flex flex-col justify-center">
                     <div className="flex items-center justify-center xl:justify-end gap-2 mb-3 min-w-0">
-                      <span className="text-2xl sm:text-3xl font-black text-white truncate">{featuredMatch.home_team_name}</span>
+                      <span className="text-2xl sm:text-3xl font-black text-white truncate">{getTeamAbbreviation(featuredMatch.home_team_name)}</span>
                       <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: featuredMatch.home_color }} />
                     </div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-gray-500">\u00C9quipe locale</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Équipe locale</p>
                   </div>
 
                   <div className="rounded-[1.75rem] border border-white/10 bg-gradient-to-b from-white/10 to-white/5 px-5 py-6 text-center flex flex-col justify-center">
-                    <div className="text-xs text-gray-500 uppercase tracking-[0.26em] mb-2">Match \u00E0 venir</div>
+                    <div className="text-xs text-gray-500 uppercase tracking-[0.26em] mb-2">Match à venir</div>
                     <div className="text-4xl sm:text-5xl font-black text-white leading-none">VS</div>
                   </div>
 
                   <div className="rounded-[1.6rem] border border-white/10 bg-white/5 p-5 text-center xl:text-left min-w-0 flex flex-col justify-center">
                     <div className="flex items-center justify-center xl:justify-start gap-2 mb-3 min-w-0">
                       <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: featuredMatch.away_color }} />
-                      <span className="text-2xl sm:text-3xl font-black text-white truncate">{featuredMatch.away_team_name}</span>
+                      <span className="text-2xl sm:text-3xl font-black text-white truncate">{getTeamAbbreviation(featuredMatch.away_team_name)}</span>
                     </div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-gray-500">\u00C9quipe visiteuse</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Équipe visiteuse</p>
                   </div>
                 </div>
 
                 <div className="rounded-[1.35rem] border border-white/10 bg-white/5 px-4 py-3">
                   <div className="text-sm font-semibold text-white">Le prochain match approche</div>
                   <div className="mt-1 text-sm text-gray-400">
-                    Retrouve le calendrier complet et le classement actuel pour suivre l'\u00E9volution de la saison.
+                    Retrouve le calendrier complet et le classement actuel pour suivre l'évolution de la saison.
                   </div>
                 </div>
               </div>
@@ -278,7 +260,7 @@ export default function Dashboard() {
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 min-w-0">
                             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: home.team_color }} />
-                            <span className="text-base font-bold text-white truncate">{home.team_name}</span>
+                            <span className="text-base font-bold text-white truncate">{getTeamAbbreviation(home.team_name)}</span>
                           </div>
                           <span className="rounded-full bg-white/5 px-2 py-1 text-xs text-gray-400">#{homeSeed}</span>
                         </div>
@@ -290,7 +272,7 @@ export default function Dashboard() {
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 min-w-0">
                             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: away.team_color }} />
-                            <span className="text-base font-bold text-white truncate">{away.team_name}</span>
+                            <span className="text-base font-bold text-white truncate">{getTeamAbbreviation(away.team_name)}</span>
                           </div>
                           <span className="rounded-full bg-white/5 px-2 py-1 text-xs text-gray-400">#{awaySeed}</span>
                         </div>
@@ -393,13 +375,6 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Users} label="Joueurs actifs" value={counts.players || 0} color="blue" />
-        <StatCard icon={Trophy} label="Matchs validés" value={counts.matches_played || 0} color="green" />
-        <StatCard icon={Target} label="Buts inscrits" value={counts.goals_total || 0} color="yellow" />
-        <StatCard icon={Zap} label="Équipes engagées" value={counts.teams || 0} color="purple" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr_1fr] gap-5">
