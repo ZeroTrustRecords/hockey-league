@@ -55,6 +55,10 @@ function addGoals(db, matchId, count, teamId, roster, startOffset = 0) {
   }
 }
 
+function getGoalOffset(match, teamId, extraOffset = 0) {
+  return (match.id * 3 + teamId * 5 + extraOffset) % 97;
+}
+
 function getUniquePairCount(teamIds) {
   return (teamIds.length * (teamIds.length - 1)) / 2;
 }
@@ -101,13 +105,15 @@ function buildRoundRobinGames(teamIds, rounds, startDate, daysBetween = 7, times
   return games;
 }
 
-function getRegularSeasonScore(index) {
-  const patterns = [
+function getRegularSeasonScore(match, index) {
+  const scorelines = [
     [5, 3], [4, 2], [6, 4], [3, 1], [5, 2],
     [4, 1], [6, 3], [3, 2], [5, 4], [4, 3],
     [7, 4], [2, 1], [6, 2], [5, 1], [4, 0],
   ];
-  return patterns[index % patterns.length];
+  const [winnerScore, loserScore] = scorelines[index % scorelines.length];
+  const homeWins = ((match.home_team_id + match.away_team_id + index) % 2) === 0;
+  return homeWins ? [winnerScore, loserScore] : [loserScore, winnerScore];
 }
 
 function getNextSeasonName(lastSeasonName) {
@@ -142,12 +148,26 @@ function simulateRegularSeason(req, res) {
   let count = 0;
   db.transaction(() => {
     matches.forEach((match, index) => {
-      const [homeScore, awayScore] = getRegularSeasonScore(index);
+      const [homeScore, awayScore] = getRegularSeasonScore(match, index);
       db.prepare('DELETE FROM goals WHERE match_id = ?').run(match.id);
       db.prepare("UPDATE matches SET status = 'completed', validated = 1, home_score = ?, away_score = ? WHERE id = ?")
         .run(homeScore, awayScore, match.id);
-      addGoals(db, match.id, homeScore, match.home_team_id, playersByTeam[match.home_team_id] || [], index);
-      addGoals(db, match.id, awayScore, match.away_team_id, playersByTeam[match.away_team_id] || [], index + 3);
+      addGoals(
+        db,
+        match.id,
+        homeScore,
+        match.home_team_id,
+        playersByTeam[match.home_team_id] || [],
+        getGoalOffset(match, match.home_team_id, index),
+      );
+      addGoals(
+        db,
+        match.id,
+        awayScore,
+        match.away_team_id,
+        playersByTeam[match.away_team_id] || [],
+        getGoalOffset(match, match.away_team_id, index + 11),
+      );
       count++;
     });
     logAudit(db, {
