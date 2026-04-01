@@ -54,8 +54,8 @@ function LoginModal({ onClose, onLoginSuccess }) {
         </button>
 
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center">
-            <Lock size={18} className="text-blue-400" />
+          <div className="w-12 h-12 rounded-xl bg-white p-1.5 flex items-center justify-center shadow-md shadow-blue-950/20">
+            <img src="/lhma-logo.png" alt="Logo LHMA" className="w-full h-full object-contain" />
           </div>
           <div>
             <div className="text-white font-bold">Connexion administrateur</div>
@@ -280,9 +280,11 @@ export default function Layout() {
       {/* Logo */}
       <div className="p-4 border-b border-gray-800">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)', boxShadow: '0 4px 14px 0 rgba(30, 64, 175, 0.5)' }}>
-            🏒
+          <div
+            className="w-12 h-12 rounded-xl bg-white p-1.5 flex items-center justify-center flex-shrink-0 shadow-lg"
+            style={{ boxShadow: '0 4px 14px 0 rgba(30, 64, 175, 0.35)' }}
+          >
+            <img src="/lhma-logo.png" alt="Logo LHMA" className="w-full h-full object-contain" />
           </div>
           <div className="min-w-0">
             <div className="font-bold text-white text-sm leading-tight tracking-wide">LHMA</div>
@@ -343,8 +345,10 @@ export default function Layout() {
         {/* Mobile top bar — no hamburger */}
         <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-800 flex-shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-xl">🏒</span>
-            <span className="font-bold text-sm text-white">Ligue Hockey</span>
+            <div className="w-9 h-9 rounded-lg bg-white p-1 flex items-center justify-center shadow-md shadow-blue-950/30">
+              <img src="/lhma-logo.png" alt="Logo LHMA" className="w-full h-full object-contain" />
+            </div>
+            <span className="font-bold text-sm text-white">LHMA</span>
           </div>
 
           {user ? (

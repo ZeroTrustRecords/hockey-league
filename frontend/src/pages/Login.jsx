@@ -39,8 +39,8 @@ export default function Login() {
       <div className="relative w-full max-w-md mx-4">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-600 rounded-2xl text-4xl mb-4 shadow-xl shadow-blue-600/30">
-            🏒
+          <div className="inline-flex items-center justify-center w-28 h-28 bg-white rounded-3xl p-4 mb-4 shadow-xl shadow-blue-600/20">
+            <img src="/lhma-logo.png" alt="Logo LHMA" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-white">LHMA</h1>
           <p className="text-gray-400 mt-1">Ligue de Hockey</p>
