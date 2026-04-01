@@ -101,12 +101,12 @@ export default function Teams() {
   const strongestTeam = useMemo(() => teams.reduce((best, team) => (!best || (team.strength_score || 0) > (best.strength_score || 0) ? team : best), null), [teams]);
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="public-shell space-y-6 max-w-6xl">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Clubs de la ligue</p>
-          <h1 className="text-3xl sm:text-5xl font-black text-white">Équipes</h1>
-          <p className="text-gray-400 text-sm sm:text-base mt-2 max-w-2xl">
+          <p className="public-eyebrow">Clubs de la ligue</p>
+          <h1 className="public-title">Équipes</h1>
+          <p className="public-subtitle max-w-2xl">
             L’identité, l’effectif et la force de chaque club actuellement engagé dans la saison.
           </p>
         </div>
@@ -118,24 +118,24 @@ export default function Teams() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="league-stat-card">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Équipes</div>
           <div className="text-2xl font-black text-white">{teams.length}</div>
           <div className="text-xs text-gray-500 mt-1">Clubs visibles sur la page</div>
         </div>
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="league-stat-card">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Joueurs</div>
           <div className="text-2xl font-black text-white">{totalPlayers}</div>
           <div className="text-xs text-gray-500 mt-1">Effectif total connu</div>
         </div>
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="league-stat-card">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Club repère</div>
           <div className="text-lg font-black text-white truncate">{strongestTeam?.name || '—'}</div>
           <div className="text-xs text-gray-500 mt-1">
             {strongestTeam?.strength_score ? `Force ${strongestTeam.strength_score}` : 'Disponible après import'}
           </div>
         </div>
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="league-stat-card">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Vue</div>
           <div className="text-lg font-black text-white">Annuaire</div>
           <div className="text-xs text-gray-500 mt-1">Accès rapide aux fiches d’équipe</div>
@@ -149,7 +149,7 @@ export default function Teams() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {teams.map((team) => (
-            <div key={team.id} className="rounded-3xl border border-gray-800 bg-gray-900 overflow-hidden group">
+            <div key={team.id} className="ice-panel rounded-[2rem] overflow-hidden group">
               <div className="p-5 border-l-4" style={{ borderLeftColor: team.color }}>
                 <div className="flex items-start justify-between gap-3 mb-5">
                   <div className="flex items-center gap-3 min-w-0">

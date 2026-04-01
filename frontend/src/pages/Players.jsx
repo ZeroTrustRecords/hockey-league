@@ -196,12 +196,12 @@ export default function Players() {
   const withTeam = useMemo(() => players.filter((player) => player.team_id).length, [players]);
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="public-shell space-y-6 max-w-6xl">
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Répertoire des joueurs</p>
-          <h1 className="text-3xl sm:text-5xl font-black text-white">Joueurs</h1>
-          <p className="text-gray-400 text-sm sm:text-base mt-2 max-w-2xl">
+          <p className="public-eyebrow">Répertoire des joueurs</p>
+          <h1 className="public-title">Joueurs</h1>
+          <p className="public-subtitle max-w-2xl">
             Explore les effectifs, les profils individuels et les attributions d’équipe à travers toute la ligue.
           </p>
         </div>
@@ -213,22 +213,22 @@ export default function Players() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="league-stat-card">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Joueurs</div>
           <div className="text-2xl font-black text-white">{players.length}</div>
           <div className="text-xs text-gray-500 mt-1">Résultats affichés</div>
         </div>
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="league-stat-card">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Actifs</div>
           <div className="text-2xl font-black text-white">{activePlayers}</div>
           <div className="text-xs text-gray-500 mt-1">Statut actif dans la liste</div>
         </div>
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="league-stat-card">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Assignés</div>
           <div className="text-2xl font-black text-white">{withTeam}</div>
           <div className="text-xs text-gray-500 mt-1">Joueurs associés à une équipe</div>
         </div>
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="league-stat-card">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Vue</div>
           <div className="text-lg font-black text-white">Annuaire public</div>
           <div className="text-xs text-gray-500 mt-1">Fiches individuelles accessibles</div>
@@ -277,7 +277,7 @@ export default function Players() {
       ) : players.length === 0 ? (
         <div className="text-center py-12 text-gray-500">Aucun joueur trouvé</div>
       ) : (
-        <div className="bg-gray-900 rounded-3xl border border-gray-800 overflow-x-auto">
+        <div className="ice-panel rounded-[2rem] overflow-x-auto">
           <div className="px-5 py-4 border-b border-gray-800">
             <h2 className="text-lg font-bold text-white">Annuaire des joueurs</h2>
             <p className="text-sm text-gray-500 mt-1">Recherche, filtres et accès rapide à chaque fiche individuelle.</p>

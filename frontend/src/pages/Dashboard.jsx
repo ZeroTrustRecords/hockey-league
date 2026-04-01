@@ -84,7 +84,7 @@ function LeaderList({ title, subtitle, players, valueKey, valueLabel, icon: Icon
   const max = players[0]?.[valueKey] || 1;
 
   return (
-    <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
+    <div className="ice-panel-soft rounded-[1.75rem] p-5">
       <div className="flex items-center gap-2 mb-1">
         <Icon size={15} className="text-gray-500" />
         <span className="text-sm font-semibold text-white">{title}</span>
@@ -160,21 +160,21 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="public-shell space-y-6 max-w-6xl">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Site officiel de la ligue</p>
-          <h1 className="text-3xl sm:text-5xl font-black text-white">LHMA</h1>
-          <p className="text-gray-400 text-sm sm:text-base mt-2 max-w-2xl">
+          <p className="public-eyebrow">Site officiel de la ligue</p>
+          <h1 className="public-title">LHMA</h1>
+          <p className="public-subtitle max-w-2xl">
             Résultats, prochain rendez-vous, meneurs offensifs et état de la saison au même endroit.
           </p>
-          <p className="text-xs text-gray-500 mt-3">{seasonLabel}</p>
+          <div className="score-chip mt-4">{seasonLabel}</div>
         </div>
 
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-5">
-        <div className="rounded-3xl border border-gray-800 bg-gradient-to-br from-gray-900 via-gray-900 to-blue-950/40 overflow-hidden">
+        <div className="ice-panel rounded-[2rem] overflow-hidden">
           <div className="p-6 sm:p-7">
             <div className="flex items-center gap-2 mb-3">
               <CalendarDays size={16} className="text-blue-400" />
@@ -276,7 +276,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-gray-900 rounded-3xl border border-gray-800 p-5 sm:p-6">
+        <div className="ice-panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2 mb-1">
             <Trophy size={16} className="text-yellow-400" />
             <h2 className="text-lg font-bold text-white">Portrait de saison</h2>
@@ -364,7 +364,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr_1fr] gap-5">
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+        <div className="ice-panel rounded-[1.75rem] overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
             <div>
               <div className="flex items-center gap-2">
@@ -421,7 +421,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
+        <div className="ice-panel-soft rounded-[1.75rem] p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="flex items-center gap-2">
@@ -441,7 +441,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
+        <div className="ice-panel-soft rounded-[1.75rem] p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="flex items-center gap-2">
@@ -468,7 +468,7 @@ export default function Dashboard() {
         <LeaderList title="Meneurs à la passe" subtitle="Les créateurs de jeu en tête." players={topAssists} valueKey="assists" valueLabel="A" icon={Star} />
       </div>
 
-      <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
+      <div className="ice-panel-soft rounded-[1.75rem] p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
             <div className="flex items-center gap-2">

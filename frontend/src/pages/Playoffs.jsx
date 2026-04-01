@@ -184,7 +184,7 @@ export default function Playoffs() {
 
   if (!data || !data.series?.length) {
     return (
-      <div className="space-y-4 max-w-5xl">
+      <div className="public-shell space-y-4 max-w-5xl">
         <div>
           <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Grande course de fin de saison</p>
           <h1 className="text-3xl sm:text-5xl font-black text-white">Eliminatoires</h1>
@@ -218,22 +218,22 @@ export default function Playoffs() {
   const completedSeries = series.filter((currentSeries) => currentSeries.status === 'completed').length;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="public-shell space-y-6 max-w-7xl mx-auto">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Le tournoi de la ligue</p>
-          <h1 className="text-3xl sm:text-5xl font-black text-white">Eliminatoires</h1>
+          <p className="public-eyebrow">Le tournoi de la ligue</p>
+          <h1 className="public-title">Eliminatoires</h1>
           <p className="text-gray-400 text-sm sm:text-base mt-2">
             {season.name} · {completedSeries} serie{completedSeries > 1 ? 's' : ''} completee{completedSeries > 1 ? 's' : ''}
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 px-4 py-3 min-w-[120px]">
+          <div className="league-stat-card min-w-[120px]">
             <div className="text-xs uppercase tracking-[0.2em] text-gray-600">Series</div>
             <div className="text-2xl font-black text-white">{series.length}</div>
           </div>
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 px-4 py-3 min-w-[120px]">
+          <div className="league-stat-card min-w-[120px]">
             <div className="text-xs uppercase tracking-[0.2em] text-gray-600">Champion</div>
             <div className="text-lg font-black text-white truncate">{champion?.name || 'A venir'}</div>
           </div>
@@ -241,7 +241,7 @@ export default function Playoffs() {
       </div>
 
       {is_preview && playoffs_coming_soon && (
-        <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 px-5 py-4">
+        <div className="ice-panel-soft rounded-[1.5rem] px-5 py-4">
           <div className="text-sm font-semibold text-white mb-1">Les eliminatoires arrivent bientot</div>
           <p className="text-sm text-gray-400">
             Le classement final est connu. Le tableau ci-dessous montre l'affiche des series avant le lancement officiel.

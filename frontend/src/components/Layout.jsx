@@ -108,9 +108,7 @@ function SidebarLink({ item, unreadCount }) {
   return (
     <NavLink to={item.to}
       className={isActive ? 'nav-link-active' : 'nav-link-inactive'}
-      style={isActive
-        ? { borderLeft: '3px solid #60a5fa', paddingLeft: 'calc(0.625rem - 3px)' }
-        : { borderLeft: '3px solid transparent', paddingLeft: 'calc(0.625rem - 3px)' }}>
+      onMouseUp={(event) => event.currentTarget.blur()}>
       <item.icon size={18} className="flex-shrink-0" />
       <span className="flex-1">{item.label}</span>
       {item.badge && unreadCount > 0 && (

@@ -5,7 +5,7 @@ import api from '../api/client';
 
 function SummaryCard({ label, value, helper }) {
   return (
-    <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+    <div className="league-stat-card">
       <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">{label}</div>
       <div className="text-2xl font-black text-white">{value}</div>
       <div className="text-xs text-gray-500 mt-1">{helper}</div>
@@ -32,12 +32,12 @@ export default function Standings() {
   const bestDefense = useMemo(() => standings.reduce((best, team) => (!best || team.ga < best.ga ? team : best), null), [standings]);
 
   return (
-    <div className="space-y-8 max-w-6xl">
+    <div className="public-shell space-y-8 max-w-6xl">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Lecture de la saison</p>
-          <h1 className="text-3xl sm:text-5xl font-black text-white">Classement</h1>
-          <p className="text-gray-400 text-sm sm:text-base mt-2 max-w-2xl">
+          <p className="public-eyebrow">Lecture de la saison</p>
+          <h1 className="public-title">Classement</h1>
+          <p className="public-subtitle max-w-2xl">
             Le portrait complet de la course au sommet, avec l’ordre actuel, la forme récente et les écarts.
           </p>
         </div>
@@ -47,7 +47,7 @@ export default function Standings() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr_1fr_1fr] gap-4">
-        <div className="rounded-3xl border border-gray-800 bg-gradient-to-br from-gray-900 via-gray-900 to-yellow-950/30 p-5 sm:p-6">
+        <div className="ice-panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2 mb-3">
             <Trophy size={16} className="text-yellow-400" />
             <span className="text-xs uppercase tracking-[0.2em] text-yellow-300/80 font-semibold">Équipe en tête</span>
@@ -94,7 +94,7 @@ export default function Standings() {
       {(bestAttack || bestDefense) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {bestAttack && (
-            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+            <div className="ice-panel-soft rounded-[1.5rem] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp size={15} className="text-emerald-400" />
                 <span className="text-sm font-semibold text-white">Meilleure attaque</span>
@@ -110,7 +110,7 @@ export default function Standings() {
           )}
 
           {bestDefense && (
-            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+            <div className="ice-panel-soft rounded-[1.5rem] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Shield size={15} className="text-blue-400" />
                 <span className="text-sm font-semibold text-white">Meilleure défense</span>
@@ -130,7 +130,7 @@ export default function Standings() {
       {loading ? (
         <div className="text-center py-12 text-gray-600 text-sm">Chargement...</div>
       ) : (
-        <div className="bg-gray-900 rounded-3xl border border-gray-800 overflow-hidden">
+        <div className="ice-panel rounded-[2rem] overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-800">
             <h2 className="text-lg font-bold text-white">Tableau complet</h2>
             <p className="text-sm text-gray-500 mt-1">Toutes les équipes, leur rythme et leur forme récente.</p>

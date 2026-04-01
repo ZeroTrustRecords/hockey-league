@@ -118,11 +118,11 @@ export default function Schedule() {
   const completedCount = matches.filter((match) => match.status === 'completed').length;
 
   return (
-    <div className="space-y-8 max-w-6xl">
+    <div className="public-shell space-y-8 max-w-6xl">
       <div>
-        <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Rythme de la ligue</p>
-        <h1 className="text-3xl sm:text-5xl font-black text-white">Calendrier</h1>
-        <p className="text-gray-400 text-sm sm:text-base mt-2 max-w-2xl">
+        <p className="public-eyebrow">Rythme de la ligue</p>
+        <h1 className="public-title">Calendrier</h1>
+        <p className="public-subtitle max-w-2xl">
           Tous les rendez-vous de la saison, les résultats déjà tombés et les prochaines affiches à surveiller.
         </p>
         {selectedTeam && (
@@ -134,22 +134,22 @@ export default function Schedule() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="league-stat-card">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Total</div>
           <div className="text-2xl font-black text-white">{matches.length}</div>
           <div className="text-xs text-gray-500 mt-1">Matchs affichés après filtres</div>
         </div>
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="league-stat-card">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">À venir</div>
           <div className="text-2xl font-black text-white">{upcomingCount}</div>
           <div className="text-xs text-gray-500 mt-1">Rencontres encore à jouer</div>
         </div>
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="league-stat-card">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Terminés</div>
           <div className="text-2xl font-black text-white">{completedCount}</div>
           <div className="text-xs text-gray-500 mt-1">Résultats déjà validés</div>
         </div>
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="league-stat-card">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Accès feuille</div>
           <div className="text-lg font-black text-white">{isAdmin || isMarqueur ? 'Ouvert' : 'Public'}</div>
           <div className="text-xs text-gray-500 mt-1">{isAdmin || isMarqueur ? 'Les matchs ouvrent la feuille de match' : 'Affichage lecture seule pour le public'}</div>
@@ -188,7 +188,7 @@ export default function Schedule() {
       ) : (
         <div className="space-y-6">
           {Object.entries(grouped).map(([month, monthMatches]) => (
-            <div key={month} className="bg-gray-900 rounded-3xl border border-gray-800 overflow-hidden">
+            <div key={month} className="ice-panel rounded-[2rem] overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-800 flex items-center gap-2">
                 <Calendar size={13} className="text-gray-600" />
                 <span className="text-xs text-gray-500 font-medium uppercase tracking-widest capitalize">{month}</span>
