@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const FIXTURE_PATH = path.join(__dirname, '..', 'data', 'past-season-stats.csv');
-const FIXTURE_SEASON_NAME = 'Saison 2024-2025';
+const FIXTURE_SEASON_NAME = '\u00C9T\u00C9 - 2025';
 
 function normalizeText(value) {
   return (value || '')

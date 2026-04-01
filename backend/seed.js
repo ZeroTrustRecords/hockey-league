@@ -18,11 +18,11 @@ function seed() {
 
   // --- SEASONS ---
   // Historical season (completed — stats imported from CSV export)
-  const histSeason = db.prepare("INSERT INTO seasons (name, start_date, end_date, status) VALUES (?, ?, ?, ?)").run('Saison 2024-2025', '2024-09-01', '2025-04-30', 'completed');
+  const histSeason = db.prepare("INSERT INTO seasons (name, start_date, end_date, status) VALUES (?, ?, ?, ?)").run('\u00C9T\u00C9 - 2025', '2024-09-01', '2025-04-30', 'completed');
   const histSeasonId = histSeason.lastInsertRowid;
 
   // Active season
-  const season = db.prepare("INSERT INTO seasons (name, start_date, end_date, status) VALUES (?, ?, ?, ?)").run('Saison 2025-2026', '2026-04-13', '2026-08-31', 'active');
+  const season = db.prepare("INSERT INTO seasons (name, start_date, end_date, status) VALUES (?, ?, ?, ?)").run('\u00C9T\u00C9 - 2026', '2026-04-13', '2026-08-31', 'active');
   const seasonId = season.lastInsertRowid;
 
   // --- TEAMS ---
@@ -217,9 +217,9 @@ function seed() {
   const adminUser = db.prepare("SELECT id FROM users WHERE role='admin'").get();
 
   const announcements = [
-    { title: '🏒 Bienvenue à la saison 2025-2026!', content: 'La LHMA est officiellement lancée. Bonne saison à toutes les équipes!' },
+    { title: '🏒 Bienvenue à la saison \u00C9T\u00C9 - 2026!', content: 'La LHMA est officiellement lancée. Bonne saison à toutes les équipes!' },
     { title: '📋 Rappel: Présences obligatoires', content: 'Tous les joueurs doivent confirmer leur présence 48h avant chaque match. Utilisez la section Présences.' },
-    { title: '📅 Calendrier disponible', content: 'Le calendrier complet des 45 parties de la saison 2025-2026 est maintenant disponible. Première partie le 13 avril 2026!' },
+    { title: '📅 Calendrier disponible', content: "Le calendrier complet des 45 parties de la saison \u00C9T\u00C9 - 2026 est maintenant disponible. Première partie le 13 avril 2026!" },
   ];
 
   for (const ann of announcements) {

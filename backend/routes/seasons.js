@@ -18,7 +18,7 @@ function normalizeName(value) {
 function buildSeasonName() {
   const today = new Date();
   const year = today.getFullYear();
-  return `Saison ${year}-${year + 1}`;
+  return `\u00C9T\u00C9 - ${year}`;
 }
 
 function normalizePosition(value) {
