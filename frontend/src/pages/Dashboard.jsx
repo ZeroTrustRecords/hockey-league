@@ -203,8 +203,8 @@ export default function Dashboard() {
 
             {featuredMatch ? (
               <div className="space-y-5">
-                <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <div>
+                <div className="flex items-start justify-between gap-4 flex-wrap xl:flex-nowrap">
+                  <div className="min-w-[280px] flex-1">
                     <div className="text-sm text-gray-400">
                       {format(parseISO(featuredMatch.date), "EEEE d MMMM yyyy '\u00E0' HH:mm", { locale: fr })}
                     </div>
@@ -215,7 +215,7 @@ export default function Dashboard() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-3 flex-wrap xl:flex-nowrap xl:justify-end xl:self-start">
                     <Link to="/schedule" className="btn-primary">
                       Voir le calendrier
                     </Link>
@@ -226,10 +226,12 @@ export default function Dashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_180px_minmax(0,1fr)] gap-4 items-stretch">
-                  <div className="rounded-[1.6rem] border border-white/10 bg-white/5 p-5 text-center xl:text-right min-w-0 flex flex-col justify-center">
-                    <div className="flex items-center justify-center xl:justify-end gap-2 mb-3 min-w-0">
-                      <span className="text-2xl sm:text-3xl font-black text-white truncate">{getTeamAbbreviation(featuredMatch.home_team_name)}</span>
-                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: featuredMatch.home_color }} />
+                  <div className="rounded-[1.6rem] border border-white/10 bg-white/5 p-5 text-center min-w-0 flex flex-col justify-center">
+                    <div className="mb-3 flex justify-center min-w-0">
+                      <div className="relative inline-flex items-center justify-center px-4">
+                        <span className="text-2xl sm:text-3xl font-black text-white truncate">{getTeamAbbreviation(featuredMatch.home_team_name)}</span>
+                        <div className="absolute right-0 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full" style={{ backgroundColor: featuredMatch.home_color }} />
+                      </div>
                     </div>
                     <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Équipe locale</p>
                   </div>
@@ -239,10 +241,12 @@ export default function Dashboard() {
                     <div className="text-xl sm:text-2xl font-black text-white leading-none">VS</div>
                   </div>
 
-                  <div className="rounded-[1.6rem] border border-white/10 bg-white/5 p-5 text-center xl:text-left min-w-0 flex flex-col justify-center">
-                    <div className="flex items-center justify-center xl:justify-start gap-2 mb-3 min-w-0">
-                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: featuredMatch.away_color }} />
-                      <span className="text-2xl sm:text-3xl font-black text-white truncate">{getTeamAbbreviation(featuredMatch.away_team_name)}</span>
+                  <div className="rounded-[1.6rem] border border-white/10 bg-white/5 p-5 text-center min-w-0 flex flex-col justify-center">
+                    <div className="mb-3 flex justify-center min-w-0">
+                      <div className="relative inline-flex items-center justify-center px-4">
+                        <div className="absolute left-0 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full" style={{ backgroundColor: featuredMatch.away_color }} />
+                        <span className="text-2xl sm:text-3xl font-black text-white truncate">{getTeamAbbreviation(featuredMatch.away_team_name)}</span>
+                      </div>
                     </div>
                     <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Équipe visiteuse</p>
                   </div>
