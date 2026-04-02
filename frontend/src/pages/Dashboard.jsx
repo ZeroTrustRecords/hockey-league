@@ -520,36 +520,6 @@ export default function Dashboard() {
         <LeaderList title="Meneurs à la passe" subtitle="Les créateurs de jeu en tête." players={topAssists} valueKey="assists" valueLabel="A" icon={Star} />
       </div>
 
-      {!isMarqueur && (
-      <div className="ice-panel-soft rounded-[1.75rem] p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <MessageSquare size={15} className="text-gray-500" />
-              <span className="text-sm font-semibold text-white">Vie de ligue</span>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Les annonces et messages importants.</p>
-          </div>
-          <Link to="/messages" className="text-xs text-gray-500 hover:text-white transition-colors">
-            Voir tout
-          </Link>
-        </div>
-
-        {announcements.length === 0 ? (
-          <p className="text-gray-600 text-sm py-3 text-center">Aucun message publié.</p>
-        ) : (
-          <div className="divide-y divide-gray-800/60">
-            {announcements.slice(0, 4).map((announcement) => (
-              <div key={announcement.id} className="py-3 first:pt-0 last:pb-0">
-                {announcement.title && <div className="text-sm font-semibold text-white mb-1">{announcement.title}</div>}
-                <div className="text-sm text-gray-400">{announcement.content}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      )}
-
       {selectedAnnouncement && (
         <div
           className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
