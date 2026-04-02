@@ -203,7 +203,7 @@ export default function Dashboard() {
 
             {featuredMatch ? (
               <div className="space-y-5">
-                <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_180px_minmax(0,1fr)] xl:items-start">
+                <div className="space-y-4">
                   <div className="min-w-0">
                     <div className="text-sm text-gray-400">
                       {format(parseISO(featuredMatch.date), "EEEE d MMMM yyyy '\u00E0' HH:mm", { locale: fr })}
@@ -215,7 +215,7 @@ export default function Dashboard() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-3 flex-wrap xl:col-span-2 xl:justify-end xl:self-start">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <Link to="/schedule" className="btn-primary">
                       Voir le calendrier
                     </Link>
