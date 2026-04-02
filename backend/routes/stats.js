@@ -74,7 +74,7 @@ router.get('/players', (req, res) => {
     LEFT JOIN teams t ON p.team_id = t.id
     LEFT JOIN goals g ON (g.scorer_id = p.id OR g.assist1_id = p.id OR g.assist2_id = p.id)
     LEFT JOIN matches m ON g.match_id = m.id AND m.validated = 1
-    WHERE p.status = 'active'
+    WHERE p.status = 'active' AND p.position != 'G'
     GROUP BY p.id
     ORDER BY points DESC, goals DESC, assists DESC
     LIMIT ?
@@ -167,7 +167,7 @@ router.get('/leaders', (req, res) => {
     LEFT JOIN teams t ON p.team_id = t.id
     LEFT JOIN goals g ON (g.scorer_id = p.id OR g.assist1_id = p.id OR g.assist2_id = p.id)
     LEFT JOIN matches m ON g.match_id = m.id AND m.validated = 1
-    WHERE p.status = 'active'
+    WHERE p.status = 'active' AND p.position != 'G'
     GROUP BY p.id
     ORDER BY ${order} DESC, points DESC
     LIMIT 5
@@ -178,6 +178,89 @@ router.get('/leaders', (req, res) => {
     assists: query('assists'),
     points: query('points')
   });
+});
+
+router.get('/goalies', (req, res) => {
+  const db = getDB();
+  const { season_id, type } = req.query;
+  const context = resolveSeasonContext(db, season_id, type);
+
+  const filters = [`m.validated = 1`];
+  const params = [];
+  if (context.seasonId) {
+    filters.push('m.season_id = ?');
+    params.push(context.seasonId);
+  }
+  if (context.type === 'regular') filters.push('m.is_playoff = 0');
+  if (context.type === 'playoffs') filters.push('m.is_playoff = 1');
+  const filterSql = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+
+  const rows = db.prepare(`
+    SELECT
+      p.id,
+      p.first_name,
+      p.last_name,
+      p.nickname,
+      p.number,
+      p.position,
+      p.team_id,
+      t.name AS team_name,
+      t.color AS team_color,
+      COALESCE(SUM(
+        CASE
+          WHEN m.home_goalie_id = p.id AND COALESCE(m.home_goalie_is_sub, 0) = 0 THEN 1
+          WHEN m.away_goalie_id = p.id AND COALESCE(m.away_goalie_is_sub, 0) = 0 THEN 1
+          ELSE 0
+        END
+      ), 0) AS matches_played,
+      COALESCE(SUM(
+        CASE
+          WHEN m.home_goalie_id = p.id AND COALESCE(m.home_goalie_is_sub, 0) = 0 THEN m.away_score
+          WHEN m.away_goalie_id = p.id AND COALESCE(m.away_goalie_is_sub, 0) = 0 THEN m.home_score
+          ELSE 0
+        END
+      ), 0) AS goals_against
+    FROM players p
+    LEFT JOIN teams t ON p.team_id = t.id
+    LEFT JOIN matches m ON (m.home_goalie_id = p.id OR m.away_goalie_id = p.id) ${filterSql ? `AND ${filters.join(' AND ')}` : ''}
+    WHERE p.status = 'active' AND p.position = 'G'
+    GROUP BY p.id
+    ORDER BY
+      CASE
+        WHEN COALESCE(SUM(
+          CASE
+            WHEN m.home_goalie_id = p.id AND COALESCE(m.home_goalie_is_sub, 0) = 0 THEN 1
+            WHEN m.away_goalie_id = p.id AND COALESCE(m.away_goalie_is_sub, 0) = 0 THEN 1
+            ELSE 0
+          END
+        ), 0) > 0
+        THEN (
+          CAST(COALESCE(SUM(
+            CASE
+              WHEN m.home_goalie_id = p.id AND COALESCE(m.home_goalie_is_sub, 0) = 0 THEN m.away_score
+              WHEN m.away_goalie_id = p.id AND COALESCE(m.away_goalie_is_sub, 0) = 0 THEN m.home_score
+              ELSE 0
+            END
+          ), 0) AS FLOAT) /
+          COALESCE(SUM(
+            CASE
+              WHEN m.home_goalie_id = p.id AND COALESCE(m.home_goalie_is_sub, 0) = 0 THEN 1
+              WHEN m.away_goalie_id = p.id AND COALESCE(m.away_goalie_is_sub, 0) = 0 THEN 1
+              ELSE 0
+            END
+          ), 1)
+        )
+        ELSE 9999
+      END ASC,
+      goals_against ASC,
+      p.last_name ASC,
+      p.first_name ASC
+  `).all(...params);
+
+  res.json(rows.map((row) => ({
+    ...row,
+    gaa: row.matches_played > 0 ? Number((row.goals_against / row.matches_played).toFixed(2)) : null,
+  })));
 });
 
 module.exports = router;

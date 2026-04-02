@@ -69,9 +69,10 @@ router.get('/:id', authenticateOptional, (req, res) => {
 
   const currentSeason = getVisibleSeason(db);
   const currentPhase = currentSeason && (currentSeason.status === 'playoffs' || currentSeason.playoff_matches > 0) ? 1 : 0;
+  const isGoalie = player.position === 'G';
 
   const emptyStats = { matches_played: 0, goals: 0, assists: 0, points: 0 };
-  const stats = currentSeason ? db.prepare(`
+  const skaterStats = currentSeason ? db.prepare(`
     SELECT
       COUNT(DISTINCT g.match_id) as matches_played,
       COALESCE(SUM(CASE WHEN g.scorer_id = ? THEN 1 ELSE 0 END), 0) as goals,
@@ -90,15 +91,34 @@ router.get('/:id', authenticateOptional, (req, res) => {
     player.id, player.id, player.id
   ) : emptyStats;
 
-  // Actual matches played
   const matchesPlayed = currentSeason ? db.prepare(`
     SELECT COUNT(DISTINCT m.id) as count
     FROM matches m
     WHERE m.validated = 1 AND m.season_id = ? AND m.is_playoff = ? AND (m.home_team_id = ? OR m.away_team_id = ?)
   `).get(currentSeason.id, currentPhase, player.team_id || 0, player.team_id || 0) : { count: 0 };
 
+  const goalieStats = currentSeason ? db.prepare(`
+    SELECT
+      COALESCE(SUM(
+        CASE
+          WHEN m.home_goalie_id = ? AND COALESCE(m.home_goalie_is_sub, 0) = 0 THEN 1
+          WHEN m.away_goalie_id = ? AND COALESCE(m.away_goalie_is_sub, 0) = 0 THEN 1
+          ELSE 0
+        END
+      ), 0) AS matches_played,
+      COALESCE(SUM(
+        CASE
+          WHEN m.home_goalie_id = ? AND COALESCE(m.home_goalie_is_sub, 0) = 0 THEN m.away_score
+          WHEN m.away_goalie_id = ? AND COALESCE(m.away_goalie_is_sub, 0) = 0 THEN m.home_score
+          ELSE 0
+        END
+      ), 0) AS goals_against
+    FROM matches m
+    WHERE m.validated = 1 AND m.season_id = ? AND m.is_playoff = ?
+  `).get(player.id, player.id, player.id, player.id, currentSeason.id, currentPhase) : { matches_played: 0, goals_against: 0 };
+
   // Recent goals
-  const recentGoals = db.prepare(`
+  const recentGoals = isGoalie ? [] : db.prepare(`
     SELECT g.*, m.date, m.home_score, m.away_score,
            ht.name as home_team, at2.name as away_team,
            s.first_name || ' ' || s.last_name as scorer_name
@@ -112,12 +132,20 @@ router.get('/:id', authenticateOptional, (req, res) => {
     LIMIT 10
   `).all(player.id, player.id, player.id);
 
+  const stats = isGoalie
+    ? {
+        matches_played: goalieStats.matches_played || 0,
+        goals_against: goalieStats.goals_against || 0,
+        gaa: (goalieStats.matches_played || 0) > 0 ? Number((goalieStats.goals_against / goalieStats.matches_played).toFixed(2)) : null,
+      }
+    : {
+        ...skaterStats,
+        matches_played: matchesPlayed.count || 0,
+      };
+
   res.json({
     ...sanitizePlayerForRole(player, req.user?.role),
-    stats: {
-      ...stats,
-      matches_played: matchesPlayed.count || 0,
-    },
+    stats,
     recentGoals,
   });
 });
@@ -217,8 +245,78 @@ router.delete('/:id/hard', authenticate, requireAdmin, (req, res) => {
 router.get('/:id/history', (req, res) => {
   const db = getDB();
   const playerId = parseInt(req.params.id);
-  const player = db.prepare('SELECT id, team_id FROM players WHERE id = ?').get(playerId);
+  const player = db.prepare('SELECT id, team_id, position FROM players WHERE id = ?').get(playerId);
   if (!player) return res.status(404).json({ error: 'Joueur introuvable' });
+  const isGoalie = player.position === 'G';
+
+  if (isGoalie) {
+    const rows = db.prepare(`
+      SELECT
+        s.id AS season_id,
+        s.name AS season_name,
+        m.is_playoff,
+        COALESCE(
+          CASE
+            WHEN m.home_goalie_id = ? AND COALESCE(m.home_goalie_is_sub, 0) = 0 THEN m.home_team_id
+            WHEN m.away_goalie_id = ? AND COALESCE(m.away_goalie_is_sub, 0) = 0 THEN m.away_team_id
+            ELSE NULL
+          END,
+          p.team_id
+        ) AS team_id,
+        t.name AS team_name,
+        t.color AS team_color,
+        COALESCE(SUM(
+          CASE
+            WHEN m.home_goalie_id = ? AND COALESCE(m.home_goalie_is_sub, 0) = 0 THEN 1
+            WHEN m.away_goalie_id = ? AND COALESCE(m.away_goalie_is_sub, 0) = 0 THEN 1
+            ELSE 0
+          END
+        ), 0) AS matches_played,
+        COALESCE(SUM(
+          CASE
+            WHEN m.home_goalie_id = ? AND COALESCE(m.home_goalie_is_sub, 0) = 0 THEN m.away_score
+            WHEN m.away_goalie_id = ? AND COALESCE(m.away_goalie_is_sub, 0) = 0 THEN m.home_score
+            ELSE 0
+          END
+        ), 0) AS goals_against
+      FROM matches m
+      JOIN seasons s ON m.season_id = s.id
+      LEFT JOIN players p ON p.id = ?
+      LEFT JOIN teams t ON t.id = COALESCE(
+        CASE
+          WHEN m.home_goalie_id = ? AND COALESCE(m.home_goalie_is_sub, 0) = 0 THEN m.home_team_id
+          WHEN m.away_goalie_id = ? AND COALESCE(m.away_goalie_is_sub, 0) = 0 THEN m.away_team_id
+          ELSE NULL
+        END,
+        p.team_id
+      )
+      WHERE m.validated = 1
+        AND (
+          (m.home_goalie_id = ? AND COALESCE(m.home_goalie_is_sub, 0) = 0)
+          OR (m.away_goalie_id = ? AND COALESCE(m.away_goalie_is_sub, 0) = 0)
+        )
+      GROUP BY s.id, s.name, m.is_playoff, team_id, t.name, t.color
+    `).all(
+      playerId, playerId,
+      playerId, playerId,
+      playerId, playerId,
+      playerId,
+      playerId, playerId,
+      playerId, playerId
+    ).map((row) => ({
+      ...row,
+      gaa: row.matches_played > 0 ? Number((row.goals_against / row.matches_played).toFixed(2)) : null,
+    })).sort((a, b) => {
+      const aYear = parseInt((a.season_name.match(/(\d{4})/) || [0, 0])[1], 10) || 0;
+      const bYear = parseInt((b.season_name.match(/(\d{4})/) || [0, 0])[1], 10) || 0;
+      if (aYear !== bYear) return bYear - aYear;
+      if (a.season_id !== b.season_id) return b.season_id - a.season_id;
+      if (a.is_playoff !== b.is_playoff) return b.is_playoff - a.is_playoff;
+      return (a.team_name || '').localeCompare(b.team_name || '');
+    });
+
+    return res.json(rows);
+  }
 
   const rowsFromGoals = db.prepare(`
     SELECT

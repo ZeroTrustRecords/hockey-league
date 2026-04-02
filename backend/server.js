@@ -6,6 +6,7 @@ const { initDB, getDB } = require('./db');
 const { resetState, shouldResetOnStartup } = require('./reset-state');
 const { getConfig } = require('./config');
 const { logger, requestLogger, errorLogger } = require('./lib/logger');
+const { assignMissingRosterNumbers } = require('./lib/jerseyNumbers');
 
 function ensureSystemAccounts(db) {
   const defaultPassword = getConfig().defaultSystemPassword;
@@ -43,6 +44,13 @@ function normalizeLegacySeasonNames(db) {
   });
 }
 
+function ensureRosterNumbers(db) {
+  const updated = assignMissingRosterNumbers(db);
+  if (updated > 0) {
+    logger.info('missing_jersey_numbers_assigned', { updated });
+  }
+}
+
 function initializeApp(app) {
   initDB();
   const db = getDB();
@@ -58,6 +66,7 @@ function initializeApp(app) {
   ensureSystemAccounts(db);
   normalizeLegacyArenaNames(db);
   normalizeLegacySeasonNames(db);
+  ensureRosterNumbers(db);
   return db;
 }
 

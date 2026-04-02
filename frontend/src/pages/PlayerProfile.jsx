@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ArrowLeft, Award, Hash, Mail, Phone, Target, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Award, Hash, Mail, Phone, Shield, Target, TrendingUp } from 'lucide-react';
 import api from '../api/client';
 
 const positionLabel = {
@@ -28,12 +28,8 @@ export default function PlayerProfile() {
       api.get(`/players/${id}/history`),
     ]).then(([playerResult, historyResult]) => {
       if (!mounted) return;
-
-      if (playerResult.status === 'fulfilled') setPlayer(playerResult.value.data);
-      else setPlayer(null);
-
-      if (historyResult.status === 'fulfilled') setHistory(historyResult.value.data);
-      else setHistory([]);
+      setPlayer(playerResult.status === 'fulfilled' ? playerResult.value.data : null);
+      setHistory(historyResult.status === 'fulfilled' ? historyResult.value.data : []);
     }).finally(() => {
       if (mounted) setLoading(false);
     });
@@ -43,20 +39,45 @@ export default function PlayerProfile() {
     };
   }, [id]);
 
+  const isGoalie = player?.position === 'G';
   const stats = player?.stats || {};
   const recentGoals = player?.recentGoals || [];
   const points = (stats.goals || 0) + (stats.assists || 0);
   const pointsPerGame = stats.matches_played > 0 ? (points / stats.matches_played).toFixed(2) : '0.00';
 
   const careerTotals = useMemo(() => {
-    const matches = history.reduce((sum, row) => sum + row.matches_played, 0);
-    const goals = history.reduce((sum, row) => sum + row.goals, 0);
-    const assists = history.reduce((sum, row) => sum + row.assists, 0);
+    if (isGoalie) {
+      const matches = history.reduce((sum, row) => sum + (row.matches_played || 0), 0);
+      const goalsAgainst = history.reduce((sum, row) => sum + (row.goals_against || 0), 0);
+      return {
+        matches,
+        goalsAgainst,
+        gaa: matches > 0 ? (goalsAgainst / matches).toFixed(2) : '—',
+      };
+    }
+
+    const matches = history.reduce((sum, row) => sum + (row.matches_played || 0), 0);
+    const goals = history.reduce((sum, row) => sum + (row.goals || 0), 0);
+    const assists = history.reduce((sum, row) => sum + (row.assists || 0), 0);
     return { matches, goals, assists, points: goals + assists };
-  }, [history]);
+  }, [history, isGoalie]);
 
   if (loading) return <div className="text-center py-12 text-gray-500 animate-pulse">Chargement...</div>;
   if (!player) return <div className="text-center py-12 text-gray-500">Joueur introuvable</div>;
+
+  const statCards = isGoalie
+    ? [
+        { label: 'Matchs', value: stats.matches_played || 0, color: 'text-gray-300' },
+        { label: 'Buts contre', value: stats.goals_against || 0, color: 'text-red-400' },
+        { label: 'MBA', value: stats.gaa == null ? '—' : stats.gaa.toFixed(2), color: 'text-yellow-400' },
+      ]
+    : [
+        { label: 'Buts', value: stats.goals || 0, color: 'text-red-400' },
+        { label: 'Passes', value: stats.assists || 0, color: 'text-blue-400' },
+        { label: 'Points', value: points, color: 'text-yellow-400' },
+        { label: 'Matchs', value: stats.matches_played || 0, color: 'text-gray-300' },
+        { label: 'Pts/match', value: pointsPerGame, color: 'text-emerald-400' },
+      ];
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -111,21 +132,24 @@ export default function PlayerProfile() {
 
             <div className="bg-gray-800/70 rounded-2xl px-5 py-4 min-w-[180px]">
               <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-1">Carrière</div>
-              <div className="text-lg font-black text-white">{careerTotals.points} points</div>
-              <div className="text-xs text-gray-500 mt-1">{careerTotals.goals} buts · {careerTotals.assists} passes</div>
+              {isGoalie ? (
+                <>
+                  <div className="text-lg font-black text-white">{careerTotals.matches} matchs</div>
+                  <div className="text-xs text-gray-500 mt-1">{careerTotals.goalsAgainst} buts contre · MBA {careerTotals.gaa}</div>
+                </>
+              ) : (
+                <>
+                  <div className="text-lg font-black text-white">{careerTotals.points} points</div>
+                  <div className="text-xs text-gray-500 mt-1">{careerTotals.goals} buts · {careerTotals.assists} passes</div>
+                </>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {[
-          { icon: Target, label: 'Buts', value: stats.goals || 0, color: 'text-red-400' },
-          { icon: TrendingUp, label: 'Passes', value: stats.assists || 0, color: 'text-blue-400' },
-          { icon: Award, label: 'Points', value: points, color: 'text-yellow-400' },
-          { icon: Hash, label: 'Matchs', value: stats.matches_played || 0, color: 'text-gray-300' },
-          { icon: TrendingUp, label: 'Pts/match', value: pointsPerGame, color: 'text-emerald-400' },
-        ].map((item) => (
+      <div className={`grid gap-3 ${isGoalie ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-5'}`}>
+        {statCards.map((item) => (
           <div key={item.label} className="card text-center p-4">
             <div className={`text-3xl font-bold ${item.color}`}>{item.value}</div>
             <div className="text-xs text-gray-500 mt-1">{item.label}</div>
@@ -142,10 +166,20 @@ export default function PlayerProfile() {
             </div>
             {history.length > 1 && (
               <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                <span className="text-gray-300 font-bold">{careerTotals.matches}MJ</span>
-                <span className="text-red-400 font-bold">{careerTotals.goals}B</span>
-                <span className="text-blue-400 font-bold">{careerTotals.assists}P</span>
-                <span className="text-yellow-400 font-bold">{careerTotals.points}PTS</span>
+                {isGoalie ? (
+                  <>
+                    <span className="text-gray-300 font-bold">{careerTotals.matches}MJ</span>
+                    <span className="text-red-400 font-bold">{careerTotals.goalsAgainst}BC</span>
+                    <span className="text-yellow-400 font-bold">{careerTotals.gaa}MBA</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-gray-300 font-bold">{careerTotals.matches}MJ</span>
+                    <span className="text-red-400 font-bold">{careerTotals.goals}B</span>
+                    <span className="text-blue-400 font-bold">{careerTotals.assists}P</span>
+                    <span className="text-yellow-400 font-bold">{careerTotals.points}PTS</span>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -157,9 +191,18 @@ export default function PlayerProfile() {
                   <th>Saison</th>
                   <th>Équipe</th>
                   <th className="hidden sm:table-cell text-center">PJ</th>
-                  <th className="text-center">B</th>
-                  <th className="text-center">P</th>
-                  <th className="text-center font-bold text-yellow-400">PTS</th>
+                  {isGoalie ? (
+                    <>
+                      <th className="text-center">BC</th>
+                      <th className="text-center font-bold text-yellow-400">MBA</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="text-center">B</th>
+                      <th className="text-center">P</th>
+                      <th className="text-center font-bold text-yellow-400">PTS</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -182,9 +225,18 @@ export default function PlayerProfile() {
                       </div>
                     </td>
                     <td className="hidden sm:table-cell text-center text-gray-400">{row.matches_played}</td>
-                    <td className="text-center text-red-400 font-semibold">{row.goals}</td>
-                    <td className="text-center text-blue-400 font-semibold">{row.assists}</td>
-                    <td className="text-center font-black text-yellow-400">{row.points}</td>
+                    {isGoalie ? (
+                      <>
+                        <td className="text-center text-red-400 font-semibold">{row.goals_against}</td>
+                        <td className="text-center font-black text-yellow-400">{row.gaa == null ? '—' : row.gaa.toFixed(2)}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="text-center text-red-400 font-semibold">{row.goals}</td>
+                        <td className="text-center text-blue-400 font-semibold">{row.assists}</td>
+                        <td className="text-center font-black text-yellow-400">{row.points}</td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -193,39 +245,53 @@ export default function PlayerProfile() {
         </div>
       )}
 
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="section-title">Historique récent</h3>
-            <p className="text-sm text-gray-500 mt-1">Les derniers faits de match enregistrés pour ce joueur.</p>
+      {!isGoalie && (
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="section-title">Historique récent</h3>
+              <p className="text-sm text-gray-500 mt-1">Les derniers faits de match enregistrés pour ce joueur.</p>
+            </div>
           </div>
-        </div>
 
-        {recentGoals.length === 0 ? (
-          <p className="text-gray-500 text-sm text-center py-6">Aucun but ou passe enregistrés récemment</p>
-        ) : (
-          <div className="space-y-2">
-            {recentGoals.map((goal, index) => (
-              <div key={index} className="flex items-center gap-3 p-3 rounded-xl bg-gray-800/50 text-sm">
-                <div className="text-gray-500 text-xs min-w-[90px]">
-                  {goal.date ? format(parseISO(goal.date), 'd MMM yyyy', { locale: fr }) : '—'}
+          {recentGoals.length === 0 ? (
+            <p className="text-gray-500 text-sm text-center py-6">Aucun but ou passe enregistré récemment</p>
+          ) : (
+            <div className="space-y-2">
+              {recentGoals.map((goal, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 rounded-xl bg-gray-800/50 text-sm">
+                  <div className="text-gray-500 text-xs min-w-[90px]">
+                    {goal.date ? format(parseISO(goal.date), 'd MMM yyyy', { locale: fr }) : '—'}
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-white">{goal.home_team} {goal.home_score} - {goal.away_score} {goal.away_team}</span>
+                  </div>
+                  <div className="text-xs">
+                    {goal.scorer_id === parseInt(id, 10) ? (
+                      <span className="badge bg-red-500/20 text-red-400">But</span>
+                    ) : (
+                      <span className="badge bg-blue-500/20 text-blue-400">Passe</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-500">Pér. {goal.period}</div>
                 </div>
-                <div className="flex-1">
-                  <span className="text-white">{goal.home_team} {goal.home_score} - {goal.away_score} {goal.away_team}</span>
-                </div>
-                <div className="text-xs">
-                  {goal.scorer_id === parseInt(id, 10) ? (
-                    <span className="badge bg-red-500/20 text-red-400">But</span>
-                  ) : (
-                    <span className="badge bg-blue-500/20 text-blue-400">Passe</span>
-                  )}
-                </div>
-                <div className="text-xs text-gray-500">Pér. {goal.period}</div>
-              </div>
-            ))}
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {isGoalie && (
+        <div className="card">
+          <div className="flex items-center gap-2 mb-2">
+            <Shield size={16} className="text-yellow-400" />
+            <h3 className="section-title">Profil gardien</h3>
           </div>
-        )}
-      </div>
+          <p className="text-sm text-gray-500">
+            La fiche gardien affiche uniquement la moyenne de buts alloués, les matchs joués et les buts contre validés depuis les feuilles de match.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

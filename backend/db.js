@@ -110,6 +110,10 @@ function initDB() {
       away_team_id INTEGER NOT NULL,
       home_score INTEGER DEFAULT 0,
       away_score INTEGER DEFAULT 0,
+      home_goalie_id INTEGER,
+      away_goalie_id INTEGER,
+      home_goalie_is_sub INTEGER DEFAULT 0,
+      away_goalie_is_sub INTEGER DEFAULT 0,
       date DATETIME NOT NULL,
       location TEXT DEFAULT 'Aréna Municipal',
       status TEXT DEFAULT 'scheduled',
@@ -120,6 +124,8 @@ function initDB() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (home_team_id) REFERENCES teams(id),
       FOREIGN KEY (away_team_id) REFERENCES teams(id),
+      FOREIGN KEY (home_goalie_id) REFERENCES players(id),
+      FOREIGN KEY (away_goalie_id) REFERENCES players(id),
       FOREIGN KEY (season_id) REFERENCES seasons(id),
       FOREIGN KEY (mvp_id) REFERENCES players(id)
     );
@@ -299,6 +305,10 @@ function initDB() {
   // Migrations — safe to re-run, silently ignored if column already exists
   try { db.exec(`ALTER TABLE players ADD COLUMN rating TEXT DEFAULT 'C'`); } catch {}
   try { db.exec(`ALTER TABLE players ADD COLUMN rating_score INTEGER DEFAULT 0`); } catch {}
+  try { db.exec(`ALTER TABLE matches ADD COLUMN home_goalie_id INTEGER`); } catch {}
+  try { db.exec(`ALTER TABLE matches ADD COLUMN away_goalie_id INTEGER`); } catch {}
+  try { db.exec(`ALTER TABLE matches ADD COLUMN home_goalie_is_sub INTEGER DEFAULT 0`); } catch {}
+  try { db.exec(`ALTER TABLE matches ADD COLUMN away_goalie_is_sub INTEGER DEFAULT 0`); } catch {}
   try { db.exec(`ALTER TABLE matches ADD COLUMN is_playoff INTEGER DEFAULT 0`); } catch {}
   try { db.exec(`ALTER TABLE matches ADD COLUMN playoff_series_id INTEGER`); } catch {}
   try { db.exec(`ALTER TABLE seasons ADD COLUMN champion_team_id INTEGER`); } catch {}

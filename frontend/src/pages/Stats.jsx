@@ -63,6 +63,7 @@ function LeaderCard({ title, subtitle, icon: Icon, players = [], statKey, unit }
 export default function Stats() {
   const [tab, setTab] = useState('players');
   const [players, setPlayers] = useState([]);
+  const [goalies, setGoalies] = useState([]);
   const [teams, setTeams] = useState([]);
   const [leaders, setLeaders] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -75,11 +76,13 @@ export default function Stats() {
   const [activeSeason, setActiveSeason] = useState(null);
 
   useEffect(() => {
-    api.get('/seasons/active').then((response) => {
-      const season = response.data;
-      setActiveSeason(season);
-      setStatType(season?.status === 'playoffs' || season?.status === 'completed' ? 'playoffs' : 'regular');
-    }).catch(() => setStatType('regular'));
+    api.get('/seasons/active')
+      .then((response) => {
+        const season = response.data;
+        setActiveSeason(season);
+        setStatType(season?.status === 'playoffs' || season?.status === 'completed' ? 'playoffs' : 'regular');
+      })
+      .catch(() => setStatType('regular'));
   }, []);
 
   useEffect(() => {
@@ -91,11 +94,13 @@ export default function Stats() {
 
     Promise.all([
       api.get('/stats/players', { params }),
+      api.get('/stats/goalies', { params }),
       api.get('/stats/teams', { params }),
       api.get('/stats/leaders', { params }),
       api.get('/teams'),
-    ]).then(([playersResponse, teamsResponse, leadersResponse, allTeamsResponse]) => {
+    ]).then(([playersResponse, goaliesResponse, teamsResponse, leadersResponse, allTeamsResponse]) => {
       setPlayers(playersResponse.data);
+      setGoalies(goaliesResponse.data);
       setTeams(teamsResponse.data);
       setLeaders(leadersResponse.data);
       setAllTeams(allTeamsResponse.data);
@@ -103,9 +108,8 @@ export default function Stats() {
   }, [statType, activeSeason]);
 
   const handleSort = (field) => {
-    if (sortField === field) {
-      setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'));
-    } else {
+    if (sortField === field) setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+    else {
       setSortField(field);
       setSortDir('desc');
     }
@@ -129,8 +133,9 @@ export default function Stats() {
       phaseLabel,
       playerCount: filteredPlayers.length,
       teamCount: teams.length,
+      goalieCount: goalies.length,
     };
-  }, [filteredPlayers.length, statType, teams.length]);
+  }, [filteredPlayers.length, goalies.length, statType, teams.length]);
 
   const exportCSV = () => {
     const headers = 'Joueur,Équipe,Position,Matchs,Buts,Passes,Points\n';
@@ -145,9 +150,7 @@ export default function Stats() {
     link.click();
   };
 
-  if (loading) {
-    return <div className="text-center py-12 text-gray-600 text-sm">Chargement...</div>;
-  }
+  if (loading) return <div className="text-center py-12 text-gray-600 text-sm">Chargement...</div>;
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -194,14 +197,14 @@ export default function Stats() {
           <div className="text-xs text-gray-500 mt-1">Lecture active des statistiques</div>
         </div>
         <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Joueurs</div>
+          <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Patineurs</div>
           <div className="text-2xl font-black text-white">{summary.playerCount}</div>
           <div className="text-xs text-gray-500 mt-1">Joueurs visibles après filtres</div>
         </div>
         <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Équipes</div>
-          <div className="text-2xl font-black text-white">{summary.teamCount}</div>
-          <div className="text-xs text-gray-500 mt-1">Clubs inclus dans le tableau</div>
+          <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Gardiens</div>
+          <div className="text-2xl font-black text-white">{summary.goalieCount}</div>
+          <div className="text-xs text-gray-500 mt-1">Moyennes disponibles</div>
         </div>
         <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Contexte</div>
@@ -225,6 +228,9 @@ export default function Stats() {
         <button onClick={() => setTab('teams')} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === 'teams' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
           Équipes
         </button>
+        <button onClick={() => setTab('goalies')} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === 'goalies' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
+          Gardiens
+        </button>
       </div>
 
       {tab === 'players' && (
@@ -237,7 +243,7 @@ export default function Stats() {
               </select>
               <select className="select w-full sm:w-40" value={filterPos} onChange={(event) => setFilterPos(event.target.value)}>
                 <option value="">Toutes positions</option>
-                {['C', 'LW', 'RW', 'D', 'G'].map((position) => <option key={position} value={position}>{positionLabel[position]}</option>)}
+                {['C', 'LW', 'RW', 'D'].map((position) => <option key={position} value={position}>{positionLabel[position]}</option>)}
               </select>
             </div>
             <span className="text-xs text-gray-500">{filteredPlayers.length} joueur{filteredPlayers.length !== 1 ? 's' : ''} affiché{filteredPlayers.length !== 1 ? 's' : ''}</span>
@@ -266,7 +272,6 @@ export default function Stats() {
               <tbody>
                 {filteredPlayers.map((player, index) => {
                   const ppg = player.matches_played > 0 ? (player.points / player.matches_played).toFixed(2) : '—';
-
                   return (
                     <tr key={player.id} className="border-b border-gray-800/40 hover:bg-gray-800/20 transition-colors last:border-0">
                       <td className="py-3.5 px-5 text-gray-600 text-xs">{index + 1}</td>
@@ -387,6 +392,59 @@ export default function Stats() {
                 <tr>
                   <td colSpan="10" className="py-10 text-center text-sm text-gray-600">
                     Aucune équipe n’a encore de statistiques à afficher.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {tab === 'goalies' && (
+        <div className="bg-gray-900 rounded-3xl border border-gray-800 overflow-x-auto">
+          <div className="px-5 py-4 border-b border-gray-800">
+            <h2 className="text-lg font-bold text-white">Portrait des gardiens</h2>
+            <p className="text-sm text-gray-500 mt-1">Moyenne de buts alloués et charge de travail de chaque gardien partant.</p>
+          </div>
+
+          <table className="w-full text-sm min-w-[760px]">
+            <thead>
+              <tr className="border-b border-gray-800">
+                <th className="text-left py-3 px-5 text-xs text-gray-600 font-medium">Gardien</th>
+                <th className="text-left py-3 text-xs text-gray-600 font-medium">Équipe</th>
+                <th className="text-center py-3 text-xs text-gray-600 font-medium w-16">MJ</th>
+                <th className="text-center py-3 text-xs text-gray-600 font-medium w-16">BC</th>
+                <th className="text-center py-3 pr-5 text-xs text-gray-600 font-medium w-20">MBA</th>
+              </tr>
+            </thead>
+            <tbody>
+              {goalies.map((goalie) => (
+                <tr key={goalie.id} className="border-b border-gray-800/40 hover:bg-gray-800/20 transition-colors last:border-0">
+                  <td className="py-3.5 px-5">
+                    <Link to={`/players/${goalie.id}`} className="text-gray-300 hover:text-white transition-colors font-medium">
+                      #{goalie.number || '—'} {goalie.first_name} {goalie.last_name}
+                    </Link>
+                  </td>
+                  <td className="py-3.5">
+                    {goalie.team_name ? (
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: goalie.team_color }} />
+                        <span className="text-xs text-gray-500">{goalie.team_name}</span>
+                      </div>
+                    ) : (
+                      <span className="text-gray-700">—</span>
+                    )}
+                  </td>
+                  <td className="py-3.5 text-center text-gray-300 font-medium">{goalie.matches_played || 0}</td>
+                  <td className="py-3.5 text-center text-red-400 font-medium">{goalie.goals_against || 0}</td>
+                  <td className="py-3.5 pr-5 text-center font-black text-yellow-400">{goalie.gaa == null ? '—' : goalie.gaa.toFixed(2)}</td>
+                </tr>
+              ))}
+
+              {goalies.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="py-10 text-center text-sm text-gray-600">
+                    Aucun gardien n’a encore de statistiques à afficher.
                   </td>
                 </tr>
               )}

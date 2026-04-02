@@ -8,10 +8,14 @@ const matchQuery = `
   SELECT m.*,
     ht.name as home_team_name, ht.color as home_color,
     at2.name as away_team_name, at2.color as away_color,
+    hg.first_name || ' ' || hg.last_name as home_goalie_name,
+    ag.first_name || ' ' || ag.last_name as away_goalie_name,
     mvp.first_name || ' ' || mvp.last_name as mvp_name
   FROM matches m
   INNER JOIN teams ht ON m.home_team_id = ht.id
   INNER JOIN teams at2 ON m.away_team_id = at2.id
+  LEFT JOIN players hg ON m.home_goalie_id = hg.id
+  LEFT JOIN players ag ON m.away_goalie_id = ag.id
   LEFT JOIN players mvp ON m.mvp_id = mvp.id
 `;
 
@@ -106,7 +110,16 @@ router.put('/:id', authenticate, requireCaptainOrAdmin, (req, res) => {
 // Submit game sheet (goals + scores)
 router.post('/:id/gamesheet', authenticate, requireGamesheetAccess, (req, res) => {
   const db = getDB();
-  const { goals, home_score, away_score, notes } = req.body;
+  const {
+    goals,
+    home_score,
+    away_score,
+    notes,
+    home_goalie_id,
+    away_goalie_id,
+    home_goalie_is_sub,
+    away_goalie_is_sub,
+  } = req.body;
   const matchId = req.params.id;
 
   const match = db.prepare('SELECT * FROM matches WHERE id = ?').get(matchId);
@@ -129,8 +142,19 @@ router.post('/:id/gamesheet', authenticate, requireGamesheetAccess, (req, res) =
 
     // Update match
     db.prepare(`
-      UPDATE matches SET home_score=?, away_score=?, status='completed', notes=? WHERE id=?
-    `).run(home_score || 0, away_score || 0, notes || null, matchId);
+      UPDATE matches
+      SET home_score=?, away_score=?, status='completed', notes=?, home_goalie_id=?, away_goalie_id=?, home_goalie_is_sub=?, away_goalie_is_sub=?
+      WHERE id=?
+    `).run(
+      home_score || 0,
+      away_score || 0,
+      notes || null,
+      home_goalie_id || null,
+      away_goalie_id || null,
+      home_goalie_is_sub ? 1 : 0,
+      away_goalie_is_sub ? 1 : 0,
+      matchId
+    );
   });
 
   submitSheet();
