@@ -29,6 +29,12 @@ function GamesheetRoute({ children }) {
   return children;
 }
 
+function MessagesRoute({ children }) {
+  const { user, isMarqueur } = useAuth();
+  if (!user || isMarqueur) return <Navigate to="/" replace />;
+  return children;
+}
+
 function AppRoutes() {
   const { loading } = useAuth();
 
@@ -56,7 +62,7 @@ function AppRoutes() {
         <Route path="playoffs" element={<Playoffs />} />
         <Route path="schedule" element={<Schedule />} />
         {/* Messages requires login — handled inside the page */}
-        <Route path="messages" element={<Messages />} />
+        <Route path="messages" element={<MessagesRoute><Messages /></MessagesRoute>} />
         {/* Admin-only routes */}
         <Route path="gamesheet" element={<GamesheetRoute><GameSheet /></GamesheetRoute>} />
         <Route path="gamesheet/:id" element={<GamesheetRoute><GameSheet /></GamesheetRoute>} />

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import api from '../api/client';
 import { getTeamAbbreviation } from '../lib/teamAbbreviations';
+import { useAuth } from '../context/AuthContext';
 
 function MatchRow({ match, showResult }) {
   const date = parseISO(match.date);
@@ -104,6 +105,7 @@ function LeaderList({ title, subtitle, players, valueKey, valueLabel, icon: Icon
 }
 
 export default function Dashboard() {
+  const { isMarqueur } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
@@ -518,6 +520,7 @@ export default function Dashboard() {
         <LeaderList title="Meneurs à la passe" subtitle="Les créateurs de jeu en tête." players={topAssists} valueKey="assists" valueLabel="A" icon={Star} />
       </div>
 
+      {!isMarqueur && (
       <div className="ice-panel-soft rounded-[1.75rem] p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -545,6 +548,7 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+      )}
 
       {selectedAnnouncement && (
         <div

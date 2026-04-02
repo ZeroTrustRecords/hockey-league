@@ -123,6 +123,7 @@ function SidebarLink({ item, unreadCount }) {
 
 function isItemVisible(item, { user, isAdmin, isMarqueur }) {
   if (item.requiresUser && !user) return false;
+  if (item.to === '/messages' && isMarqueur) return false;
   if (item.requiresAdmin && !isAdmin) return false;
   if (item.requiresGamesheetAccess && !(isAdmin || isMarqueur)) return false;
   return true;
@@ -260,7 +261,10 @@ export default function Layout() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    if (!user) return; // Only fetch unread count when logged in
+    if (!user || user.role === 'marqueur') {
+      setUnreadCount(0);
+      return;
+    }
     const fetchUnread = () => {
       api.get('/messages/unread-count').then(res => setUnreadCount(res.data.count || 0)).catch(() => {});
     };
@@ -400,7 +404,13 @@ export default function Layout() {
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
           <div className="p-3 sm:p-4 lg:p-6 pb-20 lg:pb-0 max-w-7xl mx-auto animate-fade-in">
-            <Outlet context={{ refreshUnread: () => api.get('/messages/unread-count').then(r => setUnreadCount(r.data.count || 0)) }} />
+            <Outlet context={{ refreshUnread: () => {
+              if (user?.role === 'marqueur') {
+                setUnreadCount(0);
+                return Promise.resolve();
+              }
+              return api.get('/messages/unread-count').then(r => setUnreadCount(r.data.count || 0));
+            } }} />
           </div>
         </main>
       </div>

@@ -167,8 +167,8 @@ function PositionSlot({ slot, player, isActive, dragging, isOver, onDragOver, on
       }}
       onDragLeave={onDragLeave}
       className={`
-        relative border-2 rounded-xl flex flex-col items-center justify-center
-        w-[92px] h-[80px] transition-all duration-150 select-none
+        relative flex w-full min-h-[96px] flex-col items-center justify-center rounded-2xl border-2
+        px-2 py-3 transition-all duration-150 select-none sm:min-h-[108px]
         ${borderCls} ${bgCls} ${scaleCls}
         ${isActive && !filled ? 'cursor-copy' : ''}
       `}
@@ -179,11 +179,11 @@ function PositionSlot({ slot, player, isActive, dragging, isOver, onDragOver, on
       </span>
 
       {filled ? (
-        <div className="text-center px-1 w-full group/slot">
-          <div className="text-[11px] font-bold text-white leading-tight truncate">{player.first_name}</div>
-          <div className="text-[11px] font-bold text-white leading-tight truncate">{player.last_name}</div>
+        <div className="group/slot w-full px-1 text-center">
+          <div className="truncate text-[11px] font-bold leading-tight text-white sm:text-xs">{player.first_name}</div>
+          <div className="truncate text-[11px] font-bold leading-tight text-white sm:text-xs">{player.last_name}</div>
           {player.number != null && (
-            <div className="text-[9px] text-gray-500 mt-0.5">#{player.number}</div>
+            <div className="mt-1 text-[9px] text-gray-500">#{player.number}</div>
           )}
           {/* Remove button */}
           {isActive && (
@@ -198,7 +198,7 @@ function PositionSlot({ slot, player, isActive, dragging, isOver, onDragOver, on
       ) : isOver ? (
         <div className="text-[10px] font-bold text-emerald-300">✓ Déposer</div>
       ) : isActive ? (
-        <div className="text-[10px] text-gray-700 mt-0.5">glisser ici</div>
+        <div className="mt-0.5 text-center text-[10px] text-gray-700">glisser ici</div>
       ) : null}
     </div>
   );
@@ -233,7 +233,7 @@ function HockeyAlignment({ team, lineup, isActive, dragging, dragOverSlot, onDra
       style={isActive ? { borderColor: team.color + '70', boxShadow: `0 0 30px ${team.color}15` } : {}}
     >
       {/* Team header */}
-      <div className="flex items-center gap-3 mb-5">
+      <div className="mb-5 flex flex-wrap items-start gap-3 xl:items-center">
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{ backgroundColor: team.color + '25', border: `2px solid ${team.color}60` }}
@@ -244,7 +244,7 @@ function HockeyAlignment({ team, lineup, isActive, dragging, dragOverSlot, onDra
           <h3 className="font-bold text-white text-lg leading-tight">{team.name}</h3>
           <p className="text-xs text-gray-500">{filledCount}/11 joueurs placés</p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:ml-auto sm:justify-end">
           <span className={`badge border font-bold text-sm px-3 py-1 ${
             strength > 0
               ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
@@ -276,9 +276,9 @@ function HockeyAlignment({ team, lineup, isActive, dragging, dragOverSlot, onDra
         </div>
         <div className="space-y-3">
           {OFFENSE_LINES.map((line, li) => (
-            <div key={li} className="flex items-center gap-2">
-              <span className="text-[10px] text-gray-600 w-11 shrink-0 font-medium">Trio {li + 1}</span>
-              <div className="flex gap-2">
+            <div key={li} className="grid gap-2 md:grid-cols-[64px_minmax(0,1fr)] md:items-center">
+              <span className="text-[10px] font-medium text-gray-600 md:w-11 md:shrink-0">Trio {li + 1}</span>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {line.map(slot => <PositionSlot key={slot.id} {...slotProps(slot)} />)}
               </div>
             </div>
@@ -294,9 +294,9 @@ function HockeyAlignment({ team, lineup, isActive, dragging, dragOverSlot, onDra
         </div>
         <div className="space-y-3">
           {DEFENSE_PAIRS.map((pair, pi) => (
-            <div key={pi} className="flex items-center gap-2">
-              <span className="text-[10px] text-gray-600 w-11 shrink-0 font-medium">Paire {pi + 1}</span>
-              <div className="flex gap-2">
+            <div key={pi} className="grid gap-2 md:grid-cols-[64px_minmax(0,1fr)] md:items-center">
+              <span className="text-[10px] font-medium text-gray-600 md:w-11 md:shrink-0">Paire {pi + 1}</span>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:max-w-[420px]">
                 {pair.map(slot => <PositionSlot key={slot.id} {...slotProps(slot)} />)}
               </div>
             </div>
@@ -310,9 +310,11 @@ function HockeyAlignment({ team, lineup, isActive, dragging, dragOverSlot, onDra
           <div className="w-2 h-2 rounded-full bg-amber-400" />
           <span className="text-xs font-black text-amber-400 uppercase tracking-widest">Gardien</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-11" />
-          <PositionSlot {...slotProps(GOALIE_SLOT)} />
+        <div className="grid gap-2 md:grid-cols-[64px_minmax(0,1fr)] md:items-center">
+          <span className="text-[10px] font-medium text-gray-600 md:w-11 md:shrink-0">Titulaire</span>
+          <div className="max-w-[220px]">
+            <PositionSlot {...slotProps(GOALIE_SLOT)} />
+          </div>
         </div>
       </div>
     </div>
@@ -779,10 +781,10 @@ export default function Draft() {
           ) : null}
 
           {/* ── Main area ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-4 items-start">
+          <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(300px,360px)_minmax(0,1fr)] 2xl:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
 
             {/* ── Player Bank ── */}
-            <div className="card sticky top-4">
+            <div className="card xl:sticky xl:top-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="section-title">Banque de joueurs</h3>
                 <span className="badge bg-gray-700 text-gray-400 text-xs">{filteredPlayers.length}</span>
@@ -831,7 +833,7 @@ export default function Draft() {
               </div>
 
               {/* Player list grouped by section */}
-              <div className="space-y-3 max-h-[65vh] overflow-y-auto pr-1">
+              <div className="max-h-[40vh] space-y-3 overflow-y-auto pr-1 xl:max-h-[65vh]">
                 {filteredPlayers.length === 0 ? (
                   <div className="text-center py-8 text-gray-600 text-sm">
                     {available.length === 0
@@ -877,9 +879,9 @@ export default function Draft() {
             </div>
 
             {/* ── Right: alignment + team tabs ── */}
-            <div className="space-y-3">
+            <div className="min-w-0 space-y-4">
               {/* Team view tabs */}
-              <div className="flex gap-1.5 flex-wrap">
+              <div className="flex flex-wrap gap-1.5 xl:flex-nowrap xl:overflow-x-auto xl:pb-1">
                 <button
                   onClick={() => setViewTeamId(null)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -911,23 +913,25 @@ export default function Draft() {
               </div>
 
               {/* Main alignment */}
-              <HockeyAlignment
-                team={displayTeam || teams[0]}
-                lineup={lineups[(displayTeam || teams[0])?.id] || {}}
-                isActive={canInteract}
-                dragging={draggedPlayer}
-                dragOverSlot={dragOverSlot}
-                onDragOver={slotId => setDragOverSlot(slotId)}
-                onDrop={(slotId, player) => handleDrop(slotId, player)}
-                onDragLeave={() => setDragOverSlot(null)}
-                onRemove={slotId => handleRemoveFromSlot((displayTeam || teams[0])?.id, slotId)}
-                strength={teamStrength[(displayTeam || teams[0])?.id] || 0}
-              />
+              <div className="min-w-0">
+                <HockeyAlignment
+                  team={displayTeam || teams[0]}
+                  lineup={lineups[(displayTeam || teams[0])?.id] || {}}
+                  isActive={canInteract}
+                  dragging={draggedPlayer}
+                  dragOverSlot={dragOverSlot}
+                  onDragOver={slotId => setDragOverSlot(slotId)}
+                  onDrop={(slotId, player) => handleDrop(slotId, player)}
+                  onDragLeave={() => setDragOverSlot(null)}
+                  onRemove={slotId => handleRemoveFromSlot((displayTeam || teams[0])?.id, slotId)}
+                  strength={teamStrength[(displayTeam || teams[0])?.id] || 0}
+                />
+              </div>
 
               {/* All teams overview */}
               <div>
                 <h3 className="text-sm font-semibold text-gray-400 mb-2 mt-1">Vue d'ensemble — Tous les alignements</h3>
-                <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
                   {teams.map(team => (
                     <MiniAlignment
                       key={team.id}
