@@ -191,3 +191,104 @@ test('backup export and restore work through HTTP routes', async () => {
     await ctx.cleanup();
   }
 });
+
+test('password change rejects missing or too-short new passwords', async () => {
+  const ctx = await startTestServer();
+  try {
+    const token = await loginAsAdmin(ctx.baseUrl);
+
+    const missingResponse = await fetch(`${ctx.baseUrl}/api/auth/password`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ current_password: 'password123' }),
+    });
+    const missingBody = await missingResponse.json();
+    assert.equal(missingResponse.status, 400);
+    assert.match(missingBody.error, /requis/i);
+
+    const shortResponse = await fetch(`${ctx.baseUrl}/api/auth/password`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ current_password: 'password123', new_password: 'short' }),
+    });
+    const shortBody = await shortResponse.json();
+    assert.equal(shortResponse.status, 400);
+    assert.match(shortBody.error, /8 caracteres/i);
+  } finally {
+    await ctx.cleanup();
+  }
+});
+
+test('league reset keeps a single active season', async () => {
+  const ctx = await startTestServer();
+  try {
+    const token = await loginAsAdmin(ctx.baseUrl);
+
+    await fetch(`${ctx.baseUrl}/api/seasons/import-roster`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        season_name: 'ETE - 2026',
+        players: [
+          { first_name: 'Jean', last_name: 'Tremblay', team_name: 'Rangers', position: 'A', number: 9 },
+          { first_name: 'Marc', last_name: 'Gagnon', team_name: 'Canadiens', position: 'D', number: 4 },
+        ],
+      }),
+    });
+
+    await fetch(`${ctx.baseUrl}/api/seasons`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name: 'ETE - 2027' }),
+    });
+
+    await fetch(`${ctx.baseUrl}/api/seasons/1`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name: 'ETE - 2026', start_date: null, end_date: null, status: 'completed' }),
+    });
+
+    await fetch(`${ctx.baseUrl}/api/seasons/2`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name: 'ETE - 2027', start_date: null, end_date: null, status: 'playoffs' }),
+    });
+
+    const resetResponse = await fetch(`${ctx.baseUrl}/api/seasons/reset`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ admin_password: 'password123' }),
+    });
+    assert.equal(resetResponse.status, 200);
+
+    const seasonsResponse = await fetch(`${ctx.baseUrl}/api/seasons`);
+    const seasons = await seasonsResponse.json();
+    const activeSeasons = seasons.filter((season) => season.status === 'active');
+
+    assert.equal(activeSeasons.length, 1);
+    assert.equal(activeSeasons[0].name, 'ETE - 2027');
+  } finally {
+    await ctx.cleanup();
+  }
+});

@@ -142,6 +142,9 @@ router.post('/reset', authenticate, requireAdmin, requireAdminPassword, (req, re
   const db = getDB();
   db.pragma('foreign_keys = OFF');
   db.transaction(() => {
+    const seasons = db.prepare('SELECT id, name FROM seasons ORDER BY id DESC').all();
+    const seasonToKeep = seasons[0] || null;
+
     db.prepare('DELETE FROM attendance').run();
     db.prepare('DELETE FROM goals').run();
     db.prepare('DELETE FROM matches').run();
@@ -151,13 +154,18 @@ router.post('/reset', authenticate, requireAdmin, requireAdminPassword, (req, re
     db.prepare('DELETE FROM player_season_stats').run();
     db.prepare('UPDATE players SET team_id = NULL').run();
     db.prepare('DELETE FROM team_staff').run();
-    db.prepare("UPDATE seasons SET status = 'active', champion_team_id = NULL WHERE status IN ('playoffs','completed')").run();
+    db.prepare('UPDATE seasons SET champion_team_id = NULL').run();
+    if (seasonToKeep) {
+      db.prepare("UPDATE seasons SET status = 'completed' WHERE id != ?").run(seasonToKeep.id);
+      db.prepare("UPDATE seasons SET status = 'active', champion_team_id = NULL WHERE id = ?").run(seasonToKeep.id);
+    }
     logAudit(db, {
       user_id: req.user.id,
       username: req.user.username,
       action: 'league.reset',
       entity_type: 'league',
       entity_id: 'global',
+      details: { active_season_id: seasonToKeep?.id || null, active_season_name: seasonToKeep?.name || null },
     });
   })();
   db.pragma('foreign_keys = ON');

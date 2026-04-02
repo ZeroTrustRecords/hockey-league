@@ -21,12 +21,12 @@ router.post('/login', (req, res) => {
   const token = jwt.sign(
     { id: user.id, username: user.username, role: user.role, player_id: user.player_id, team_id: user.team_id },
     JWT_SECRET,
-    { expiresIn: '7d' }
+    { expiresIn: '7d' },
   );
 
   res.json({
     token,
-    user: { id: user.id, username: user.username, role: user.role, player_id: user.player_id, team_id: user.team_id }
+    user: { id: user.id, username: user.username, role: user.role, player_id: user.player_id, team_id: user.team_id },
   });
 });
 
@@ -47,7 +47,7 @@ router.get('/me', authenticate, (req, res) => {
 router.get('/users', authenticate, requireAdmin, (req, res) => {
   const db = getDB();
   const users = db.prepare(
-    'SELECT id, username, role, player_id, team_id, created_at FROM users ORDER BY role, username'
+    'SELECT id, username, role, player_id, team_id, created_at FROM users ORDER BY role, username',
   ).all();
   res.json(users);
 });
@@ -76,7 +76,7 @@ router.delete('/users/:id', authenticate, requireAdmin, (req, res) => {
       });
     }
   })();
-  res.json({ message: 'Compte supprimé' });
+  res.json({ message: 'Compte supprime' });
 });
 
 // Register (admin only)
@@ -86,11 +86,11 @@ router.post('/register', authenticate, requireAdmin, (req, res) => {
 
   const db = getDB();
   const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
-  if (existing) return res.status(409).json({ error: 'Nom d\'utilisateur déjà pris' });
+  if (existing) return res.status(409).json({ error: "Nom d'utilisateur deja pris" });
 
   const hash = bcrypt.hashSync(password, 10);
   const result = db.prepare(
-    'INSERT INTO users (username, email, password_hash, role, player_id, team_id) VALUES (?, ?, ?, ?, ?, ?)'
+    'INSERT INTO users (username, email, password_hash, role, player_id, team_id) VALUES (?, ?, ?, ?, ?, ?)',
   ).run(username, email || null, hash, role, player_id || null, team_id || null);
 
   logAudit(db, {
@@ -111,13 +111,21 @@ router.put('/password', authenticate, (req, res) => {
   const db = getDB();
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
 
+  if (!current_password || !new_password) {
+    return res.status(400).json({ error: 'Mot de passe actuel et nouveau mot de passe requis' });
+  }
+
+  if (typeof new_password !== 'string' || new_password.trim().length < 8) {
+    return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins 8 caracteres' });
+  }
+
   if (!bcrypt.compareSync(current_password, user.password_hash)) {
     return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
   }
 
-  const hash = bcrypt.hashSync(new_password, 10);
+  const hash = bcrypt.hashSync(new_password.trim(), 10);
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, req.user.id);
-  res.json({ message: 'Mot de passe mis à jour' });
+  res.json({ message: 'Mot de passe mis a jour' });
 });
 
 module.exports = router;
