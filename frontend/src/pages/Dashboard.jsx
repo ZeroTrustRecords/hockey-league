@@ -181,15 +181,15 @@ export default function Dashboard() {
       )}
 
       <div className="ice-panel-soft rounded-[1.75rem] px-5 py-5 sm:px-6 sm:py-6">
-        <div className="flex items-end justify-between gap-6 flex-wrap">
-          <div className="min-w-0 flex-1">
-            <p className="public-eyebrow">Site officiel de la ligue</p>
-            <h1 className="public-title text-3xl sm:text-5xl">LHMA</h1>
-            <p className="public-subtitle max-w-4xl mt-2">
+        <div className="flex flex-col items-start gap-4 sm:gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="w-full min-w-0">
+            <p className="public-eyebrow text-[0.68rem] tracking-[0.22em] sm:text-xs sm:tracking-[0.32em]">Site officiel de la ligue</p>
+            <h1 className="public-title mt-2 text-3xl sm:text-5xl">LHMA</h1>
+            <p className="public-subtitle mt-3 max-w-4xl text-sm leading-6 sm:text-base sm:leading-7">
               {'Résultats, prochain rendez-vous, meneurs offensifs et état de la saison au même endroit.'}
             </p>
           </div>
-          <div className="score-chip shrink-0">{seasonLabel}</div>
+          <div className="score-chip self-start text-xs sm:self-auto sm:text-sm">{seasonLabel}</div>
         </div>
       </div>
 
