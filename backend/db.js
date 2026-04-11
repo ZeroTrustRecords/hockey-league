@@ -149,6 +149,21 @@ function initDB() {
       FOREIGN KEY (assist2_id) REFERENCES players(id)
     );
 
+    CREATE TABLE IF NOT EXISTS penalties (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      match_id INTEGER NOT NULL,
+      team_id INTEGER NOT NULL,
+      player_id INTEGER,
+      period INTEGER DEFAULT 1,
+      time_in_period TEXT,
+      minutes INTEGER DEFAULT 2,
+      infraction TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
+      FOREIGN KEY (team_id) REFERENCES teams(id),
+      FOREIGN KEY (player_id) REFERENCES players(id)
+    );
+
     CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       sender_id INTEGER NOT NULL,
@@ -327,6 +342,9 @@ function initDB() {
     CREATE INDEX IF NOT EXISTS idx_goals_scorer ON goals(scorer_id);
     CREATE INDEX IF NOT EXISTS idx_goals_assist1 ON goals(assist1_id);
     CREATE INDEX IF NOT EXISTS idx_goals_assist2 ON goals(assist2_id);
+    CREATE INDEX IF NOT EXISTS idx_penalties_match ON penalties(match_id);
+    CREATE INDEX IF NOT EXISTS idx_penalties_player ON penalties(player_id);
+    CREATE INDEX IF NOT EXISTS idx_penalties_team ON penalties(team_id);
     CREATE INDEX IF NOT EXISTS idx_players_team ON players(team_id);
     CREATE INDEX IF NOT EXISTS idx_players_status ON players(status);
     CREATE INDEX IF NOT EXISTS idx_player_season_stats_lookup ON player_season_stats(player_id, season_id, stat_type);

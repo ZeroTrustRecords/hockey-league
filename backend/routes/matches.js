@@ -65,7 +65,18 @@ router.get('/:id', (req, res) => {
     ORDER BY g.period, g.time_in_period
   `).all(req.params.id);
 
-  res.json({ ...match, goals });
+  const penalties = db.prepare(`
+    SELECT pn.*,
+      COALESCE(p.first_name || ' ' || p.last_name, 'RemplaÃ§ant') as player_name,
+      t.name as team_name, t.color as team_color
+    FROM penalties pn
+    LEFT JOIN players p ON pn.player_id = p.id
+    INNER JOIN teams t ON pn.team_id = t.id
+    WHERE pn.match_id = ?
+    ORDER BY pn.period, pn.time_in_period, pn.id
+  `).all(req.params.id);
+
+  res.json({ ...match, goals, penalties });
 });
 
 router.post('/', authenticate, requireCaptainOrAdmin, (req, res) => {
@@ -112,6 +123,7 @@ router.post('/:id/gamesheet', authenticate, requireGamesheetAccess, (req, res) =
   const db = getDB();
   const {
     goals,
+    penalties,
     home_score,
     away_score,
     notes,
@@ -128,6 +140,7 @@ router.post('/:id/gamesheet', authenticate, requireGamesheetAccess, (req, res) =
   const submitSheet = db.transaction(() => {
     // Clear existing goals
     db.prepare('DELETE FROM goals WHERE match_id = ?').run(matchId);
+    db.prepare('DELETE FROM penalties WHERE match_id = ?').run(matchId);
 
     // Insert goals
     if (goals && goals.length > 0) {
@@ -137,6 +150,24 @@ router.post('/:id/gamesheet', authenticate, requireGamesheetAccess, (req, res) =
       `);
       for (const g of goals) {
         insertGoal.run(matchId, g.team_id, g.scorer_id || null, g.assist1_id || null, g.assist2_id || null, g.period || 1, g.time_in_period || null);
+      }
+    }
+
+    if (penalties && penalties.length > 0) {
+      const insertPenalty = db.prepare(`
+        INSERT INTO penalties (match_id, team_id, player_id, period, time_in_period, minutes, infraction)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const penalty of penalties) {
+        insertPenalty.run(
+          matchId,
+          penalty.team_id,
+          penalty.player_id || null,
+          penalty.period || 1,
+          penalty.time_in_period || null,
+          penalty.minutes || 2,
+          penalty.infraction || null
+        );
       }
     }
 

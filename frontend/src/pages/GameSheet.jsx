@@ -12,6 +12,13 @@ const PERIODS = [
   { value: '5', label: 'Fusil.' },
 ];
 
+const PENALTY_MINUTES = [
+  { value: '2', label: '2 min' },
+  { value: '4', label: '4 min' },
+  { value: '5', label: '5 min' },
+  { value: '10', label: '10 min' },
+];
+
 function goalieOptions(players, teamId) {
   return players
     .filter((player) => String(player.team_id) === String(teamId) && player.position === 'G' && player.status === 'active')
@@ -127,6 +134,67 @@ function GoalRow({ goal, index, homeTeam, awayTeam, allPlayers, onChange, onRemo
   );
 }
 
+function PenaltyRow({ penalty, index, homeTeam, awayTeam, allPlayers, onChange, onRemove }) {
+  const team = [homeTeam, awayTeam].find((candidate) => candidate && String(candidate.id) === String(penalty.team_id));
+  const teamPlayers = allPlayers.filter((player) => String(player.team_id) === String(penalty.team_id));
+  const set = (key, value) => onChange(index, { ...penalty, [key]: value });
+
+  return (
+    <div className="flex items-start gap-2 p-3 rounded-xl bg-gray-800/60 border border-gray-700">
+      <div className="w-1 self-stretch rounded-full flex-shrink-0 mt-0.5" style={{ backgroundColor: team?.color || '#6b7280' }} />
+
+      <div className="flex-1 space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-bold text-gray-400">#{index + 1}</span>
+          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: team?.color }} />
+          <span className="text-xs text-white font-semibold flex-1">{team?.name}</span>
+          <div className="flex gap-1">
+            {PERIODS.filter((period) => period.value !== '5').map((period) => (
+              <button
+                key={period.value}
+                type="button"
+                onClick={() => set('period', period.value)}
+                className={`px-2 py-0.5 rounded text-xs font-bold transition-all ${
+                  String(penalty.period) === period.value
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                }`}
+              >
+                {period.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div>
+            <label className="text-[10px] text-gray-500 uppercase tracking-wide">Joueur</label>
+            <select className="select mt-0.5 text-sm" value={penalty.player_id} onChange={(event) => set('player_id', event.target.value)}>
+              <option value="">—</option>
+              <option value="sub">Remplacant</option>
+              {teamPlayers.map((player) => (
+                <option key={player.id} value={player.id}>#{player.number || '—'} {player.last_name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-500 uppercase tracking-wide">Minutes</label>
+            <select className="select mt-0.5 text-sm" value={penalty.minutes} onChange={(event) => set('minutes', event.target.value)}>
+              {PENALTY_MINUTES.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <button onClick={() => onRemove(index)} className="text-gray-600 hover:text-red-400 transition-colors p-1 flex-shrink-0 mt-0.5">
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
 export default function GameSheet() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -151,6 +219,7 @@ export default function GameSheet() {
     away_goalie_id: '',
   });
   const [goals, setGoals] = useState([]);
+  const [penalties, setPenalties] = useState([]);
   const [notes, setNotes] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
 
@@ -188,6 +257,7 @@ export default function GameSheet() {
         away_goalie_id: match.away_goalie_is_sub ? 'sub' : (match.away_goalie_id ? String(match.away_goalie_id) : getDefaultGoalieValue(allPlayers, match.away_team_id)),
       });
       setGoals(match.goals || []);
+      setPenalties(match.penalties || []);
       setNotes(match.notes || '');
       setShowCreateForm(false);
     });
@@ -225,6 +295,19 @@ export default function GameSheet() {
 
   const updateGoal = (index, goal) => setGoals((current) => current.map((item, currentIndex) => (currentIndex === index ? goal : item)));
   const removeGoal = (index) => setGoals((current) => current.filter((_, currentIndex) => currentIndex !== index));
+  const addPenaltyForTeam = (teamId) => {
+    setPenalties((current) => [
+      ...current,
+      {
+        team_id: String(teamId),
+        player_id: '',
+        period: '1',
+        minutes: '2',
+      },
+    ]);
+  };
+  const updatePenalty = (index, penalty) => setPenalties((current) => current.map((item, currentIndex) => (currentIndex === index ? penalty : item)));
+  const removePenalty = (index) => setPenalties((current) => current.filter((_, currentIndex) => currentIndex !== index));
 
   const normalizeGoals = (items) => items.map((goal) => ({
     ...goal,
@@ -233,11 +316,20 @@ export default function GameSheet() {
     assist2_id: goal.assist2_id === 'sub' || !goal.assist2_id ? null : goal.assist2_id,
   }));
 
+  const normalizePenalties = (items) => items.map((penalty) => ({
+    ...penalty,
+    player_id: penalty.player_id === 'sub' || !penalty.player_id ? null : penalty.player_id,
+    minutes: Number(penalty.minutes) || 2,
+    infraction: penalty.infraction?.trim() || null,
+    time_in_period: penalty.time_in_period?.trim() || null,
+  }));
+
   const buildGamesheetPayload = () => {
     const homeGoalie = normalizeGoalieSelection(form.home_goalie_id);
     const awayGoalie = normalizeGoalieSelection(form.away_goalie_id);
     return {
       goals: normalizeGoals(goals),
+      penalties: normalizePenalties(penalties),
       home_score: homeScore,
       away_score: awayScore,
       notes,
@@ -256,6 +348,11 @@ export default function GameSheet() {
     const invalids = goals.filter((goal) => !goal.team_id);
     if (invalids.length > 0) {
       toast.error('Chaque but doit avoir une équipe');
+      return;
+    }
+    const invalidPenalties = penalties.filter((penalty) => !penalty.team_id || !penalty.minutes);
+    if (invalidPenalties.length > 0) {
+      toast.error('Chaque penalite doit avoir une equipe et une duree');
       return;
     }
 
@@ -461,6 +558,55 @@ export default function GameSheet() {
                       allPlayers={allPlayers}
                       onChange={updateGoal}
                       onRemove={removeGoal}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!isMatchLocked && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-white text-sm">Penalites enregistrees <span className="text-gray-500 font-normal">(minutes de penalite)</span></span>
+              </div>
+
+              {homeTeam && awayTeam && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => addPenaltyForTeam(homeTeam.id)}
+                    className="flex-1 py-3 rounded-xl border-2 font-bold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
+                    style={{ backgroundColor: `${homeTeam.color}25`, borderColor: `${homeTeam.color}70` }}
+                  >
+                    <Plus size={15} /> Penalite — {homeTeam.name}
+                  </button>
+                  <button
+                    onClick={() => addPenaltyForTeam(awayTeam.id)}
+                    className="flex-1 py-3 rounded-xl border-2 font-bold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
+                    style={{ backgroundColor: `${awayTeam.color}25`, borderColor: `${awayTeam.color}70` }}
+                  >
+                    <Plus size={15} /> Penalite — {awayTeam.name}
+                  </button>
+                </div>
+              )}
+
+              {penalties.length === 0 ? (
+                <div className="text-center py-6 text-gray-600 text-sm">
+                  <Shield size={24} className="mx-auto mb-2 opacity-30" />
+                  Aucune penalite enregistree
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {penalties.map((penalty, index) => (
+                    <PenaltyRow
+                      key={`${penalty.team_id}-${index}`}
+                      penalty={penalty}
+                      index={index}
+                      homeTeam={homeTeam}
+                      awayTeam={awayTeam}
+                      allPlayers={allPlayers}
+                      onChange={updatePenalty}
+                      onRemove={removePenalty}
                     />
                   ))}
                 </div>

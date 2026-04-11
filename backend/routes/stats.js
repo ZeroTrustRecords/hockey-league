@@ -62,7 +62,8 @@ router.get('/players', (req, res) => {
         pss.games_played AS matches_played,
         pss.goals,
         pss.assists,
-        pss.points
+        pss.points,
+        pss.pim
       FROM player_season_stats pss
       JOIN players p ON p.id = pss.player_id
       LEFT JOIN teams t ON t.id = pss.team_id
@@ -112,7 +113,17 @@ router.get('/players', (req, res) => {
       COALESCE(SUM(CASE WHEN g.scorer_id = p.id AND m.validated = 1 ${goalFilter} THEN 1 ELSE 0 END), 0) as goals,
       COALESCE(SUM(CASE WHEN (g.assist1_id = p.id OR g.assist2_id = p.id) AND m.validated = 1 ${goalFilter} THEN 1 ELSE 0 END), 0) as assists,
       COALESCE(SUM(CASE WHEN g.scorer_id = p.id AND m.validated = 1 ${goalFilter} THEN 1 ELSE 0 END), 0) +
-      COALESCE(SUM(CASE WHEN (g.assist1_id = p.id OR g.assist2_id = p.id) AND m.validated = 1 ${goalFilter} THEN 1 ELSE 0 END), 0) as points
+      COALESCE(SUM(CASE WHEN (g.assist1_id = p.id OR g.assist2_id = p.id) AND m.validated = 1 ${goalFilter} THEN 1 ELSE 0 END), 0) as points,
+      COALESCE((
+        SELECT SUM(pn.minutes)
+        FROM penalties pn
+        INNER JOIN matches pm ON pn.match_id = pm.id
+        WHERE pn.player_id = p.id
+          AND pm.validated = 1
+          ${context.seasonId ? 'AND pm.season_id = ?' : ''}
+          ${context.type === 'regular' ? 'AND pm.is_playoff = 0' : ''}
+          ${context.type === 'playoffs' ? 'AND pm.is_playoff = 1' : ''}
+      ), 0) as pim
     FROM players p
     LEFT JOIN teams t ON p.team_id = t.id
     LEFT JOIN goals g ON (g.scorer_id = p.id OR g.assist1_id = p.id OR g.assist2_id = p.id)
@@ -127,6 +138,7 @@ router.get('/players', (req, res) => {
     ...goalParams,
     ...goalParams,
     ...goalParams,
+    ...(context.seasonId ? [context.seasonId] : []),
     parseInt(limit)
   );
 
@@ -206,7 +218,8 @@ router.get('/leaders', (req, res) => {
         t.color AS team_color,
         pss.goals,
         pss.assists,
-        pss.points
+        pss.points,
+        pss.pim
       FROM player_season_stats pss
       JOIN players p ON p.id = pss.player_id
       LEFT JOIN teams t ON t.id = pss.team_id
@@ -233,7 +246,13 @@ router.get('/leaders', (req, res) => {
       SUM(CASE WHEN m.validated = 1 ${whereClause} AND g.scorer_id = p.id THEN 1 ELSE 0 END) as goals,
       SUM(CASE WHEN m.validated = 1 ${whereClause} AND (g.assist1_id = p.id OR g.assist2_id = p.id) THEN 1 ELSE 0 END) as assists,
       SUM(CASE WHEN m.validated = 1 ${whereClause} AND g.scorer_id = p.id THEN 1 ELSE 0 END) +
-      SUM(CASE WHEN m.validated = 1 ${whereClause} AND (g.assist1_id = p.id OR g.assist2_id = p.id) THEN 1 ELSE 0 END) as points
+      SUM(CASE WHEN m.validated = 1 ${whereClause} AND (g.assist1_id = p.id OR g.assist2_id = p.id) THEN 1 ELSE 0 END) as points,
+      COALESCE((
+        SELECT SUM(pn.minutes)
+        FROM penalties pn
+        INNER JOIN matches pm ON pn.match_id = pm.id
+        WHERE pn.player_id = p.id AND pm.validated = 1 ${whereClause}
+      ), 0) as pim
     FROM players p
     LEFT JOIN teams t ON p.team_id = t.id
     LEFT JOIN goals g ON (g.scorer_id = p.id OR g.assist1_id = p.id OR g.assist2_id = p.id)

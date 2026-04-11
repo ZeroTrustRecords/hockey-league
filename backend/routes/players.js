@@ -71,14 +71,20 @@ router.get('/:id', authenticateOptional, (req, res) => {
   const currentPhase = currentSeason && (currentSeason.status === 'playoffs' || currentSeason.playoff_matches > 0) ? 1 : 0;
   const isGoalie = player.position === 'G';
 
-  const emptyStats = { matches_played: 0, goals: 0, assists: 0, points: 0 };
+  const emptyStats = { matches_played: 0, goals: 0, assists: 0, points: 0, pim: 0 };
   const skaterStats = currentSeason ? db.prepare(`
     SELECT
       COUNT(DISTINCT g.match_id) as matches_played,
       COALESCE(SUM(CASE WHEN g.scorer_id = ? THEN 1 ELSE 0 END), 0) as goals,
       COALESCE(SUM(CASE WHEN g.assist1_id = ? OR g.assist2_id = ? THEN 1 ELSE 0 END), 0) as assists,
       COALESCE(SUM(CASE WHEN g.scorer_id = ? THEN 1 ELSE 0 END), 0) +
-      COALESCE(SUM(CASE WHEN g.assist1_id = ? OR g.assist2_id = ? THEN 1 ELSE 0 END), 0) as points
+      COALESCE(SUM(CASE WHEN g.assist1_id = ? OR g.assist2_id = ? THEN 1 ELSE 0 END), 0) as points,
+      COALESCE((
+        SELECT SUM(pn.minutes)
+        FROM penalties pn
+        INNER JOIN matches pm ON pn.match_id = pm.id
+        WHERE pn.player_id = ? AND pm.validated = 1 AND pm.season_id = ? AND pm.is_playoff = ?
+      ), 0) as pim
     FROM goals g
     INNER JOIN matches m ON g.match_id = m.id
     WHERE m.validated = 1 AND m.season_id = ? AND m.is_playoff = ?
@@ -88,6 +94,7 @@ router.get('/:id', authenticateOptional, (req, res) => {
     player.id, player.id, player.id,
     currentSeason.id,
     currentPhase,
+    player.id, currentSeason.id, currentPhase,
     player.id, player.id, player.id
   ) : emptyStats;
 
