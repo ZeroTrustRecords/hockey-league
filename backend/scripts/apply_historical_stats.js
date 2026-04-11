@@ -4,11 +4,16 @@ const { seedPastSeasonStats } = require('../lib/pastSeasonStats');
 function main() {
   initDB();
   const db = getDB();
+  db.pragma('foreign_keys = OFF');
   db.prepare(`
     DELETE FROM player_season_stats
     WHERE season_id IN (SELECT id FROM seasons WHERE name GLOB '?T? -*')
   `).run();
+  db.prepare(`DELETE FROM matches WHERE season_id IN (SELECT id FROM seasons WHERE name GLOB '?T? -*')`).run();
+  db.prepare(`DELETE FROM playoff_series WHERE season_id IN (SELECT id FROM seasons WHERE name GLOB '?T? -*')`).run();
+  db.prepare(`DELETE FROM teams WHERE season_id IN (SELECT id FROM seasons WHERE name GLOB '?T? -*')`).run();
   db.prepare(`DELETE FROM seasons WHERE name GLOB '?T? -*'`).run();
+  db.pragma('foreign_keys = ON');
   const activeSeason =
     db.prepare(`SELECT * FROM seasons WHERE status = 'active' ORDER BY id DESC LIMIT 1`).get() ||
     db.prepare(`SELECT * FROM seasons ORDER BY id DESC LIMIT 1`).get() ||
