@@ -19,21 +19,31 @@ function parseSeasonYear(seasonName) {
   return match ? parseInt(match[1], 10) : 0;
 }
 
+function canonicalSeasonName(seasonName) {
+  const year = parseSeasonYear(seasonName);
+  return year > 0 ? `ÉTÉ - ${year}` : seasonName;
+}
+
 function loadHistoricalFixture() {
   if (!fs.existsSync(FIXTURE_PATH)) {
     throw new Error(`Fichier de stats historique introuvable: ${FIXTURE_PATH}`);
   }
 
   const raw = JSON.parse(fs.readFileSync(FIXTURE_PATH, 'utf8'));
-  const seasons = Object.entries(raw).map(([seasonName, rows]) => ({
-    seasonName,
-    year: parseSeasonYear(seasonName),
-    rows: Array.isArray(rows) ? rows : [],
-  }));
+  const seasonMap = new Map();
 
-  return seasons
-    .filter((season) => season.year > 0 && season.rows.length > 0)
-    .sort((a, b) => a.year - b.year);
+  Object.entries(raw).forEach(([seasonName, rows]) => {
+    if (!Array.isArray(rows)) return;
+    const canonicalName = canonicalSeasonName(seasonName);
+    const year = parseSeasonYear(canonicalName);
+    if (year <= 0 || rows.length === 0) return;
+
+    const bucket = seasonMap.get(canonicalName) || { seasonName: canonicalName, year, rows: [] };
+    bucket.rows.push(...rows);
+    seasonMap.set(canonicalName, bucket);
+  });
+
+  return [...seasonMap.values()].sort((a, b) => a.year - b.year);
 }
 
 function ensureHistoricalPlayer(db, playerMap, row) {
