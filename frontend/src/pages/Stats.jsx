@@ -66,7 +66,6 @@ export default function Stats() {
   const [goalies, setGoalies] = useState([]);
   const [teams, setTeams] = useState([]);
   const [seasons, setSeasons] = useState([]);
-  const [leaders, setLeaders] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState('points');
   const [sortDir, setSortDir] = useState('desc');
@@ -113,14 +112,15 @@ export default function Stats() {
       api.get('/stats/players', { params }),
       api.get('/stats/goalies', { params }),
       api.get('/stats/teams', { params }),
-      api.get('/stats/leaders', { params }),
-      api.get('/teams'),
-    ]).then(([playersResponse, goaliesResponse, teamsResponse, leadersResponse, allTeamsResponse]) => {
+    ]).then(([playersResponse, goaliesResponse, teamsResponse]) => {
       setPlayers(playersResponse.data);
       setGoalies(goaliesResponse.data);
       setTeams(teamsResponse.data);
-      setLeaders(leadersResponse.data);
-      setAllTeams(allTeamsResponse.data);
+      setAllTeams(teamsResponse.data.map((team) => ({
+        id: team.team_id,
+        name: team.team_name,
+        color: team.team_color,
+      })));
     }).finally(() => setLoading(false));
   }, [statType, selectedSeason]);
 
@@ -157,6 +157,12 @@ export default function Stats() {
       goalieCount: goalies.length,
     };
   }, [filteredPlayers.length, goalies.length, statType, teams.length]);
+
+  const leaders = useMemo(() => ({
+    goals: [...players].sort((a, b) => (b.goals || 0) - (a.goals || 0) || (b.points || 0) - (a.points || 0)).slice(0, 5),
+    assists: [...players].sort((a, b) => (b.assists || 0) - (a.assists || 0) || (b.points || 0) - (a.points || 0)).slice(0, 5),
+    points: [...players].sort((a, b) => (b.points || 0) - (a.points || 0) || (b.goals || 0) - (a.goals || 0)).slice(0, 5),
+  }), [players]);
 
   const exportCSV = () => {
     const headers = 'Joueur,Équipe,Position,Matchs,Buts,Passes,Points\n';
@@ -303,7 +309,7 @@ export default function Stats() {
               <p className="text-sm text-gray-500 mt-1">Trie les colonnes pour comparer la production offensive sous tous les angles.</p>
             </div>
 
-            <table className="w-full text-sm min-w-[980px]">
+            <table className="w-full text-sm min-w-[1040px]">
               <thead>
                 <tr className="border-b border-gray-800">
                   <th className="text-left py-3 px-5 text-xs text-gray-600 font-medium w-8">#</th>
@@ -314,6 +320,7 @@ export default function Stats() {
                   <th className="text-center py-3 text-xs text-gray-600 font-medium w-14 cursor-pointer hover:text-gray-400" onClick={() => handleSort('goals')}>B <SortIcon field="goals" current={sortField} dir={sortDir} /></th>
                   <th className="text-center py-3 text-xs text-gray-600 font-medium w-14 cursor-pointer hover:text-gray-400" onClick={() => handleSort('assists')}>A <SortIcon field="assists" current={sortField} dir={sortDir} /></th>
                   <th className="text-center py-3 pr-5 text-xs text-gray-500 font-semibold w-14 cursor-pointer hover:text-gray-400" onClick={() => handleSort('points')}>PTS <SortIcon field="points" current={sortField} dir={sortDir} /></th>
+                  <th className="text-center py-3 text-xs text-gray-600 font-medium w-14 cursor-pointer hover:text-gray-400" onClick={() => handleSort('pim')}>PIM <SortIcon field="pim" current={sortField} dir={sortDir} /></th>
                   <th className="text-center py-3 pr-5 text-xs text-gray-600 font-medium w-16">Pts/MJ</th>
                 </tr>
               </thead>
@@ -367,6 +374,7 @@ export default function Stats() {
                         <div className="font-black text-white">{player.points || 0}</div>
                         <Bar value={player.points || 0} max={maxPoints} />
                       </td>
+                      <td className="py-3.5 text-center text-amber-300 font-medium">{player.pim || 0}</td>
                       <td className="py-3.5 pr-5 text-center text-gray-600 text-xs">{ppg}</td>
                     </tr>
                   );
@@ -374,7 +382,7 @@ export default function Stats() {
 
                 {filteredPlayers.length === 0 && (
                   <tr>
-                    <td colSpan="9" className="py-10 text-center text-sm text-gray-600">
+                    <td colSpan="10" className="py-10 text-center text-sm text-gray-600">
                       Aucun joueur ne correspond aux filtres choisis.
                     </td>
                   </tr>

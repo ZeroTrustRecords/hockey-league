@@ -61,7 +61,8 @@ export default function PlayerProfile() {
     const matches = history.reduce((sum, row) => sum + (row.matches_played || 0), 0);
     const goals = history.reduce((sum, row) => sum + (row.goals || 0), 0);
     const assists = history.reduce((sum, row) => sum + (row.assists || 0), 0);
-    return { matches, goals, assists, points: goals + assists };
+    const pim = history.reduce((sum, row) => sum + (row.pim || 0), 0);
+    return { matches, goals, assists, points: goals + assists, pim };
   }, [history, isGoalie]);
 
   if (loading) return <div className="text-center py-12 text-gray-500 animate-pulse">Chargement...</div>;
@@ -77,6 +78,7 @@ export default function PlayerProfile() {
         { label: 'Buts', value: stats.goals || 0, color: 'text-red-400' },
         { label: 'Passes', value: stats.assists || 0, color: 'text-blue-400' },
         { label: 'Points', value: points, color: 'text-yellow-400' },
+        { label: 'PIM', value: stats.pim || 0, color: 'text-amber-300' },
         { label: 'Matchs', value: stats.matches_played || 0, color: 'text-gray-300' },
         { label: 'Pts/match', value: pointsPerGame, color: 'text-emerald-400' },
       ];
@@ -180,6 +182,7 @@ export default function PlayerProfile() {
                     <span className="text-red-400 font-bold">{careerTotals.goals}B</span>
                     <span className="text-blue-400 font-bold">{careerTotals.assists}P</span>
                     <span className="text-yellow-400 font-bold">{careerTotals.points}PTS</span>
+                    <span className="text-amber-300 font-bold">{careerTotals.pim}PIM</span>
                   </>
                 )}
               </div>
@@ -203,6 +206,7 @@ export default function PlayerProfile() {
                       <th className="text-center">B</th>
                       <th className="text-center">P</th>
                       <th className="text-center font-bold text-yellow-400">PTS</th>
+                      <th className="text-center font-bold text-amber-300">PIM</th>
                     </>
                   )}
                 </tr>
@@ -233,12 +237,13 @@ export default function PlayerProfile() {
                         <td className="text-center font-black text-yellow-400">{row.gaa == null ? '—' : row.gaa.toFixed(2)}</td>
                       </>
                     ) : (
-                      <>
-                        <td className="text-center text-red-400 font-semibold">{row.goals}</td>
-                        <td className="text-center text-blue-400 font-semibold">{row.assists}</td>
-                        <td className="text-center font-black text-yellow-400">{row.points}</td>
-                      </>
-                    )}
+                    <>
+                      <td className="text-center text-red-400 font-semibold">{row.goals}</td>
+                      <td className="text-center text-blue-400 font-semibold">{row.assists}</td>
+                      <td className="text-center font-black text-yellow-400">{row.points}</td>
+                      <td className="text-center font-semibold text-amber-300">{row.pim || 0}</td>
+                    </>
+                  )}
                   </tr>
                 ))}
               </tbody>
