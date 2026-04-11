@@ -281,6 +281,7 @@ function initDB() {
 
   const playerSeasonStatsColumns = db.prepare(`PRAGMA table_info(player_season_stats)`).all();
   if (!playerSeasonStatsColumns.some(column => column.name === 'stat_type')) {
+    const legacyHasTeamName = playerSeasonStatsColumns.some(column => column.name === 'team_name');
     db.pragma('foreign_keys = OFF');
     db.transaction(() => {
       db.exec(`
@@ -305,7 +306,7 @@ function initDB() {
         );
 
         INSERT INTO player_season_stats (id, player_id, season_id, stat_type, team_id, team_name, games_played, goals, assists, points, pim)
-        SELECT id, player_id, season_id, 'regular', team_id, team_name, games_played, goals, assists, points, pim
+        SELECT id, player_id, season_id, 'regular', team_id, ${legacyHasTeamName ? 'team_name' : 'NULL'}, games_played, goals, assists, points, pim
         FROM player_season_stats_old;
 
         DROP TABLE player_season_stats_old;
