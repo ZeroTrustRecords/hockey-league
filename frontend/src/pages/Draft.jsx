@@ -99,6 +99,11 @@ function PlayerCard({ player, beingDragged, onDragStart, onDragEnd }) {
         <span className={`badge border text-[10px] font-bold ${pc.bg} ${pc.text} ${pc.border}`}>
           {player.position}
         </span>
+        {player.status === 'inactive' && (
+          <span className="badge border text-[10px] font-black bg-amber-500/15 text-amber-300 border-amber-500/30">
+            Ancien
+          </span>
+        )}
         {player.rating && (() => {
           const rs = RATING_STYLE[player.rating] || RATING_STYLE['C'];
           return (
@@ -511,6 +516,7 @@ export default function Draft() {
   // Player bank filters & sort
   const [search, setSearch]       = useState('');
   const [posFilter, setPosFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [bankSort, setBankSort]   = useState({ field: 'rating', dir: 'asc' });
 
   // Draft history sort
@@ -554,8 +560,8 @@ export default function Draft() {
 
   const settings   = data?.settings;
   const allPicks   = data?.picks || [];
-  // Available = unassigned active players (team_id is null)
-  const available  = allPlayers.filter(p => !p.team_id && p.status === 'active');
+  // Available = unassigned players; admins can also browse inactive former players
+  const available  = allPlayers.filter((p) => !p.team_id && (p.status === 'active' || (isAdmin && p.status === 'inactive')));
   const nextPick   = allPicks.find(p => !p.player_id && !p.picked_at);
   const activeTeam = nextPick ? teams.find(t => t.id === nextPick.team_id) : null;
 
@@ -641,7 +647,9 @@ export default function Draft() {
 
   const filteredPlayers = available.filter(p => {
     const s = `${p.first_name} ${p.last_name}`.toLowerCase();
-    return (!search || s.includes(search.toLowerCase())) && (!posFilter || p.position === posFilter);
+    return (!search || s.includes(search.toLowerCase()))
+      && (!posFilter || p.position === posFilter)
+      && (statusFilter === 'all' || p.status === statusFilter);
   });
 
   const groupedPlayers = {
@@ -814,6 +822,21 @@ export default function Draft() {
                     </button>
                   ))}
                 </div>
+                {isAdmin && (
+                  <div className="flex gap-1 flex-wrap">
+                    {[['all', 'Tous'], ['active', 'Actifs'], ['inactive', 'Anciens']].map(([val, label]) => (
+                      <button
+                        key={val}
+                        onClick={() => setStatusFilter(val)}
+                        className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                          statusFilter === val ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {/* Sort controls */}
                 <div className="flex items-center gap-1 pt-1 border-t border-gray-800">
                   <span className="text-[9px] text-gray-600 font-bold uppercase tracking-wider mr-1">Trier</span>

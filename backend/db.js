@@ -69,13 +69,15 @@ function initDB() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       player_id INTEGER NOT NULL,
       season_id INTEGER NOT NULL,
+      stat_type TEXT DEFAULT 'regular',
       team_id INTEGER,
+      team_name TEXT,
       games_played INTEGER DEFAULT 0,
       goals INTEGER DEFAULT 0,
       assists INTEGER DEFAULT 0,
       points INTEGER DEFAULT 0,
       pim INTEGER DEFAULT 0,
-      UNIQUE(player_id, season_id),
+      UNIQUE(player_id, season_id, stat_type),
       FOREIGN KEY (player_id) REFERENCES players(id),
       FOREIGN KEY (season_id) REFERENCES seasons(id),
       FOREIGN KEY (team_id) REFERENCES teams(id)
@@ -277,6 +279,41 @@ function initDB() {
     db.pragma('foreign_keys = ON');
   }
 
+  const playerSeasonStatsColumns = db.prepare(`PRAGMA table_info(player_season_stats)`).all();
+  if (!playerSeasonStatsColumns.some(column => column.name === 'stat_type')) {
+    db.pragma('foreign_keys = OFF');
+    db.transaction(() => {
+      db.exec(`
+        ALTER TABLE player_season_stats RENAME TO player_season_stats_old;
+
+        CREATE TABLE player_season_stats (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          player_id INTEGER NOT NULL,
+          season_id INTEGER NOT NULL,
+          stat_type TEXT DEFAULT 'regular',
+          team_id INTEGER,
+          team_name TEXT,
+          games_played INTEGER DEFAULT 0,
+          goals INTEGER DEFAULT 0,
+          assists INTEGER DEFAULT 0,
+          points INTEGER DEFAULT 0,
+          pim INTEGER DEFAULT 0,
+          UNIQUE(player_id, season_id, stat_type),
+          FOREIGN KEY (player_id) REFERENCES players(id),
+          FOREIGN KEY (season_id) REFERENCES seasons(id),
+          FOREIGN KEY (team_id) REFERENCES teams(id)
+        );
+
+        INSERT INTO player_season_stats (id, player_id, season_id, stat_type, team_id, team_name, games_played, goals, assists, points, pim)
+        SELECT id, player_id, season_id, 'regular', team_id, team_name, games_played, goals, assists, points, pim
+        FROM player_season_stats_old;
+
+        DROP TABLE player_season_stats_old;
+      `);
+    })();
+    db.pragma('foreign_keys = ON');
+  }
+
   // Indexes for performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status);
@@ -291,6 +328,7 @@ function initDB() {
     CREATE INDEX IF NOT EXISTS idx_goals_assist2 ON goals(assist2_id);
     CREATE INDEX IF NOT EXISTS idx_players_team ON players(team_id);
     CREATE INDEX IF NOT EXISTS idx_players_status ON players(status);
+    CREATE INDEX IF NOT EXISTS idx_player_season_stats_lookup ON player_season_stats(player_id, season_id, stat_type);
     CREATE INDEX IF NOT EXISTS idx_attendance_match ON attendance(match_id);
     CREATE INDEX IF NOT EXISTS idx_attendance_player ON attendance(player_id);
     CREATE INDEX IF NOT EXISTS idx_messages_type ON messages(type);
@@ -305,6 +343,8 @@ function initDB() {
   // Migrations — safe to re-run, silently ignored if column already exists
   try { db.exec(`ALTER TABLE players ADD COLUMN rating TEXT DEFAULT 'C'`); } catch {}
   try { db.exec(`ALTER TABLE players ADD COLUMN rating_score INTEGER DEFAULT 0`); } catch {}
+  try { db.exec(`ALTER TABLE player_season_stats ADD COLUMN stat_type TEXT DEFAULT 'regular'`); } catch {}
+  try { db.exec(`ALTER TABLE player_season_stats ADD COLUMN team_name TEXT`); } catch {}
   try { db.exec(`ALTER TABLE matches ADD COLUMN home_goalie_id INTEGER`); } catch {}
   try { db.exec(`ALTER TABLE matches ADD COLUMN away_goalie_id INTEGER`); } catch {}
   try { db.exec(`ALTER TABLE matches ADD COLUMN home_goalie_is_sub INTEGER DEFAULT 0`); } catch {}

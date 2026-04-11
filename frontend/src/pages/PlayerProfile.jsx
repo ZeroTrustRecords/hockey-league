@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ArrowLeft, Award, Hash, Mail, Phone, Shield, Target, TrendingUp } from 'lucide-react';
@@ -15,6 +15,7 @@ const positionLabel = {
 
 export default function PlayerProfile() {
   const { id } = useParams();
+  const location = useLocation();
   const [player, setPlayer] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +45,7 @@ export default function PlayerProfile() {
   const recentGoals = player?.recentGoals || [];
   const points = (stats.goals || 0) + (stats.assists || 0);
   const pointsPerGame = stats.matches_played > 0 ? (points / stats.matches_played).toFixed(2) : '0.00';
+  const backHref = location.state?.from || '/players';
 
   const careerTotals = useMemo(() => {
     if (isGoalie) {
@@ -82,7 +84,7 @@ export default function PlayerProfile() {
   return (
     <div className="space-y-6 max-w-6xl">
       <div className="flex items-center gap-3">
-        <Link to="/players" className="btn-ghost p-2"><ArrowLeft size={18} /></Link>
+        <Link to={backHref} className="btn-ghost p-2"><ArrowLeft size={18} /></Link>
         <div>
           <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Fiche joueur</p>
           <h1 className="text-3xl sm:text-5xl font-black text-white">Profil du joueur</h1>

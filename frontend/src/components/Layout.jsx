@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Tableau de bord', exact: true },
+  { to: '/players', icon: Users, label: 'Joueurs' },
   { to: '/standings', icon: Trophy, label: 'Classement' },
   { to: '/stats', icon: BarChart3, label: 'Statistiques' },
   { to: '/schedule', icon: CalendarDays, label: 'Calendrier' },
@@ -135,6 +136,7 @@ function BottomNav({ user, isAdmin, isMarqueur, unreadCount, onMoreOpen }) {
 
   const bottomItems = [
     { to: '/', icon: LayoutDashboard, label: 'Accueil', exact: true },
+    { to: '/players', icon: Users, label: 'Joueurs' },
     { to: '/standings', icon: Trophy, label: 'Classement' },
     { to: '/stats', icon: BarChart3, label: 'Stats' },
   ];
@@ -175,7 +177,7 @@ function MoreDrawer({ user, isAdmin, isMarqueur, unreadCount, onClose, onLoginOp
   const roleLabel = { admin: 'Administrateur', captain: 'Capitaine', marqueur: 'Marqueur', player: 'Joueur' };
   const roleColor  = { admin: 'text-yellow-400', captain: 'text-blue-400', marqueur: 'text-emerald-400', player: 'text-gray-400' };
 
-  const bottomItemPaths = ['/', '/standings', '/stats'];
+  const bottomItemPaths = ['/', '/players', '/standings', '/stats'];
   const items = navItems.filter(
     item => !bottomItemPaths.includes(item.to) && isItemVisible(item, { user, isAdmin, isMarqueur })
   );

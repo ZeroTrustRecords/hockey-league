@@ -20,7 +20,7 @@ router.get('/season/:seasonId', (req, res) => {
 
   const availablePlayers = db.prepare(`
     SELECT p.* FROM players p
-    WHERE p.status = 'active'
+    WHERE p.status IN ('active', 'inactive')
     AND p.id NOT IN (
       SELECT player_id FROM draft_picks WHERE season_id = ? AND player_id IS NOT NULL
     )

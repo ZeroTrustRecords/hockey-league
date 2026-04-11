@@ -130,7 +130,7 @@ export default function Players() {
   const [search, setSearch] = useState('');
   const [filterTeam, setFilterTeam] = useState('');
   const [filterPos, setFilterPos] = useState('');
-  const [filterStatus, setFilterStatus] = useState('active');
+  const [filterStatus, setFilterStatus] = useState('');
   const [editPlayer, setEditPlayer] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
@@ -230,8 +230,8 @@ export default function Players() {
         </div>
         <div className="league-stat-card">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Vue</div>
-          <div className="text-lg font-black text-white">Annuaire public</div>
-          <div className="text-xs text-gray-500 mt-1">Fiches individuelles accessibles</div>
+          <div className="text-lg font-black text-white">Annuaire complet</div>
+          <div className="text-xs text-gray-500 mt-1">Actifs et anciens joueurs de la ligue</div>
         </div>
       </div>
 

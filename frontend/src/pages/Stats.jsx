@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Award, Download, Shield, Target, TrendingUp } from 'lucide-react';
+import { Award, Download, Search, Shield, Target, TrendingUp } from 'lucide-react';
 import api from '../api/client';
 
 const positionLabel = {
@@ -65,32 +65,49 @@ export default function Stats() {
   const [players, setPlayers] = useState([]);
   const [goalies, setGoalies] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [seasons, setSeasons] = useState([]);
   const [leaders, setLeaders] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState('points');
   const [sortDir, setSortDir] = useState('desc');
   const [filterTeam, setFilterTeam] = useState('');
   const [filterPos, setFilterPos] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [allTeams, setAllTeams] = useState([]);
   const [statType, setStatType] = useState(null);
   const [activeSeason, setActiveSeason] = useState(null);
+  const [selectedSeasonId, setSelectedSeasonId] = useState('');
 
   useEffect(() => {
-    api.get('/seasons/active')
-      .then((response) => {
-        const season = response.data;
-        setActiveSeason(season);
-        setStatType(season?.status === 'playoffs' || season?.status === 'completed' ? 'playoffs' : 'regular');
-      })
-      .catch(() => setStatType('regular'));
+    Promise.all([
+      api.get('/seasons/active'),
+      api.get('/seasons'),
+    ]).then(([activeResponse, seasonsResponse]) => {
+      const season = activeResponse.data;
+      const orderedSeasons = [...seasonsResponse.data].sort((a, b) => {
+        const aYear = parseInt((a.name?.match(/(\d{4})/) || [0, 0])[1], 10) || 0;
+        const bYear = parseInt((b.name?.match(/(\d{4})/) || [0, 0])[1], 10) || 0;
+        if (aYear !== bYear) return bYear - aYear;
+        return (b.id || 0) - (a.id || 0);
+      });
+      setSeasons(orderedSeasons);
+      setActiveSeason(season);
+      setSelectedSeasonId(season?.id ? String(season.id) : orderedSeasons[0]?.id ? String(orderedSeasons[0].id) : '');
+      setStatType(season?.status === 'playoffs' || season?.status === 'completed' ? 'playoffs' : 'regular');
+    }).catch(() => setStatType('regular'));
   }, []);
+
+  const selectedSeason = useMemo(() => {
+    if (!selectedSeasonId) return activeSeason;
+    return seasons.find((season) => String(season.id) === String(selectedSeasonId)) || activeSeason || null;
+  }, [activeSeason, seasons, selectedSeasonId]);
 
   useEffect(() => {
     if (statType === null) return;
 
     setLoading(true);
-    const params = { limit: 100, type: statType };
-    if (activeSeason?.id) params.season_id = activeSeason.id;
+    const params = { limit: 500, type: statType };
+    if (selectedSeason?.id) params.season_id = selectedSeason.id;
 
     Promise.all([
       api.get('/stats/players', { params }),
@@ -105,7 +122,7 @@ export default function Stats() {
       setLeaders(leadersResponse.data);
       setAllTeams(allTeamsResponse.data);
     }).finally(() => setLoading(false));
-  }, [statType, activeSeason]);
+  }, [statType, selectedSeason]);
 
   const handleSort = (field) => {
     if (sortField === field) setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'));
@@ -116,7 +133,11 @@ export default function Stats() {
   };
 
   const filteredPlayers = players
-    .filter((player) => (!filterTeam || String(player.team_id) === filterTeam) && (!filterPos || player.position === filterPos))
+    .filter((player) => (
+      (!filterTeam || String(player.team_id) === filterTeam) &&
+      (!filterPos || player.position === filterPos) &&
+      (!searchTerm || `${player.first_name} ${player.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()))
+    ))
     .sort((a, b) => {
       const aValue = a[sortField] ?? 0;
       const bValue = b[sortField] ?? 0;
@@ -162,11 +183,29 @@ export default function Stats() {
             Meneurs offensifs, rendement collectif et lecture rapide des tendances de la ligue.
           </p>
           <p className="text-xs text-gray-500 mt-3">
-            {activeSeason?.name || 'Saison en cours'} · {summary.phaseLabel}
+            {selectedSeason?.name || activeSeason?.name || 'Saison en cours'} · {summary.phaseLabel}
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
+          {seasons.length > 0 && (
+            <select
+              className="select w-full sm:w-48"
+              value={selectedSeasonId}
+              onChange={(event) => {
+                const seasonId = event.target.value;
+                const nextSeason = seasons.find((season) => String(season.id) === String(seasonId));
+                setSelectedSeasonId(seasonId);
+                if (nextSeason) {
+                  setStatType(nextSeason.status === 'playoffs' || nextSeason.status === 'completed' ? 'playoffs' : 'regular');
+                }
+              }}
+            >
+              {seasons.map((season) => (
+                <option key={season.id} value={season.id}>{season.name}</option>
+              ))}
+            </select>
+          )}
           <div className="flex rounded-xl overflow-hidden border border-gray-700 text-sm w-full sm:w-auto">
             {[
               { key: 'regular', label: 'Saison régulière' },
@@ -208,7 +247,7 @@ export default function Stats() {
         </div>
         <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Contexte</div>
-          <div className="text-lg font-black text-white truncate">{activeSeason?.name || 'Aucune saison'}</div>
+          <div className="text-lg font-black text-white truncate">{selectedSeason?.name || activeSeason?.name || 'Aucune saison'}</div>
           <div className="text-xs text-gray-500 mt-1">Saison actuellement affichée</div>
         </div>
       </div>
@@ -236,7 +275,16 @@ export default function Stats() {
       {tab === 'players' && (
         <div className="space-y-4">
           <div className="flex flex-col xl:flex-row gap-3 items-start xl:items-center justify-between">
-            <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+            <div className="flex flex-col lg:flex-row flex-wrap gap-2 w-full xl:w-auto">
+              <div className="relative w-full lg:w-64">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  className="input pl-9 w-full"
+                  placeholder="Rechercher un joueur..."
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                />
+              </div>
               <select className="select w-full sm:w-48" value={filterTeam} onChange={(event) => setFilterTeam(event.target.value)}>
                 <option value="">Toutes les équipes</option>
                 {allTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
@@ -283,9 +331,16 @@ export default function Stats() {
                           >
                             <span style={{ color: player.team_color || '#9ca3af' }}>{player.first_name?.[0]}{player.last_name?.[0]}</span>
                           </div>
-                          <Link to={`/players/${player.id}`} className="text-gray-300 hover:text-white transition-colors font-medium">
-                            {player.first_name} {player.last_name}
-                          </Link>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Link to={`/players/${player.id}`} state={{ from: '/stats' }} className="text-gray-300 hover:text-white transition-colors font-medium truncate">
+                              {player.first_name} {player.last_name}
+                            </Link>
+                            {player.status === 'inactive' && (
+                              <span className="badge bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-bold whitespace-nowrap">
+                                Ancien
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="py-3.5"><span className="position-badge">{player.position}</span></td>
@@ -421,9 +476,16 @@ export default function Stats() {
               {goalies.map((goalie) => (
                 <tr key={goalie.id} className="border-b border-gray-800/40 hover:bg-gray-800/20 transition-colors last:border-0">
                   <td className="py-3.5 px-5">
-                    <Link to={`/players/${goalie.id}`} className="text-gray-300 hover:text-white transition-colors font-medium">
-                      #{goalie.number || '—'} {goalie.first_name} {goalie.last_name}
-                    </Link>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Link to={`/players/${goalie.id}`} state={{ from: '/stats' }} className="text-gray-300 hover:text-white transition-colors font-medium truncate">
+                        #{goalie.number || '—'} {goalie.first_name} {goalie.last_name}
+                      </Link>
+                      {goalie.status === 'inactive' && (
+                        <span className="badge bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-bold whitespace-nowrap">
+                          Ancien
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="py-3.5">
                     {goalie.team_name ? (

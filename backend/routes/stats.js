@@ -24,12 +24,55 @@ function resolveSeasonContext(db, seasonId, requestedType = null) {
   };
 }
 
+function shouldUseArchivedSeasonStats(db, seasonId, type) {
+  if (!seasonId) return false;
+  const playoffFlag = type === 'playoffs' ? 1 : 0;
+  const statType = type === 'playoffs' ? 'playoffs' : 'regular';
+  const validatedMatches = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM matches
+    WHERE season_id = ? AND validated = 1 AND is_playoff = ?
+  `).get(seasonId, playoffFlag);
+  if ((validatedMatches?.count || 0) > 0) return false;
+
+  const archivedRows = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM player_season_stats
+    WHERE season_id = ? AND stat_type = ?
+  `).get(seasonId, statType);
+  return (archivedRows?.count || 0) > 0;
+}
+
 // Individual stats leaderboard
 router.get('/players', (req, res) => {
   const db = getDB();
   // type: 'regular' (default) | 'playoffs' | 'all'
-  const { season_id, limit = 50, sort = 'points', type } = req.query;
+  const { season_id, limit = 500, sort = 'points', type } = req.query;
   const context = resolveSeasonContext(db, season_id, type);
+  const useArchivedSeasonStats = shouldUseArchivedSeasonStats(db, context.seasonId, context.type);
+
+  if (useArchivedSeasonStats) {
+    const sortColumn = ['goals', 'assists', 'points', 'games_played'].includes(sort) ? sort : 'points';
+    const rows = db.prepare(`
+      SELECT
+        p.id, p.first_name, p.last_name, p.nickname, p.number, p.position,
+        p.team_id,
+        COALESCE(pss.team_name, t.name) AS team_name,
+        t.color AS team_color,
+        pss.games_played AS matches_played,
+        pss.goals,
+        pss.assists,
+        pss.points
+      FROM player_season_stats pss
+      JOIN players p ON p.id = pss.player_id
+      LEFT JOIN teams t ON t.id = pss.team_id
+      WHERE pss.season_id = ? AND pss.stat_type = ? AND p.position != 'G'
+      ORDER BY ${sortColumn} DESC, pss.points DESC, pss.goals DESC, p.last_name ASC, p.first_name ASC
+      LIMIT ?
+    `).all(context.seasonId, context.type === 'playoffs' ? 'playoffs' : 'regular', parseInt(limit, 10));
+
+    return res.json(rows);
+  }
 
   const goalFilters = [];
   const goalParams = [];
@@ -74,7 +117,7 @@ router.get('/players', (req, res) => {
     LEFT JOIN teams t ON p.team_id = t.id
     LEFT JOIN goals g ON (g.scorer_id = p.id OR g.assist1_id = p.id OR g.assist2_id = p.id)
     LEFT JOIN matches m ON g.match_id = m.id AND m.validated = 1
-    WHERE p.status = 'active' AND p.position != 'G'
+    WHERE p.position != 'G'
     GROUP BY p.id
     ORDER BY points DESC, goals DESC, assists DESC
     LIMIT ?
@@ -150,6 +193,34 @@ router.get('/leaders', (req, res) => {
   const db = getDB();
   const { season_id, type } = req.query;
   const context = resolveSeasonContext(db, season_id, type);
+  const useArchivedSeasonStats = shouldUseArchivedSeasonStats(db, context.seasonId, context.type);
+
+  if (useArchivedSeasonStats) {
+    const query = (order) => db.prepare(`
+      SELECT
+        p.id,
+        p.first_name,
+        p.last_name,
+        p.number,
+        COALESCE(pss.team_name, t.name) AS team_name,
+        t.color AS team_color,
+        pss.goals,
+        pss.assists,
+        pss.points
+      FROM player_season_stats pss
+      JOIN players p ON p.id = pss.player_id
+      LEFT JOIN teams t ON t.id = pss.team_id
+      WHERE pss.season_id = ? AND pss.stat_type = ? AND p.position != 'G'
+      ORDER BY ${order} DESC, pss.points DESC, p.last_name ASC, p.first_name ASC
+      LIMIT 5
+    `).all(context.seasonId, context.type === 'playoffs' ? 'playoffs' : 'regular');
+
+    return res.json({
+      goals: query('pss.goals'),
+      assists: query('pss.assists'),
+      points: query('pss.points'),
+    });
+  }
 
   const filters = [];
   if (context.seasonId) filters.push(`m.season_id = ${Number(context.seasonId)}`);
@@ -167,7 +238,7 @@ router.get('/leaders', (req, res) => {
     LEFT JOIN teams t ON p.team_id = t.id
     LEFT JOIN goals g ON (g.scorer_id = p.id OR g.assist1_id = p.id OR g.assist2_id = p.id)
     LEFT JOIN matches m ON g.match_id = m.id AND m.validated = 1
-    WHERE p.status = 'active' AND p.position != 'G'
+    WHERE p.position != 'G'
     GROUP BY p.id
     ORDER BY ${order} DESC, points DESC
     LIMIT 5
@@ -223,7 +294,7 @@ router.get('/goalies', (req, res) => {
     FROM players p
     LEFT JOIN teams t ON p.team_id = t.id
     LEFT JOIN matches m ON (m.home_goalie_id = p.id OR m.away_goalie_id = p.id) ${filterSql ? `AND ${filters.join(' AND ')}` : ''}
-    WHERE p.status = 'active' AND p.position = 'G'
+    WHERE p.position = 'G'
     GROUP BY p.id
     ORDER BY
       CASE

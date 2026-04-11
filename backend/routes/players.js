@@ -181,7 +181,11 @@ router.put('/:id', authenticate, requireCaptainOrAdmin, (req, res) => {
 router.patch('/:id/team', authenticate, requireAdmin, (req, res) => {
   const { team_id } = req.body;
   const db = getDB();
-  db.prepare('UPDATE players SET team_id = ? WHERE id = ?').run(team_id || null, req.params.id);
+  if (team_id) {
+    db.prepare('UPDATE players SET team_id = ?, status = ? WHERE id = ?').run(team_id, 'active', req.params.id);
+  } else {
+    db.prepare('UPDATE players SET team_id = ? WHERE id = ?').run(null, req.params.id);
+  }
   res.json({ message: 'Équipe mise à jour' });
 });
 
@@ -345,14 +349,14 @@ router.get('/:id/history', (req, res) => {
       s.name      AS season_name,
       m.is_playoff,
       COALESCE(pss.team_id, ?) AS team_id,
-      t.name      AS team_name,
+      COALESCE(pss.team_name, t.name) AS team_name,
       t.color     AS team_color,
       COUNT(DISTINCT m.id) AS matches_played,
       COALESCE(SUM(CASE WHEN g.scorer_id = ? THEN 1 ELSE 0 END), 0)                      AS goals,
       COALESCE(SUM(CASE WHEN g.assist1_id = ? OR g.assist2_id = ? THEN 1 ELSE 0 END), 0) AS assists
     FROM matches m
     JOIN seasons s ON m.season_id = s.id
-    LEFT JOIN player_season_stats pss ON pss.player_id = ? AND pss.season_id = s.id AND m.is_playoff = 0
+    LEFT JOIN player_season_stats pss ON pss.player_id = ? AND pss.season_id = s.id AND pss.stat_type = 'regular' AND m.is_playoff = 0
     LEFT JOIN teams t ON t.id = COALESCE(pss.team_id, ?)
     LEFT JOIN goals g ON g.match_id = m.id
     WHERE m.validated = 1
@@ -377,9 +381,9 @@ router.get('/:id/history', (req, res) => {
     SELECT
       s.id        AS season_id,
       s.name      AS season_name,
-      0           AS is_playoff,
+      CASE WHEN pss.stat_type = 'playoffs' THEN 1 ELSE 0 END AS is_playoff,
       pss.team_id,
-      t.name      AS team_name,
+      COALESCE(pss.team_name, t.name) AS team_name,
       t.color     AS team_color,
       pss.games_played AS matches_played,
       pss.goals,
@@ -391,7 +395,7 @@ router.get('/:id/history', (req, res) => {
     WHERE pss.player_id = ?
       AND NOT EXISTS (
         SELECT 1 FROM matches m
-        WHERE m.season_id = pss.season_id AND m.validated = 1 AND m.is_playoff = 0
+        WHERE m.season_id = pss.season_id AND m.validated = 1 AND m.is_playoff = CASE WHEN pss.stat_type = 'playoffs' THEN 1 ELSE 0 END
       )
   `).all(playerId);
 

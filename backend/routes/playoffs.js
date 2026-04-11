@@ -53,8 +53,8 @@ function archiveSeasonStats(db, seasonId) {
     `).get(player.id, player.id, player.id, seasonId, player.id, player.id, player.id);
     if (!stats || stats.gp === 0) continue;
     db.prepare(`
-      INSERT OR REPLACE INTO player_season_stats (player_id, season_id, team_id, games_played, goals, assists, points)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO player_season_stats (player_id, season_id, stat_type, team_id, games_played, goals, assists, points)
+      VALUES (?, ?, 'regular', ?, ?, ?, ?, ?)
     `).run(player.id, seasonId, player.team_id, stats.gp, stats.goals||0, stats.assists||0, (stats.goals||0)+(stats.assists||0));
   }
 }

@@ -160,7 +160,9 @@ test('backup export and restore work through HTTP routes', async () => {
     });
     const snapshot = await exportResponse.json();
     assert.equal(exportResponse.status, 200);
-    assert.equal(snapshot.tables.players.length, 2);
+    assert.equal(snapshot.tables.players.filter((player) => player.status === 'active').length, 2);
+    assert.ok(snapshot.tables.players.length > 2);
+    assert.ok(snapshot.tables.seasons.length > 1);
 
     await fetch(`${ctx.baseUrl}/api/seasons/reset`, {
       method: 'POST',

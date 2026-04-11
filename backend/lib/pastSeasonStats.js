@@ -1,8 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const FIXTURE_PATH = path.join(__dirname, '..', 'data', 'past-season-stats.csv');
-const FIXTURE_SEASON_NAME = '\u00C9T\u00C9 - 2025';
+const FIXTURE_PATH = path.join(__dirname, '..', 'data', 'historical-season-stats.json');
 
 function normalizeText(value) {
   return (value || '')
@@ -15,159 +14,143 @@ function normalizeText(value) {
     .toLowerCase();
 }
 
-function parseCSVLine(line) {
-  const cols = [];
-  let current = '';
-  let inQuotes = false;
-
-  for (let index = 0; index < line.length; index++) {
-    const char = line[index];
-    if (char === '"') {
-      if (inQuotes && line[index + 1] === '"') {
-        current += '"';
-        index++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-      continue;
-    }
-
-    if (char === ',' && !inQuotes) {
-      cols.push(current.trim());
-      current = '';
-      continue;
-    }
-
-    current += char;
-  }
-
-  cols.push(current.trim());
-  return cols;
+function parseSeasonYear(seasonName) {
+  const match = String(seasonName || '').match(/(20\d{2})/);
+  return match ? parseInt(match[1], 10) : 0;
 }
 
-function toInt(value) {
-  const raw = (value || '').toString().trim();
-  if (!raw || raw === '-') return 0;
-  const parsed = parseInt(raw.replace(',', '.'), 10);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function getPreviousSeasonName(activeSeasonName) {
-  return FIXTURE_SEASON_NAME;
-}
-
-function loadPastSeasonFixture() {
+function loadHistoricalFixture() {
   if (!fs.existsSync(FIXTURE_PATH)) {
-    throw new Error(`Fichier de stats introuvable: ${FIXTURE_PATH}`);
+    throw new Error(`Fichier de stats historique introuvable: ${FIXTURE_PATH}`);
   }
 
-  const text = fs.readFileSync(FIXTURE_PATH, 'utf8').replace(/^\uFEFF/, '');
-  const lines = text.split(/\r?\n/).filter(line => line.trim());
-  if (lines.length < 2) {
-    throw new Error('Fichier de stats vide');
+  const raw = JSON.parse(fs.readFileSync(FIXTURE_PATH, 'utf8'));
+  const seasons = Object.entries(raw).map(([seasonName, rows]) => ({
+    seasonName,
+    year: parseSeasonYear(seasonName),
+    rows: Array.isArray(rows) ? rows : [],
+  }));
+
+  return seasons
+    .filter((season) => season.year > 0 && season.rows.length > 0)
+    .sort((a, b) => a.year - b.year);
+}
+
+function ensureHistoricalPlayer(db, playerMap, row) {
+  const key = `${normalizeText(row.first_name)}|${normalizeText(row.last_name)}`;
+  const existing = playerMap.get(key);
+  if (existing) {
+    if (row.position && existing.position !== row.position) {
+      db.prepare(`UPDATE players SET position = ? WHERE id = ?`).run(row.position, existing.id);
+      existing.position = row.position;
+    }
+    return existing;
   }
 
-  const headers = parseCSVLine(lines[0]).map(normalizeText);
-  const idx = {
-    firstName: headers.findIndex(header => header === 'prenom'),
-    lastName: headers.findIndex(header => header === 'nom'),
-    teamName: headers.findIndex(header => header === 'equipe'),
-    gamesPlayed: headers.findIndex(header => header === 'pj'),
-    goals: headers.findIndex(header => header === 'b'),
-    assists: headers.findIndex(header => header === 'p'),
-    points: headers.findIndex(header => header === 'pts'),
-    pim: headers.findIndex(header => header === 'pun'),
-  };
+  const inserted = db.prepare(`
+    INSERT INTO players (first_name, last_name, position, status)
+    VALUES (?, ?, ?, 'inactive')
+  `).run(row.first_name, row.last_name, row.position || 'A');
 
-  if (idx.firstName === -1 || idx.lastName === -1 || idx.teamName === -1) {
-    throw new Error('Le fichier de stats ne contient pas les colonnes attendues');
-  }
+  const player = db.prepare(`
+    SELECT id, first_name, last_name, status, position
+    FROM players
+    WHERE id = ?
+  `).get(inserted.lastInsertRowid);
 
-  return lines.slice(1).map(line => {
-    const cols = parseCSVLine(line);
-    return {
-      firstName: cols[idx.firstName] || '',
-      lastName: cols[idx.lastName] || '',
-      teamName: cols[idx.teamName] || '',
-      gamesPlayed: idx.gamesPlayed >= 0 ? toInt(cols[idx.gamesPlayed]) : 0,
-      goals: idx.goals >= 0 ? toInt(cols[idx.goals]) : 0,
-      assists: idx.assists >= 0 ? toInt(cols[idx.assists]) : 0,
-      points: idx.points >= 0 ? toInt(cols[idx.points]) : 0,
-      pim: idx.pim >= 0 ? toInt(cols[idx.pim]) : 0,
-    };
-  }).filter(row => row.firstName && row.lastName && row.teamName);
+  playerMap.set(key, player);
+  return player;
 }
 
 function seedPastSeasonStats(db, activeSeason) {
-  const rows = loadPastSeasonFixture();
-  const previousSeasonName = getPreviousSeasonName(activeSeason.name);
-
-  let previousSeason = db.prepare('SELECT * FROM seasons WHERE name = ?').get(previousSeasonName);
-  if (!previousSeason) {
-    const seasonInsert = db.prepare(
-      'INSERT INTO seasons (name, start_date, end_date, status) VALUES (?, ?, ?, ?)'
-    ).run(previousSeasonName, null, activeSeason.start_date || null, 'completed');
-    previousSeason = db.prepare('SELECT * FROM seasons WHERE id = ?').get(seasonInsert.lastInsertRowid);
-  } else {
-    db.prepare("UPDATE seasons SET status = 'completed' WHERE id = ?").run(previousSeason.id);
+  const seasons = loadHistoricalFixture();
+  if (!seasons.length) {
+    return { seasons: [], inserted: 0, missingTeams: [] };
   }
 
-  db.prepare('DELETE FROM goals WHERE match_id IN (SELECT id FROM matches WHERE season_id = ?)').run(previousSeason.id);
-  db.prepare('DELETE FROM matches WHERE season_id = ?').run(previousSeason.id);
-  db.prepare('DELETE FROM playoff_series WHERE season_id = ?').run(previousSeason.id);
-  db.prepare('DELETE FROM player_season_stats WHERE season_id = ?').run(previousSeason.id);
+  const allPlayers = db.prepare(`
+    SELECT id, first_name, last_name, status, position
+    FROM players
+    ORDER BY CASE WHEN status = 'active' THEN 0 ELSE 1 END, id ASC
+  `).all();
+  const playerMap = new Map();
+  allPlayers.forEach((player) => {
+    const key = `${normalizeText(player.first_name)}|${normalizeText(player.last_name)}`;
+    if (!playerMap.has(key) || player.status === 'active') {
+      playerMap.set(key, player);
+    }
+  });
 
-  const players = db.prepare('SELECT id, first_name, last_name FROM players').all();
   const teams = db.prepare('SELECT id, name FROM teams').all();
-  const playerMap = new Map(players.map(player => [`${normalizeText(player.first_name)}|${normalizeText(player.last_name)}`, player]));
-  const teamMap = new Map(teams.map(team => [normalizeText(team.name), team]));
+  const teamMap = new Map(teams.map((team) => [normalizeText(team.name), team]));
 
-  const insert = db.prepare(`
+  const existingSeasonRows = db.prepare(`
+    SELECT id, name
+    FROM seasons
+    WHERE name != ?
+  `).all(activeSeason?.name || '');
+  const existingSeasonMap = new Map(existingSeasonRows.map((season) => [season.name, season]));
+
+  const insertSeason = db.prepare(`
+    INSERT INTO seasons (name, start_date, end_date, status)
+    VALUES (?, ?, ?, 'completed')
+  `);
+  const insertStats = db.prepare(`
     INSERT OR REPLACE INTO player_season_stats
-      (player_id, season_id, team_id, games_played, goals, assists, points, pim)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (player_id, season_id, stat_type, team_id, team_name, games_played, goals, assists, points, pim)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   let inserted = 0;
-  const missingPlayers = [];
-  const missingTeams = [];
+  const missingTeams = new Set();
+  const seededSeasons = [];
 
-  rows.forEach(row => {
-    const player = playerMap.get(`${normalizeText(row.firstName)}|${normalizeText(row.lastName)}`);
-    const team = teamMap.get(normalizeText(row.teamName));
-
-    if (!player) {
-      missingPlayers.push(`${row.firstName} ${row.lastName}`);
-      return;
+  seasons.forEach((season) => {
+    let seasonRow = existingSeasonMap.get(season.seasonName);
+    if (!seasonRow) {
+      const insertResult = insertSeason.run(season.seasonName, null, null);
+      seasonRow = db.prepare('SELECT id, name FROM seasons WHERE id = ?').get(insertResult.lastInsertRowid);
+      existingSeasonMap.set(seasonRow.name, seasonRow);
+    } else {
+      db.prepare(`UPDATE seasons SET status = 'completed', champion_team_id = NULL WHERE id = ?`).run(seasonRow.id);
     }
 
-    if (!team) {
-      missingTeams.push(row.teamName);
-      return;
-    }
+    db.prepare('DELETE FROM goals WHERE match_id IN (SELECT id FROM matches WHERE season_id = ?)').run(seasonRow.id);
+    db.prepare('DELETE FROM matches WHERE season_id = ?').run(seasonRow.id);
+    db.prepare('DELETE FROM playoff_series WHERE season_id = ?').run(seasonRow.id);
+    db.prepare('DELETE FROM player_season_stats WHERE season_id = ?').run(seasonRow.id);
 
-    insert.run(
-      player.id,
-      previousSeason.id,
-      team.id,
-      row.gamesPlayed,
-      row.goals,
-      row.assists,
-      row.points || (row.goals + row.assists),
-      row.pim
-    );
-    inserted++;
+    season.rows.forEach((row) => {
+      const player = ensureHistoricalPlayer(db, playerMap, row);
+      const team = row.team_name ? teamMap.get(normalizeText(row.team_name)) : null;
+      if (row.team_name && !team) missingTeams.add(row.team_name);
+
+      insertStats.run(
+        player.id,
+        seasonRow.id,
+        row.stat_type || 'regular',
+        team?.id || null,
+        row.team_name || null,
+        row.games_played || 0,
+        row.goals || 0,
+        row.assists || 0,
+        row.points || ((row.goals || 0) + (row.assists || 0)),
+        row.pim || 0
+      );
+      inserted++;
+    });
+
+    seededSeasons.push({ id: seasonRow.id, name: seasonRow.name, rows: season.rows.length });
   });
 
   return {
-    season: previousSeason,
+    seasons: seededSeasons,
     inserted,
-    missingPlayers: [...new Set(missingPlayers)],
-    missingTeams: [...new Set(missingTeams)],
+    missingTeams: [...missingTeams].sort((a, b) => a.localeCompare(b)),
   };
 }
 
 module.exports = {
   seedPastSeasonStats,
-  getPreviousSeasonName,
+  loadHistoricalFixture,
 };
