@@ -14,6 +14,14 @@ const positionLabel = {
   G: 'Gardien',
 };
 
+const positionBadge = {
+  C: { label: 'A', className: 'bg-sky-500/15 text-sky-300 border border-sky-500/30' },
+  LW: { label: 'A', className: 'bg-sky-500/15 text-sky-300 border border-sky-500/30' },
+  RW: { label: 'A', className: 'bg-sky-500/15 text-sky-300 border border-sky-500/30' },
+  D: { label: 'D', className: 'bg-rose-500/15 text-rose-300 border border-rose-500/30' },
+  G: { label: 'G', className: 'bg-amber-500/15 text-amber-300 border border-amber-500/30' },
+};
+
 function PlayerModal({ player, teams, onClose, onSave }) {
   const [form, setForm] = useState({
     first_name: player?.first_name || '',
@@ -317,7 +325,16 @@ export default function Players() {
                       </div>
                     </div>
                   </td>
-                  <td className="py-3.5"><span className="position-badge">{positionLabel[player.position] || player.position}</span></td>
+                  <td className="py-3.5">
+                    {(() => {
+                      const badge = positionBadge[player.position] || { label: player.position || 'A', className: 'bg-gray-700 text-gray-300 border border-gray-600' };
+                      return (
+                        <span className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2.5 text-xs font-bold ${badge.className}`}>
+                          {badge.label}
+                        </span>
+                      );
+                    })()}
+                  </td>
                   <td className="py-3.5">
                     {player.team_name ? (
                       <div className="flex items-center gap-2">

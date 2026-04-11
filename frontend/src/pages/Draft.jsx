@@ -48,6 +48,17 @@ const GOALIE_SLOT = { id: 'g', pos: 'G', section: 'goalie', label: 'G' };
 
 const ALL_SLOTS = [...OFFENSE_LINES.flat(), ...DEFENSE_PAIRS.flat(), GOALIE_SLOT];
 
+function sortAssignedPlayers(players = []) {
+  const posOrder = { A: 0, D: 1, G: 2 };
+  return [...players].sort((a, b) => {
+    const posDiff = (posOrder[a.position] ?? 9) - (posOrder[b.position] ?? 9);
+    if (posDiff !== 0) return posDiff;
+    const last = (a.last_name || '').localeCompare(b.last_name || '', 'fr-CA', { sensitivity: 'base' });
+    if (last !== 0) return last;
+    return (a.first_name || '').localeCompare(b.first_name || '', 'fr-CA', { sensitivity: 'base' });
+  });
+}
+
 function positionFits(playerPos, section) {
   if (section === 'goalie') return playerPos === 'G';  // only goalies in net
   return playerPos !== 'G';                            // skaters anywhere else
@@ -211,7 +222,7 @@ function PositionSlot({ slot, player, isActive, dragging, isOver, onDragOver, on
 
 // ─── HOCKEY ALIGNMENT ────────────────────────────────────────────────────────
 
-function HockeyAlignment({ team, lineup, isActive, dragging, dragOverSlot, onDragOver, onDrop, onDragLeave, onRemove, strength }) {
+function HockeyAlignment({ team, lineup, reservePlayers = [], isActive, dragging, dragOverSlot, onDragOver, onDrop, onDragLeave, onRemove, strength }) {
   if (!team) return (
     <div className="card text-center py-16 text-gray-600">Aucune équipe active</div>
   );
@@ -322,13 +333,36 @@ function HockeyAlignment({ team, lineup, isActive, dragging, dragOverSlot, onDra
           </div>
         </div>
       </div>
+
+      {reservePlayers.length > 0 && (
+        <div className="mt-5 border-t border-gray-800 pt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-gray-400" />
+            <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Reserve</span>
+            <span className="text-[10px] text-gray-600">{reservePlayers.length} joueur{reservePlayers.length > 1 ? 's' : ''}</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {reservePlayers.map(player => (
+              <div
+                key={player.id}
+                className="rounded-lg border border-gray-700 bg-gray-800/70 px-2.5 py-1.5 text-xs text-gray-300"
+                title={`${player.first_name} ${player.last_name}`}
+              >
+                <span className="font-semibold text-white">{player.first_name} {player.last_name}</span>
+                <span className="ml-2 text-gray-500">{player.position}</span>
+                {player.number ? <span className="ml-2 text-gray-500">#{player.number}</span> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── MINI ALIGNMENT (read-only overview) ─────────────────────────────────────
 
-function MiniAlignment({ team, lineup, isActive, strength }) {
+function MiniAlignment({ team, lineup, reservePlayers = [], isActive, strength }) {
   const filledCount = ALL_SLOTS.filter(s => lineup?.[s.id]).length;
 
   return (
@@ -380,6 +414,24 @@ function MiniAlignment({ team, lineup, isActive, strength }) {
           </div>
         ))}
       </div>
+      {reservePlayers.length > 0 && (
+        <div className="mt-2 border-t border-gray-800 pt-2">
+          <div className="flex items-start gap-1">
+            <span className="text-[8px] text-gray-700 w-4 font-medium">R</span>
+            <div className="flex flex-wrap gap-1">
+              {reservePlayers.map(player => (
+                <div
+                  key={player.id}
+                  className="rounded bg-gray-800/80 px-1.5 py-0.5 text-[8px] font-semibold text-gray-300"
+                  title={`${player.first_name} ${player.last_name}`}
+                >
+                  {player.last_name.slice(0, 5)}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -666,6 +718,19 @@ export default function Draft() {
     return acc;
   }, {});
 
+  const teamReservePlayers = teams.reduce((acc, team) => {
+    const assignedPlayers = sortAssignedPlayers(
+      allPlayers.filter(player => player.team_id === team.id && player.status === 'active')
+    );
+    const visibleIds = new Set(
+      Object.values(lineups[team.id] || {})
+        .filter(Boolean)
+        .map(player => player.id)
+    );
+    acc[team.id] = assignedPlayers.filter(player => !visibleIds.has(player.id));
+    return acc;
+  }, {});
+
   const sortedHistory = [...allPicks].sort((a, b) => {
     const { field, dir } = histSort;
     let av, bv;
@@ -940,6 +1005,7 @@ export default function Draft() {
                 <HockeyAlignment
                   team={displayTeam || teams[0]}
                   lineup={lineups[(displayTeam || teams[0])?.id] || {}}
+                  reservePlayers={teamReservePlayers[(displayTeam || teams[0])?.id] || []}
                   isActive={canInteract}
                   dragging={draggedPlayer}
                   dragOverSlot={dragOverSlot}
@@ -960,6 +1026,7 @@ export default function Draft() {
                       key={team.id}
                       team={team}
                       lineup={lineups[team.id] || {}}
+                      reservePlayers={teamReservePlayers[team.id] || []}
                       isActive={team.id === activeTeam?.id && settings?.status === 'active'}
                       strength={teamStrength[team.id] || 0}
                     />
