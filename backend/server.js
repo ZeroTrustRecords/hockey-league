@@ -7,6 +7,7 @@ const { resetState, shouldResetOnStartup } = require('./reset-state');
 const { getConfig } = require('./config');
 const { logger, requestLogger, errorLogger } = require('./lib/logger');
 const { assignMissingRosterNumbers } = require('./lib/jerseyNumbers');
+const { syncPastSeasonStatsIfNeeded } = require('./lib/pastSeasonStats');
 
 function ensureSystemAccounts(db) {
   const defaultPassword = getConfig().defaultSystemPassword;
@@ -51,6 +52,26 @@ function ensureRosterNumbers(db) {
   }
 }
 
+function ensureHistoricalArchive(db) {
+  const activeSeason = db.prepare(`
+    SELECT *
+    FROM seasons
+    WHERE status = 'active'
+    ORDER BY id DESC
+    LIMIT 1
+  `).get();
+
+  const result = syncPastSeasonStatsIfNeeded(db, activeSeason);
+  if (result.synced) {
+    logger.info('historical_archive_synced', {
+      reason: result.reason,
+      inserted: result.inserted,
+      seasons: result.seasons?.length || 0,
+      missing_teams: result.missingTeams?.length || 0,
+    });
+  }
+}
+
 function initializeApp(app) {
   initDB();
   const db = getDB();
@@ -66,6 +87,7 @@ function initializeApp(app) {
   ensureSystemAccounts(db);
   normalizeLegacyArenaNames(db);
   normalizeLegacySeasonNames(db);
+  ensureHistoricalArchive(db);
   ensureRosterNumbers(db);
   return db;
 }

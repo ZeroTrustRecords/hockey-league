@@ -160,7 +160,50 @@ function seedPastSeasonStats(db, activeSeason) {
   };
 }
 
+function syncPastSeasonStatsIfNeeded(db, activeSeason) {
+  const seasons = loadHistoricalFixture();
+  if (!seasons.length) {
+    return { synced: false, reason: 'no_fixture', inserted: 0, missingTeams: [] };
+  }
+
+  const fixtureSeasonNames = seasons.map((season) => season.seasonName);
+  const expectedRows = seasons.reduce((sum, season) => sum + season.rows.length, 0);
+
+  const placeholders = fixtureSeasonNames.map(() => '?').join(', ');
+  const existing = db.prepare(`
+    SELECT s.name, COUNT(pss.id) AS row_count
+    FROM seasons s
+    LEFT JOIN player_season_stats pss ON pss.season_id = s.id
+    WHERE s.name IN (${placeholders})
+    GROUP BY s.id, s.name
+  `).all(...fixtureSeasonNames);
+
+  const existingMap = new Map(existing.map((row) => [row.name, row.row_count || 0]));
+  const currentRows = existing.reduce((sum, row) => sum + (row.row_count || 0), 0);
+  const missingSeason = fixtureSeasonNames.some((seasonName) => !existingMap.has(seasonName));
+  const incompleteSeason = fixtureSeasonNames.some((seasonName) => (existingMap.get(seasonName) || 0) === 0);
+
+  if (!missingSeason && !incompleteSeason && currentRows >= expectedRows) {
+    return {
+      synced: false,
+      reason: 'up_to_date',
+      inserted: currentRows,
+      missingTeams: [],
+    };
+  }
+
+  const seeded = seedPastSeasonStats(db, activeSeason);
+  return {
+    synced: true,
+    reason: 'missing_or_incomplete',
+    inserted: seeded.inserted,
+    missingTeams: seeded.missingTeams,
+    seasons: seeded.seasons,
+  };
+}
+
 module.exports = {
   seedPastSeasonStats,
+  syncPastSeasonStatsIfNeeded,
   loadHistoricalFixture,
 };
