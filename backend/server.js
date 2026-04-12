@@ -7,7 +7,7 @@ const { resetState, shouldResetOnStartup } = require('./reset-state');
 const { getConfig } = require('./config');
 const { logger, requestLogger, errorLogger } = require('./lib/logger');
 const { assignMissingRosterNumbers } = require('./lib/jerseyNumbers');
-const { syncPastSeasonStatsIfNeeded } = require('./lib/pastSeasonStats');
+const { seedPastSeasonStats } = require('./lib/pastSeasonStats');
 
 function ensureSystemAccounts(db) {
   const defaultPassword = getConfig().defaultSystemPassword;
@@ -61,15 +61,13 @@ function ensureHistoricalArchive(db) {
     LIMIT 1
   `).get();
 
-  const result = syncPastSeasonStatsIfNeeded(db, activeSeason);
-  if (result.synced) {
-    logger.info('historical_archive_synced', {
-      reason: result.reason,
-      inserted: result.inserted,
-      seasons: result.seasons?.length || 0,
-      missing_teams: result.missingTeams?.length || 0,
-    });
-  }
+  const result = seedPastSeasonStats(db, activeSeason);
+  logger.info('historical_archive_synced', {
+    reason: 'startup_resync',
+    inserted: result.inserted,
+    seasons: result.seasons?.length || 0,
+    missing_teams: result.missingTeams?.length || 0,
+  });
 }
 
 function initializeApp(app) {
