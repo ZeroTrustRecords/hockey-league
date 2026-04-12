@@ -92,7 +92,7 @@ export default function Stats() {
       setSeasons(orderedSeasons);
       setActiveSeason(season);
       setSelectedSeasonId(season?.id ? String(season.id) : orderedSeasons[0]?.id ? String(orderedSeasons[0].id) : '');
-      setStatType(season?.status === 'playoffs' || season?.status === 'completed' ? 'playoffs' : 'regular');
+      setStatType(season?.status === 'playoffs' || season?.status === 'completed' ? 'all' : 'regular');
     }).catch(() => setStatType('regular'));
   }, []);
 
@@ -149,7 +149,7 @@ export default function Stats() {
   const maxPoints = Math.max(...filteredPlayers.map((player) => player.points || 0), 1);
 
   const summary = useMemo(() => {
-    const phaseLabel = statType === 'playoffs' ? 'Éliminatoires' : statType === 'all' ? 'Toutes les compétitions' : 'Saison régulière';
+    const phaseLabel = statType === 'playoffs' ? '?liminatoires' : statType === 'all' ? 'Saison + s?ries' : 'Saison r?guli?re';
     return {
       phaseLabel,
       playerCount: filteredPlayers.length,
@@ -203,7 +203,7 @@ export default function Stats() {
                 const nextSeason = seasons.find((season) => String(season.id) === String(seasonId));
                 setSelectedSeasonId(seasonId);
                 if (nextSeason) {
-                  setStatType(nextSeason.status === 'playoffs' || nextSeason.status === 'completed' ? 'playoffs' : 'regular');
+                  setStatType(nextSeason.status === 'playoffs' || nextSeason.status === 'completed' ? 'all' : 'regular');
                 }
               }}
             >
@@ -216,7 +216,7 @@ export default function Stats() {
             {[
               { key: 'regular', label: 'Saison régulière' },
               { key: 'playoffs', label: 'Éliminatoires' },
-              { key: 'all', label: 'Tout' },
+              { key: 'all', label: 'Saison + s?ries' },
             ].map((option) => (
               <button
                 key={option.key}
