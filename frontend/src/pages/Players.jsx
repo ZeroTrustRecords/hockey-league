@@ -138,7 +138,7 @@ export default function Players() {
   const [search, setSearch] = useState('');
   const [filterTeam, setFilterTeam] = useState('');
   const [filterPos, setFilterPos] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterStatus, setFilterStatus] = useState('active');
   const [editPlayer, setEditPlayer] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
@@ -238,8 +238,8 @@ export default function Players() {
         </div>
         <div className="league-stat-card">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Vue</div>
-          <div className="text-lg font-black text-white">Annuaire complet</div>
-          <div className="text-xs text-gray-500 mt-1">Actifs et anciens joueurs de la ligue</div>
+          <div className="text-lg font-black text-white">Joueurs actifs</div>
+          <div className="text-xs text-gray-500 mt-1">Les anciens restent accessibles via le filtre</div>
         </div>
       </div>
 
@@ -272,8 +272,8 @@ export default function Players() {
               {POSITIONS.map((position) => <option key={position} value={position}>{positionLabel[position]}</option>)}
             </select>
             <select className="select w-full sm:w-32" value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}>
-              <option value="">Tous statuts</option>
               <option value="active">Actif</option>
+              <option value="">Tous statuts</option>
               <option value="inactive">Inactif</option>
             </select>
           </div>
