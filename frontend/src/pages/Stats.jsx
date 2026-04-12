@@ -7,7 +7,7 @@ const positionLabel = {
   C: 'Centre',
   LW: 'Ailier G',
   RW: 'Ailier D',
-  D: 'Défenseur',
+  D: 'Defenseur',
   G: 'Gardien',
 };
 
@@ -54,7 +54,7 @@ function LeaderCard({ title, subtitle, icon: Icon, players = [], statKey, unit }
           </div>
         ))}
 
-        {players.length === 0 && <p className="text-sm text-gray-600 text-center py-4">Aucune donnée disponible</p>}
+        {players.length === 0 && <p className="text-sm text-gray-600 text-center py-4">Aucune donnee disponible</p>}
       </div>
     </div>
   );
@@ -149,7 +149,7 @@ export default function Stats() {
   const maxPoints = Math.max(...filteredPlayers.map((player) => player.points || 0), 1);
 
   const summary = useMemo(() => {
-    const phaseLabel = statType === 'playoffs' ? '?liminatoires' : statType === 'all' ? 'Saison + s?ries' : 'Saison r?guli?re';
+    const phaseLabel = statType === 'playoffs' ? 'Eliminatoires' : statType === 'all' ? 'Saison + series' : 'Saison reguliere';
     return {
       phaseLabel,
       playerCount: filteredPlayers.length,
@@ -165,9 +165,9 @@ export default function Stats() {
   }), [players]);
 
   const exportCSV = () => {
-    const headers = 'Joueur,Équipe,Position,Matchs,Buts,Passes,Points\n';
+    const headers = 'Joueur,Equipe,Position,Matchs,Buts,Passes,Points,PIM\n';
     const rows = filteredPlayers.map((player) =>
-      `"${player.first_name} ${player.last_name}","${player.team_name || ''}","${player.position}",${player.matches_played},${player.goals},${player.assists},${player.points}`,
+      `"${player.first_name} ${player.last_name}","${player.team_name || ''}","${player.position}",${player.matches_played},${player.goals},${player.assists},${player.points},${player.pim || 0}`,
     ).join('\n');
     const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -214,14 +214,14 @@ export default function Stats() {
           )}
           <div className="flex rounded-xl overflow-hidden border border-gray-700 text-sm w-full sm:w-auto">
             {[
-              { key: 'regular', label: 'Saison régulière' },
-              { key: 'playoffs', label: 'Éliminatoires' },
-              { key: 'all', label: 'Saison + s?ries' },
+              { key: 'regular', label: 'Saison reguliere' },
+              { key: 'playoffs', label: 'Eliminatoires' },
+              { key: 'all', label: 'Saison + series' },
             ].map((option) => (
               <button
                 key={option.key}
                 onClick={() => setStatType(option.key)}
-                className={`px-3 py-2 font-medium transition-colors text-xs sm:text-sm ${statType === option.key ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+                className={`px-3 py-2 font-medium transition-colors text-xs sm:text-sm whitespace-nowrap ${statType === option.key ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
               >
                 {option.label}
               </button>
@@ -244,7 +244,7 @@ export default function Stats() {
         <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Patineurs</div>
           <div className="text-2xl font-black text-white">{summary.playerCount}</div>
-          <div className="text-xs text-gray-500 mt-1">Joueurs visibles après filtres</div>
+          <div className="text-xs text-gray-500 mt-1">Joueurs visibles apres filtres</div>
         </div>
         <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Gardiens</div>
@@ -254,7 +254,7 @@ export default function Stats() {
         <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Contexte</div>
           <div className="text-lg font-black text-white truncate">{selectedSeason?.name || activeSeason?.name || 'Aucune saison'}</div>
-          <div className="text-xs text-gray-500 mt-1">Saison actuellement affichée</div>
+          <div className="text-xs text-gray-500 mt-1">Saison actuellement affichee</div>
         </div>
       </div>
 
@@ -271,7 +271,7 @@ export default function Stats() {
           Joueurs
         </button>
         <button onClick={() => setTab('teams')} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === 'teams' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
-          Équipes
+          Equipes
         </button>
         <button onClick={() => setTab('goalies')} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === 'goalies' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
           Gardiens
@@ -292,7 +292,7 @@ export default function Stats() {
                 />
               </div>
               <select className="select w-full sm:w-48" value={filterTeam} onChange={(event) => setFilterTeam(event.target.value)}>
-                <option value="">Toutes les équipes</option>
+                <option value="">Toutes les equipes</option>
                 {allTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
               </select>
               <select className="select w-full sm:w-40" value={filterPos} onChange={(event) => setFilterPos(event.target.value)}>
@@ -300,7 +300,7 @@ export default function Stats() {
                 {['C', 'LW', 'RW', 'D'].map((position) => <option key={position} value={position}>{positionLabel[position]}</option>)}
               </select>
             </div>
-            <span className="text-xs text-gray-500">{filteredPlayers.length} joueur{filteredPlayers.length !== 1 ? 's' : ''} affiché{filteredPlayers.length !== 1 ? 's' : ''}</span>
+            <span className="text-xs text-gray-500">{filteredPlayers.length} joueur{filteredPlayers.length !== 1 ? 's' : ''} affiche{filteredPlayers.length !== 1 ? 's' : ''}</span>
           </div>
 
           <div className="bg-gray-900 rounded-3xl border border-gray-800 overflow-x-auto">
@@ -315,7 +315,7 @@ export default function Stats() {
                   <th className="text-left py-3 px-5 text-xs text-gray-600 font-medium w-8">#</th>
                   <th className="text-left py-3 text-xs text-gray-600 font-medium">Joueur</th>
                   <th className="text-left py-3 text-xs text-gray-600 font-medium">Pos.</th>
-                  <th className="text-left py-3 text-xs text-gray-600 font-medium">Équipe</th>
+                  <th className="text-left py-3 text-xs text-gray-600 font-medium">Equipe</th>
                   <th className="text-center py-3 text-xs text-gray-600 font-medium w-12 cursor-pointer hover:text-gray-400" onClick={() => handleSort('matches_played')}>MJ <SortIcon field="matches_played" current={sortField} dir={sortDir} /></th>
                   <th className="text-center py-3 text-xs text-gray-600 font-medium w-14 cursor-pointer hover:text-gray-400" onClick={() => handleSort('goals')}>B <SortIcon field="goals" current={sortField} dir={sortDir} /></th>
                   <th className="text-center py-3 text-xs text-gray-600 font-medium w-14 cursor-pointer hover:text-gray-400" onClick={() => handleSort('assists')}>A <SortIcon field="assists" current={sortField} dir={sortDir} /></th>
@@ -396,14 +396,14 @@ export default function Stats() {
       {tab === 'teams' && (
         <div className="bg-gray-900 rounded-3xl border border-gray-800 overflow-x-auto">
           <div className="px-5 py-4 border-b border-gray-800">
-            <h2 className="text-lg font-bold text-white">Portrait des équipes</h2>
-            <p className="text-sm text-gray-500 mt-1">Production, rendement défensif et tendances récentes de chaque club.</p>
+            <h2 className="text-lg font-bold text-white">Portrait des equipes</h2>
+            <p className="text-sm text-gray-500 mt-1">Production, rendement defensif et tendances recentes de chaque club.</p>
           </div>
 
           <table className="w-full text-sm min-w-[920px]">
             <thead>
               <tr className="border-b border-gray-800">
-                <th className="text-left py-3 px-5 text-xs text-gray-600 font-medium">Équipe</th>
+                <th className="text-left py-3 px-5 text-xs text-gray-600 font-medium">Equipe</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">PJ</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">V</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-12">D</th>
@@ -454,7 +454,7 @@ export default function Stats() {
               {teams.length === 0 && (
                 <tr>
                   <td colSpan="10" className="py-10 text-center text-sm text-gray-600">
-                    Aucune équipe n’a encore de statistiques à afficher.
+                    Aucune equipe n'a encore de statistiques a afficher.
                   </td>
                 </tr>
               )}
@@ -467,14 +467,14 @@ export default function Stats() {
         <div className="bg-gray-900 rounded-3xl border border-gray-800 overflow-x-auto">
           <div className="px-5 py-4 border-b border-gray-800">
             <h2 className="text-lg font-bold text-white">Portrait des gardiens</h2>
-            <p className="text-sm text-gray-500 mt-1">Moyenne de buts alloués et charge de travail de chaque gardien partant.</p>
+            <p className="text-sm text-gray-500 mt-1">Moyenne de buts alloues et charge de travail de chaque gardien partant.</p>
           </div>
 
           <table className="w-full text-sm min-w-[760px]">
             <thead>
               <tr className="border-b border-gray-800">
                 <th className="text-left py-3 px-5 text-xs text-gray-600 font-medium">Gardien</th>
-                <th className="text-left py-3 text-xs text-gray-600 font-medium">Équipe</th>
+                <th className="text-left py-3 text-xs text-gray-600 font-medium">Equipe</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-16">MJ</th>
                 <th className="text-center py-3 text-xs text-gray-600 font-medium w-16">BC</th>
                 <th className="text-center py-3 pr-5 text-xs text-gray-600 font-medium w-20">MBA</th>
@@ -514,7 +514,7 @@ export default function Stats() {
               {goalies.length === 0 && (
                 <tr>
                   <td colSpan="5" className="py-10 text-center text-sm text-gray-600">
-                    Aucun gardien n’a encore de statistiques à afficher.
+                    Aucun gardien n'a encore de statistiques a afficher.
                   </td>
                 </tr>
               )}
