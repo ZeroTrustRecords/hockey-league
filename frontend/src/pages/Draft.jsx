@@ -312,7 +312,7 @@ function HockeyAlignment({ team, lineup, reservePlayers = [], isActive, dragging
           {DEFENSE_PAIRS.map((pair, pi) => (
             <div key={pi} className="grid gap-2 md:grid-cols-[64px_minmax(0,1fr)] md:items-center">
               <span className="text-[10px] font-medium text-gray-600 md:w-11 md:shrink-0">Paire {pi + 1}</span>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:max-w-[420px]">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {pair.map(slot => <PositionSlot key={slot.id} {...slotProps(slot)} />)}
               </div>
             </div>
@@ -328,7 +328,7 @@ function HockeyAlignment({ team, lineup, reservePlayers = [], isActive, dragging
         </div>
         <div className="grid gap-2 md:grid-cols-[64px_minmax(0,1fr)] md:items-center">
           <span className="text-[10px] font-medium text-gray-600 md:w-11 md:shrink-0">Titulaire</span>
-          <div className="max-w-[220px]">
+          <div className="w-full sm:max-w-[320px]">
             <PositionSlot {...slotProps(GOALIE_SLOT)} />
           </div>
         </div>
