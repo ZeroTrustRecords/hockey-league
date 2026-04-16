@@ -2,9 +2,24 @@ const express = require('express');
 const router = express.Router();
 const { getDB } = require('../db');
 
+function getTorontoStartOfDaySql() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Toronto',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date()).reduce((acc, part) => {
+    if (part.type !== 'literal') acc[part.type] = part.value;
+    return acc;
+  }, {});
+
+  return `${parts.year}-${parts.month}-${parts.day} 00:00:00`;
+}
+
 router.get('/', (req, res) => {
   const db = getDB();
   const isRegularSeasonReadyForPlayoffs = require('./playoffs').isRegularSeasonReadyForPlayoffs;
+  const torontoStartOfDay = getTorontoStartOfDaySql();
   const seasons = db.prepare(`
     SELECT s.*,
       (SELECT COUNT(*) FROM matches m WHERE m.season_id = s.id) AS total_matches,
@@ -32,9 +47,9 @@ router.get('/', (req, res) => {
     INNER JOIN teams ht ON m.home_team_id = ht.id
     INNER JOIN teams at2 ON m.away_team_id = at2.id
     WHERE m.status = 'scheduled'
-      AND m.date >= datetime('now', 'localtime', 'start of day')
+      AND m.date >= ?
     ORDER BY m.date ASC LIMIT 3
-  `).all();
+  `).all(torontoStartOfDay);
 
   // Recent results
   const recentResults = db.prepare(`
