@@ -275,10 +275,10 @@ function TeamSheet({
             className="grid grid-cols-[minmax(0,1fr)_80px_80px_80px_80px] border-t border-gray-300 bg-white"
           >
             <div className={`border-r border-gray-300 px-4 py-3 ${row.replacement ? 'bg-gray-50' : ''}`}>
-              <div className={`text-sm font-semibold ${row.replacement ? 'text-gray-700' : 'text-sky-600'}`}>
+              <div className={`text-[15px] leading-5 font-bold ${row.replacement ? 'text-gray-800' : 'text-sky-700'}`}>
                 {row.label}
               </div>
-              {!row.replacement && <div className="text-xs text-gray-400">#{row.jersey}</div>}
+              {!row.replacement && <div className="mt-0.5 text-sm font-semibold text-gray-600">#{row.jersey}</div>}
             </div>
             <div className="flex items-center justify-center border-r border-gray-300 px-2 py-3">
               {readOnly ? (
