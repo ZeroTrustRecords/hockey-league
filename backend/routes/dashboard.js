@@ -31,7 +31,8 @@ router.get('/', (req, res) => {
     FROM matches m
     INNER JOIN teams ht ON m.home_team_id = ht.id
     INNER JOIN teams at2 ON m.away_team_id = at2.id
-    WHERE m.status = 'scheduled' AND m.date >= datetime('now', '-1 hour')
+    WHERE m.status = 'scheduled'
+      AND m.date >= datetime('now', 'localtime', 'start of day')
     ORDER BY m.date ASC LIMIT 3
   `).all();
 
