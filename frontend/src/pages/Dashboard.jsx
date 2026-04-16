@@ -7,7 +7,6 @@ import {
   Bell,
   CalendarDays,
   CheckCircle,
-  MessageSquare,
   Shield,
   Star,
   Target,
@@ -186,7 +185,7 @@ export default function Dashboard() {
             <p className="public-eyebrow text-[0.68rem] tracking-[0.22em] sm:text-xs sm:tracking-[0.32em]">Site officiel de la ligue</p>
             <h1 className="public-title mt-2 text-3xl sm:text-5xl">LHMA</h1>
             <p className="public-subtitle mt-3 max-w-4xl text-sm leading-6 sm:text-base sm:leading-7">
-              {'Résultats, prochain rendez-vous, meneurs offensifs et état de la saison au même endroit.'}
+              Résultats, prochain rendez-vous, meneurs offensifs et état de la saison au même endroit.
             </p>
           </div>
           <div className="score-chip self-start text-xs sm:self-auto sm:text-sm">{seasonLabel}</div>
@@ -206,7 +205,7 @@ export default function Dashboard() {
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="min-w-0 flex-1">
                     <div className="text-sm text-gray-400">
-                      {format(parseISO(featuredMatch.date), "EEEE d MMMM yyyy '\u00E0' HH:mm", { locale: fr })}
+                      {format(parseISO(featuredMatch.date), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })}
                     </div>
                     {featuredMatch.location && (
                       <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-300">
@@ -264,10 +263,10 @@ export default function Dashboard() {
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div>
                     <div className="text-sm text-gray-400">
-                      Le classement final est connu. Voici l'affiche initiale des eliminatoires a venir.
+                      Le classement final est connu. Voici l'affiche initiale des éliminatoires à venir.
                     </div>
                     <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">
-                      Tableau preliminaire
+                      Tableau préliminaire
                     </div>
                   </div>
 
@@ -295,7 +294,7 @@ export default function Dashboard() {
                       <div className="flex items-center justify-between gap-3 mb-4">
                         <div className="text-[10px] uppercase tracking-[0.2em] text-blue-300/80 font-semibold">{label}</div>
                         <div className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
-                          Serie
+                          Série
                         </div>
                       </div>
                       <div className="space-y-3">
@@ -324,9 +323,9 @@ export default function Dashboard() {
                 </div>
 
                 <div className="rounded-[1.35rem] border border-white/10 bg-white/5 px-4 py-3">
-                  <div className="text-sm font-semibold text-white">Les series debutent bientot</div>
+                  <div className="text-sm font-semibold text-white">Les séries débutent bientôt</div>
                   <div className="mt-1 text-sm text-gray-400">
-                    Les positions 1 a 6 sont verrouillees. Le tableau complet apparaitra ici et dans l'onglet Eliminatoires.
+                    Les positions 1 à 6 sont verrouillées. Le tableau complet apparaîtra ici et dans l'onglet Éliminatoires.
                   </div>
                 </div>
               </div>
@@ -376,7 +375,7 @@ export default function Dashboard() {
             <Link to="/playoffs" className="flex items-center gap-3 p-4 rounded-2xl border border-blue-500/20 bg-blue-500/5 mb-4 hover:bg-blue-500/10 transition-colors">
               <Trophy size={16} className="text-blue-400 flex-shrink-0" />
               <div className="min-w-0">
-                <div className="font-semibold text-white">Les eliminatoires arrivent bientot</div>
+                <div className="font-semibold text-white">Les éliminatoires arrivent bientôt</div>
                 <div className="text-xs text-gray-400">{playoffsComingSoon.message}</div>
               </div>
               <ArrowRight size={16} className="text-gray-500 ml-auto" />
@@ -540,7 +539,7 @@ export default function Dashboard() {
                 </h3>
                 <div className="mt-2 text-xs text-gray-500">
                   {selectedAnnouncement.created_at
-                    ? format(parseISO(selectedAnnouncement.created_at), "d MMMM yyyy 'a' HH:mm", { locale: fr })
+                    ? format(parseISO(selectedAnnouncement.created_at), "d MMMM yyyy 'à' HH:mm", { locale: fr })
                     : ''}
                 </div>
               </div>
