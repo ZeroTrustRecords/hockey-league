@@ -1,28 +1,34 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Check, ChevronUp, Plus, Save, Shield, Users } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import toast from 'react-hot-toast';
-import { Plus, X, Check, Target, ChevronUp, Shield } from 'lucide-react';
-
-const PERIODS = [
-  { value: '1', label: '1re' },
-  { value: '2', label: '2e' },
-  { value: '3', label: '3e' },
-  { value: '5', label: 'Fusil.' },
-];
-
-const PENALTY_MINUTES = [
-  { value: '2', label: '2 min' },
-  { value: '4', label: '4 min' },
-  { value: '5', label: '5 min' },
-  { value: '10', label: '10 min' },
-];
 
 function goalieOptions(players, teamId) {
   return players
-    .filter((player) => String(player.team_id) === String(teamId) && player.position === 'G' && player.status === 'active')
-    .sort((a, b) => (a.number || 999) - (b.number || 999) || `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`));
+    .filter(
+      (player) =>
+        String(player.team_id) === String(teamId) &&
+        player.position === 'G' &&
+        player.status === 'active'
+    )
+    .sort(
+      (a, b) =>
+        (a.number || 999) - (b.number || 999) ||
+        `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`)
+    );
+}
+
+function teamActivePlayers(players, teamId) {
+  return players
+    .filter((player) => String(player.team_id) === String(teamId) && player.status === 'active')
+    .sort(
+      (a, b) =>
+        (a.position === 'G' ? 1 : 0) - (b.position === 'G' ? 1 : 0) ||
+        (a.number || 999) - (b.number || 999) ||
+        `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`)
+    );
 }
 
 function getDefaultGoalieValue(players, teamId) {
@@ -37,160 +43,270 @@ function normalizeGoalieSelection(value) {
   };
 }
 
-function GoalieSelect({ label, team, value, options, onChange }) {
+function buildTeamStatLookup(players, teamId, goals, penalties) {
+  const lookup = new Map();
+  const teamPlayers = players.filter((player) => String(player.team_id) === String(teamId));
+
+  for (const player of teamPlayers) {
+    lookup.set(String(player.id), {
+      player,
+      goals: 0,
+      assists: 0,
+      pim: 0,
+    });
+  }
+
+  lookup.set('sub', {
+    player: null,
+    goals: 0,
+    assists: 0,
+    pim: 0,
+  });
+
+  for (const goal of goals || []) {
+    if (String(goal.team_id) !== String(teamId)) continue;
+
+    const scorerKey = goal.scorer_id ? String(goal.scorer_id) : 'sub';
+    if (!lookup.has(scorerKey)) {
+      lookup.set(scorerKey, { player: null, goals: 0, assists: 0, pim: 0 });
+    }
+    lookup.get(scorerKey).goals += 1;
+
+    if (goal.assist1_id) {
+      const assistKey = String(goal.assist1_id);
+      if (!lookup.has(assistKey)) {
+        lookup.set(assistKey, { player: null, goals: 0, assists: 0, pim: 0 });
+      }
+      lookup.get(assistKey).assists += 1;
+    }
+
+    if (goal.assist2_id) {
+      const assistKey = String(goal.assist2_id);
+      if (!lookup.has(assistKey)) {
+        lookup.set(assistKey, { player: null, goals: 0, assists: 0, pim: 0 });
+      }
+      lookup.get(assistKey).assists += 1;
+    }
+  }
+
+  for (const penalty of penalties || []) {
+    if (String(penalty.team_id) !== String(teamId)) continue;
+    const key = penalty.player_id ? String(penalty.player_id) : 'sub';
+    if (!lookup.has(key)) {
+      lookup.set(key, { player: null, goals: 0, assists: 0, pim: 0 });
+    }
+    lookup.get(key).pim += Number(penalty.minutes || 0);
+  }
+
+  return lookup;
+}
+
+function buildSkaterRows(players, teamId, lookup) {
+  const skaters = teamActivePlayers(players, teamId).filter((player) => player.position !== 'G');
+  const rows = skaters.map((player) => {
+    const stats = lookup.get(String(player.id)) || { goals: 0, assists: 0, pim: 0 };
+    return {
+      player_id: String(player.id),
+      label: `${player.first_name} ${player.last_name}`,
+      jersey: player.number || '—',
+      goals: stats.goals || 0,
+      assists: stats.assists || 0,
+      pim: stats.pim || 0,
+      replacement: false,
+    };
+  });
+
+  const replacementStats = lookup.get('sub') || { goals: 0, assists: 0, pim: 0 };
+  rows.push({
+    player_id: null,
+    label: 'Remplaçant',
+    jersey: '—',
+    goals: replacementStats.goals || 0,
+    assists: replacementStats.assists || 0,
+    pim: replacementStats.pim || 0,
+    replacement: true,
+  });
+
+  return rows;
+}
+
+function buildGoalieStats(goalieValue, lookup) {
+  if (!goalieValue || goalieValue === 'sub') {
+    return { goals: 0, assists: 0, pim: 0 };
+  }
+
+  const stats = lookup.get(String(goalieValue));
+  return {
+    goals: stats?.goals || 0,
+    assists: stats?.assists || 0,
+    pim: stats?.pim || 0,
+  };
+}
+
+function toInt(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : 0;
+}
+
+function StatInput({ value, onChange, disabled = false }) {
   return (
-    <div className="rounded-xl border border-gray-700 bg-gray-800/50 p-3 space-y-2">
-      <div className="flex items-center gap-2">
-        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: team?.color || '#6b7280' }} />
-        <span className="text-sm font-semibold text-white">{label}</span>
+    <input
+      type="number"
+      min="0"
+      step="1"
+      value={value}
+      disabled={disabled}
+      onChange={(event) => onChange(Math.max(0, Number(event.target.value || 0)))}
+      className="w-16 rounded-lg border border-gray-700 bg-gray-800 px-2 py-2 text-center text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+    />
+  );
+}
+
+function TeamSheet({
+  title,
+  team,
+  goalieValue,
+  goalieChoices,
+  goalieStats,
+  goalsAgainst,
+  rows,
+  readOnly,
+  onGoalieChange,
+  onGoalieStatsChange,
+  onRowChange,
+}) {
+  const headerStyle = {
+    backgroundColor: team?.color || '#111827',
+  };
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-gray-700 bg-gray-900">
+      <div className="bg-black px-5 py-4 text-center">
+        <div className="text-xs font-semibold uppercase tracking-[0.35em] text-gray-400">{title}</div>
+        <div className="mt-2 text-2xl font-black uppercase text-white">{team?.name || 'Équipe'}</div>
       </div>
-      <select className="select text-sm" value={value} onChange={(event) => onChange(event.target.value)}>
-        <option value="">—</option>
-        <option value="sub">Remplaçant</option>
-        {options.map((player) => (
-          <option key={player.id} value={player.id}>
-            #{player.number || '—'} {player.first_name} {player.last_name}
-          </option>
+
+      <div className="border-t border-gray-700">
+        <div className="grid grid-cols-[minmax(0,1fr)_80px_80px_80px_80px] bg-gray-100/95 text-[11px] font-bold uppercase tracking-[0.2em] text-gray-600">
+          <div className="border-r border-gray-300 px-4 py-3 text-left text-gray-900">Gardien</div>
+          <div className="border-r border-gray-300 px-2 py-3 text-center">BC</div>
+          <div className="border-r border-gray-300 px-2 py-3 text-center">B</div>
+          <div className="border-r border-gray-300 px-2 py-3 text-center">P</div>
+          <div className="px-2 py-3 text-center">PU</div>
+        </div>
+
+        <div className="grid grid-cols-[minmax(0,1fr)_80px_80px_80px_80px] border-t border-gray-300 bg-white">
+          <div className="border-r border-gray-300 px-4 py-3">
+            {readOnly ? (
+              <div className="min-h-[44px] rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-sky-600">
+                {goalieValue === 'sub'
+                  ? 'Remplaçant'
+                  : goalieChoices.find((goalie) => String(goalie.id) === String(goalieValue))
+                    ? `${goalieChoices.find((goalie) => String(goalie.id) === String(goalieValue)).first_name} ${goalieChoices.find((goalie) => String(goalie.id) === String(goalieValue)).last_name}`
+                    : '—'}
+              </div>
+            ) : (
+              <select
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-sky-600"
+                value={goalieValue}
+                onChange={(event) => onGoalieChange(event.target.value)}
+              >
+                <option value="">—</option>
+                <option value="sub">Remplaçant</option>
+                {goalieChoices.map((goalie) => (
+                  <option key={goalie.id} value={goalie.id}>
+                    #{goalie.number || '—'} {goalie.first_name} {goalie.last_name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div className="flex items-center justify-center border-r border-gray-300 bg-gray-50 px-2 py-3 text-lg font-black text-gray-900">
+            {goalsAgainst}
+          </div>
+          <div className="flex items-center justify-center border-r border-gray-300 px-2 py-3">
+            {readOnly ? (
+              <span className="text-sm font-semibold text-gray-900">{goalieStats.goals || '-'}</span>
+            ) : (
+              <StatInput
+                value={goalieStats.goals}
+                onChange={(value) => onGoalieStatsChange({ ...goalieStats, goals: value })}
+                disabled={goalieValue === 'sub' || !goalieValue}
+              />
+            )}
+          </div>
+          <div className="flex items-center justify-center border-r border-gray-300 px-2 py-3">
+            {readOnly ? (
+              <span className="text-sm font-semibold text-gray-900">{goalieStats.assists || '-'}</span>
+            ) : (
+              <StatInput
+                value={goalieStats.assists}
+                onChange={(value) => onGoalieStatsChange({ ...goalieStats, assists: value })}
+                disabled={goalieValue === 'sub' || !goalieValue}
+              />
+            )}
+          </div>
+          <div className="flex items-center justify-center px-2 py-3">
+            {readOnly ? (
+              <span className="text-sm font-semibold text-gray-900">{goalieStats.pim || '-'}</span>
+            ) : (
+              <StatInput
+                value={goalieStats.pim}
+                onChange={(value) => onGoalieStatsChange({ ...goalieStats, pim: value })}
+                disabled={goalieValue === 'sub' || !goalieValue}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-gray-700">
+        <div className="grid grid-cols-[minmax(0,1fr)_80px_80px_80px_80px] bg-gray-100/95 text-[11px] font-bold uppercase tracking-[0.2em] text-gray-600">
+          <div className="border-r border-gray-300 px-4 py-3 text-left text-gray-900">Joueurs</div>
+          <div className="border-r border-gray-300 px-2 py-3 text-center">B</div>
+          <div className="border-r border-gray-300 px-2 py-3 text-center">P</div>
+          <div className="border-r border-gray-300 px-2 py-3 text-center">PTS</div>
+          <div className="px-2 py-3 text-center">PU</div>
+        </div>
+
+        {rows.map((row, index) => (
+          <div
+            key={`${row.player_id || 'sub'}-${index}`}
+            className="grid grid-cols-[minmax(0,1fr)_80px_80px_80px_80px] border-t border-gray-300 bg-white"
+          >
+            <div className={`border-r border-gray-300 px-4 py-3 ${row.replacement ? 'bg-gray-50' : ''}`}>
+              <div className={`text-sm font-semibold ${row.replacement ? 'text-gray-700' : 'text-sky-600'}`}>
+                {row.label}
+              </div>
+              {!row.replacement && <div className="text-xs text-gray-400">#{row.jersey}</div>}
+            </div>
+            <div className="flex items-center justify-center border-r border-gray-300 px-2 py-3">
+              {readOnly ? (
+                <span className="text-sm font-semibold text-gray-900">{row.goals || '-'}</span>
+              ) : (
+                <StatInput value={row.goals} onChange={(value) => onRowChange(index, { ...row, goals: value })} />
+              )}
+            </div>
+            <div className="flex items-center justify-center border-r border-gray-300 px-2 py-3">
+              {readOnly ? (
+                <span className="text-sm font-semibold text-gray-900">{row.assists || '-'}</span>
+              ) : (
+                <StatInput value={row.assists} onChange={(value) => onRowChange(index, { ...row, assists: value })} />
+              )}
+            </div>
+            <div className="flex items-center justify-center border-r border-gray-300 bg-amber-50 px-2 py-3 text-base font-black text-gray-900">
+              {row.goals + row.assists || '-'}
+            </div>
+            <div className="flex items-center justify-center px-2 py-3">
+              {readOnly ? (
+                <span className="text-sm font-semibold text-gray-900">{row.pim || '-'}</span>
+              ) : (
+                <StatInput value={row.pim} onChange={(value) => onRowChange(index, { ...row, pim: value })} />
+              )}
+            </div>
+          </div>
         ))}
-      </select>
-    </div>
-  );
-}
-
-function GoalRow({ goal, index, homeTeam, awayTeam, allPlayers, onChange, onRemove }) {
-  const team = [homeTeam, awayTeam].find((candidate) => candidate && String(candidate.id) === String(goal.team_id));
-  const teamPlayers = allPlayers.filter((player) => String(player.team_id) === String(goal.team_id));
-  const set = (key, value) => onChange(index, { ...goal, [key]: value });
-
-  return (
-    <div className="flex items-start gap-2 p-3 rounded-xl bg-gray-800/60 border border-gray-700">
-      <div className="w-1 self-stretch rounded-full flex-shrink-0 mt-0.5" style={{ backgroundColor: team?.color || '#6b7280' }} />
-
-      <div className="flex-1 space-y-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-bold text-gray-400">#{index + 1}</span>
-          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: team?.color }} />
-          <span className="text-xs text-white font-semibold flex-1">{team?.name}</span>
-          <div className="flex gap-1">
-            {PERIODS.map((period) => (
-              <button
-                key={period.value}
-                type="button"
-                onClick={() => set('period', period.value)}
-                className={`px-2 py-0.5 rounded text-xs font-bold transition-all ${
-                  String(goal.period) === period.value
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                }`}
-              >
-                {period.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2">
-          <div>
-            <label className="text-[10px] text-gray-500 uppercase tracking-wide">Buteur *</label>
-            <select className="select mt-0.5 text-sm" value={goal.scorer_id} onChange={(event) => set('scorer_id', event.target.value)}>
-              <option value="">—</option>
-              <option value="sub">Remplaçant</option>
-              {teamPlayers.map((player) => (
-                <option key={player.id} value={player.id}>#{player.number} {player.last_name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-[10px] text-gray-500 uppercase tracking-wide">Passeur 1</label>
-            <select className="select mt-0.5 text-sm" value={goal.assist1_id} onChange={(event) => set('assist1_id', event.target.value)}>
-              <option value="">—</option>
-              <option value="sub">Remplaçant</option>
-              {teamPlayers
-                .filter((player) => String(player.id) !== String(goal.scorer_id))
-                .map((player) => (
-                  <option key={player.id} value={player.id}>#{player.number} {player.last_name}</option>
-                ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-[10px] text-gray-500 uppercase tracking-wide">Passeur 2</label>
-            <select className="select mt-0.5 text-sm" value={goal.assist2_id} onChange={(event) => set('assist2_id', event.target.value)}>
-              <option value="">—</option>
-              <option value="sub">Remplaçant</option>
-              {teamPlayers
-                .filter((player) => String(player.id) !== String(goal.scorer_id) && String(player.id) !== String(goal.assist1_id))
-                .map((player) => (
-                  <option key={player.id} value={player.id}>#{player.number} {player.last_name}</option>
-                ))}
-            </select>
-          </div>
-        </div>
       </div>
-
-      <button onClick={() => onRemove(index)} className="text-gray-600 hover:text-red-400 transition-colors p-1 flex-shrink-0 mt-0.5">
-        <X size={14} />
-      </button>
-    </div>
-  );
-}
-
-function PenaltyRow({ penalty, index, homeTeam, awayTeam, allPlayers, onChange, onRemove }) {
-  const team = [homeTeam, awayTeam].find((candidate) => candidate && String(candidate.id) === String(penalty.team_id));
-  const teamPlayers = allPlayers.filter((player) => String(player.team_id) === String(penalty.team_id));
-  const set = (key, value) => onChange(index, { ...penalty, [key]: value });
-
-  return (
-    <div className="flex items-start gap-2 p-3 rounded-xl bg-gray-800/60 border border-gray-700">
-      <div className="w-1 self-stretch rounded-full flex-shrink-0 mt-0.5" style={{ backgroundColor: team?.color || '#6b7280' }} />
-
-      <div className="flex-1 space-y-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-bold text-gray-400">#{index + 1}</span>
-          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: team?.color }} />
-          <span className="text-xs text-white font-semibold flex-1">{team?.name}</span>
-          <div className="flex gap-1">
-            {PERIODS.filter((period) => period.value !== '5').map((period) => (
-              <button
-                key={period.value}
-                type="button"
-                onClick={() => set('period', period.value)}
-                className={`px-2 py-0.5 rounded text-xs font-bold transition-all ${
-                  String(penalty.period) === period.value
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                }`}
-              >
-                {period.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <div>
-            <label className="text-[10px] text-gray-500 uppercase tracking-wide">Joueur</label>
-            <select className="select mt-0.5 text-sm" value={penalty.player_id} onChange={(event) => set('player_id', event.target.value)}>
-              <option value="">—</option>
-              <option value="sub">Remplacant</option>
-              {teamPlayers.map((player) => (
-                <option key={player.id} value={player.id}>#{player.number || '—'} {player.last_name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-[10px] text-gray-500 uppercase tracking-wide">Minutes</label>
-            <select className="select mt-0.5 text-sm" value={penalty.minutes} onChange={(event) => set('minutes', event.target.value)}>
-              {PENALTY_MINUTES.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <button onClick={() => onRemove(index)} className="text-gray-600 hover:text-red-400 transition-colors p-1 flex-shrink-0 mt-0.5">
-        <X size={14} />
-      </button>
     </div>
   );
 }
@@ -209,6 +325,7 @@ export default function GameSheet() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(id || '');
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [form, setForm] = useState({
     home_team_id: '',
     away_team_id: '',
@@ -218,18 +335,27 @@ export default function GameSheet() {
     home_goalie_id: '',
     away_goalie_id: '',
   });
-  const [goals, setGoals] = useState([]);
-  const [penalties, setPenalties] = useState([]);
+  const [homeRows, setHomeRows] = useState([]);
+  const [awayRows, setAwayRows] = useState([]);
+  const [homeGoalieStats, setHomeGoalieStats] = useState({ goals: 0, assists: 0, pim: 0 });
+  const [awayGoalieStats, setAwayGoalieStats] = useState({ goals: 0, assists: 0, pim: 0 });
   const [notes, setNotes] = useState('');
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [sourceGoals, setSourceGoals] = useState([]);
+  const [sourcePenalties, setSourcePenalties] = useState([]);
 
   useEffect(() => {
     Promise.all([api.get('/teams'), api.get('/players'), api.get('/matches'), api.get('/seasons/active')])
       .then(([teamsResponse, playersResponse, matchesResponse, seasonResponse]) => {
         setTeams(teamsResponse.data);
         setAllPlayers(playersResponse.data);
+
         const pool = matchesResponse.data;
-        const filtered = isAdmin ? sortMatchesByDate(pool) : isMarqueur ? nextMatch(pool) : sortMatchesByDate(pool.filter((match) => !match.validated));
+        const filtered = isAdmin
+          ? sortMatchesByDate(pool)
+          : isMarqueur
+            ? nextMatch(pool)
+            : sortMatchesByDate(pool.filter((match) => !match.validated));
+
         setMatches(filtered);
 
         if (isMarqueur && filtered.length === 1 && !id) {
@@ -244,33 +370,98 @@ export default function GameSheet() {
   }, []);
 
   useEffect(() => {
-    if (!selectedMatch) return;
+    if (!selectedMatch || allPlayers.length === 0) return;
+
     api.get(`/matches/${selectedMatch}`).then((response) => {
       const match = response.data;
+      const homeGoalieValue = match.home_goalie_is_sub
+        ? 'sub'
+        : match.home_goalie_id
+          ? String(match.home_goalie_id)
+          : getDefaultGoalieValue(allPlayers, match.home_team_id);
+      const awayGoalieValue = match.away_goalie_is_sub
+        ? 'sub'
+        : match.away_goalie_id
+          ? String(match.away_goalie_id)
+          : getDefaultGoalieValue(allPlayers, match.away_team_id);
+
+      const loadedGoals = match.goals || [];
+      const loadedPenalties = match.penalties || [];
+      const homeLookup = buildTeamStatLookup(allPlayers, match.home_team_id, loadedGoals, loadedPenalties);
+      const awayLookup = buildTeamStatLookup(allPlayers, match.away_team_id, loadedGoals, loadedPenalties);
+
       setForm({
         home_team_id: match.home_team_id,
         away_team_id: match.away_team_id,
         date: match.date?.slice(0, 16),
         location: match.location || "Aréna de l'Assomption",
         season_id: match.season_id,
-        home_goalie_id: match.home_goalie_is_sub ? 'sub' : (match.home_goalie_id ? String(match.home_goalie_id) : getDefaultGoalieValue(allPlayers, match.home_team_id)),
-        away_goalie_id: match.away_goalie_is_sub ? 'sub' : (match.away_goalie_id ? String(match.away_goalie_id) : getDefaultGoalieValue(allPlayers, match.away_team_id)),
+        home_goalie_id: homeGoalieValue,
+        away_goalie_id: awayGoalieValue,
       });
-      setGoals(match.goals || []);
-      setPenalties(match.penalties || []);
+      setHomeRows(buildSkaterRows(allPlayers, match.home_team_id, homeLookup));
+      setAwayRows(buildSkaterRows(allPlayers, match.away_team_id, awayLookup));
+      setHomeGoalieStats(buildGoalieStats(homeGoalieValue, homeLookup));
+      setAwayGoalieStats(buildGoalieStats(awayGoalieValue, awayLookup));
+      setSourceGoals(loadedGoals);
+      setSourcePenalties(loadedPenalties);
       setNotes(match.notes || '');
       setShowCreateForm(false);
     });
   }, [selectedMatch, allPlayers]);
 
+  const homeTeam = useMemo(
+    () => teams.find((team) => String(team.id) === String(form.home_team_id)),
+    [teams, form.home_team_id]
+  );
+  const awayTeam = useMemo(
+    () => teams.find((team) => String(team.id) === String(form.away_team_id)),
+    [teams, form.away_team_id]
+  );
+  const homeGoalies = useMemo(() => goalieOptions(allPlayers, form.home_team_id), [allPlayers, form.home_team_id]);
+  const awayGoalies = useMemo(() => goalieOptions(allPlayers, form.away_team_id), [allPlayers, form.away_team_id]);
+  const matchData = useMemo(
+    () => matches.find((match) => String(match.id) === String(selectedMatch)),
+    [matches, selectedMatch]
+  );
+  const isMatchLocked =
+    isMarqueur &&
+    !!selectedMatch &&
+    (matches.length === 0 || String(matches[0]?.id) !== String(selectedMatch));
+
+  const homeScore = homeRows.reduce((sum, row) => sum + toInt(row.goals), 0) + toInt(homeGoalieStats.goals);
+  const awayScore = awayRows.reduce((sum, row) => sum + toInt(row.goals), 0) + toInt(awayGoalieStats.goals);
+
+  const resetGoalieStatsFromLoadedMatch = (teamId, goalieValue) => {
+    const lookup = buildTeamStatLookup(allPlayers, teamId, sourceGoals, sourcePenalties);
+    return buildGoalieStats(goalieValue, lookup);
+  };
+
+  const handleGoalieChange = (side, value) => {
+    if (side === 'home') {
+      setForm((current) => ({ ...current, home_goalie_id: value }));
+      setHomeGoalieStats(resetGoalieStatsFromLoadedMatch(form.home_team_id, value));
+      return;
+    }
+
+    setForm((current) => ({ ...current, away_goalie_id: value }));
+    setAwayGoalieStats(resetGoalieStatsFromLoadedMatch(form.away_team_id, value));
+  };
+
   const createMatch = async (event) => {
     event.preventDefault();
+
     try {
       const response = await api.post('/matches', form);
       const newId = String(response.data.id);
       const matchesResponse = await api.get('/matches');
       const pool = matchesResponse.data;
-      const filtered = isAdmin ? sortMatchesByDate(pool) : isMarqueur ? nextMatch(pool) : sortMatchesByDate(pool.filter((match) => !match.validated));
+      const filtered = isAdmin
+        ? sortMatchesByDate(pool)
+        : isMarqueur
+          ? nextMatch(pool)
+          : sortMatchesByDate(pool.filter((match) => !match.validated));
+
       setMatches(filtered);
       setSelectedMatch(newId);
       toast.success('Match créé');
@@ -279,57 +470,55 @@ export default function GameSheet() {
     }
   };
 
-  const addGoalForTeam = (teamId) => {
-    setGoals((current) => [
-      ...current,
-      {
-        team_id: String(teamId),
-        scorer_id: '',
-        assist1_id: '',
-        assist2_id: '',
-        period: '1',
-        time_in_period: '',
-      },
-    ]);
+  const buildPlayerStatsPayload = () => {
+    const rows = [];
+
+    const pushTeamRows = (teamId, teamRows, goalieValue, goalieStats) => {
+      for (const row of teamRows) {
+        const goals = toInt(row.goals);
+        const assists = toInt(row.assists);
+        const pim = toInt(row.pim);
+
+        if (!goals && !assists && !pim) continue;
+
+        rows.push({
+          team_id: Number(teamId),
+          player_id: row.player_id ? Number(row.player_id) : null,
+          goals,
+          assists,
+          pim,
+        });
+      }
+
+      if (goalieValue && goalieValue !== 'sub') {
+        const goals = toInt(goalieStats.goals);
+        const assists = toInt(goalieStats.assists);
+        const pim = toInt(goalieStats.pim);
+
+        if (goals || assists || pim) {
+          rows.push({
+            team_id: Number(teamId),
+            player_id: Number(goalieValue),
+            goals,
+            assists,
+            pim,
+          });
+        }
+      }
+    };
+
+    pushTeamRows(form.home_team_id, homeRows, form.home_goalie_id, homeGoalieStats);
+    pushTeamRows(form.away_team_id, awayRows, form.away_goalie_id, awayGoalieStats);
+
+    return rows;
   };
-
-  const updateGoal = (index, goal) => setGoals((current) => current.map((item, currentIndex) => (currentIndex === index ? goal : item)));
-  const removeGoal = (index) => setGoals((current) => current.filter((_, currentIndex) => currentIndex !== index));
-  const addPenaltyForTeam = (teamId) => {
-    setPenalties((current) => [
-      ...current,
-      {
-        team_id: String(teamId),
-        player_id: '',
-        period: '1',
-        minutes: '2',
-      },
-    ]);
-  };
-  const updatePenalty = (index, penalty) => setPenalties((current) => current.map((item, currentIndex) => (currentIndex === index ? penalty : item)));
-  const removePenalty = (index) => setPenalties((current) => current.filter((_, currentIndex) => currentIndex !== index));
-
-  const normalizeGoals = (items) => items.map((goal) => ({
-    ...goal,
-    scorer_id: goal.scorer_id === 'sub' || !goal.scorer_id ? null : goal.scorer_id,
-    assist1_id: goal.assist1_id === 'sub' || !goal.assist1_id ? null : goal.assist1_id,
-    assist2_id: goal.assist2_id === 'sub' || !goal.assist2_id ? null : goal.assist2_id,
-  }));
-
-  const normalizePenalties = (items) => items.map((penalty) => ({
-    ...penalty,
-    player_id: penalty.player_id === 'sub' || !penalty.player_id ? null : penalty.player_id,
-    minutes: Number(penalty.minutes) || 2,
-    infraction: penalty.infraction?.trim() || null,
-    time_in_period: penalty.time_in_period?.trim() || null,
-  }));
 
   const buildGamesheetPayload = () => {
     const homeGoalie = normalizeGoalieSelection(form.home_goalie_id);
     const awayGoalie = normalizeGoalieSelection(form.away_goalie_id);
+
     return {
-      goals: normalizeGoals(goals),
-      penalties: normalizePenalties(penalties),
+      player_stats: buildPlayerStatsPayload(),
       home_score: homeScore,
       away_score: awayScore,
       notes,
@@ -345,21 +534,11 @@ export default function GameSheet() {
       toast.error('Sélectionnez un match');
       return;
     }
-    const invalids = goals.filter((goal) => !goal.team_id);
-    if (invalids.length > 0) {
-      toast.error('Chaque but doit avoir une équipe');
-      return;
-    }
-    const invalidPenalties = penalties.filter((penalty) => !penalty.team_id || !penalty.minutes);
-    if (invalidPenalties.length > 0) {
-      toast.error('Chaque penalite doit avoir une equipe et une duree');
-      return;
-    }
 
     setSaving(true);
     try {
       await api.post(`/matches/${selectedMatch}/gamesheet`, buildGamesheetPayload());
-      toast.success('Sauvegardé');
+      toast.success('Feuille sauvegardée');
     } catch (error) {
       toast.error(error.response?.data?.error || 'Erreur');
     } finally {
@@ -369,10 +548,11 @@ export default function GameSheet() {
 
   const validateMatch = async () => {
     if (homeScore === awayScore) {
-      toast.error('Un match ne peut pas se terminer à égalité. Ajoutez un but en fusillade.');
+      toast.error('Un match ne peut pas se terminer à égalité.');
       return;
     }
-    if (!confirm('Valider ce match ? Les statistiques seront mises à jour.')) return;
+
+    if (!confirm('Valider ce match et publier les statistiques ?')) return;
 
     setSaving(true);
     try {
@@ -387,60 +567,98 @@ export default function GameSheet() {
     }
   };
 
-  const homeTeam = teams.find((team) => String(team.id) === String(form.home_team_id));
-  const awayTeam = teams.find((team) => String(team.id) === String(form.away_team_id));
-  const homeGoalies = goalieOptions(allPlayers, form.home_team_id);
-  const awayGoalies = goalieOptions(allPlayers, form.away_team_id);
-  const matchData = matches.find((match) => String(match.id) === String(selectedMatch));
-  const homeScore = goals.filter((goal) => String(goal.team_id) === String(form.home_team_id)).length;
-  const awayScore = goals.filter((goal) => String(goal.team_id) === String(form.away_team_id)).length;
-  const isMatchLocked = isMarqueur && !!selectedMatch && (matches.length === 0 || String(matches[0]?.id) !== String(selectedMatch));
-
-  if (loading) return <div className="text-center py-12 text-gray-500 animate-pulse">Chargement...</div>;
+  if (loading) {
+    return <div className="py-12 text-center text-gray-500 animate-pulse">Chargement...</div>;
+  }
 
   return (
-    <div className="space-y-4 max-w-2xl mx-auto">
-      <h1 className="page-title">Feuille de match</h1>
+    <div className="mx-auto max-w-7xl space-y-5">
+      <div className="space-y-1">
+        <h1 className="page-title">Feuille de match</h1>
+        <p className="text-sm text-gray-500">
+          Version simplifiée par équipe : buts, passes, minutes de punition et gardien.
+        </p>
+      </div>
 
       <div className="card space-y-3">
-        <div className="flex items-center gap-2">
-          <select className="select flex-1" value={selectedMatch} onChange={(event) => setSelectedMatch(event.target.value)}>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <select
+            className="select flex-1"
+            value={selectedMatch}
+            onChange={(event) => setSelectedMatch(event.target.value)}
+          >
             <option value="">— Sélectionner un match —</option>
             {matches.map((match) => (
               <option key={match.id} value={match.id}>
-                {match.home_team_name} vs {match.away_team_name} · {match.date?.slice(0, 10)} {match.validated ? '✓' : ''}
+                {match.home_team_name} vs {match.away_team_name} · {match.date?.slice(0, 10)}{' '}
+                {match.validated ? '✓' : ''}
               </option>
             ))}
           </select>
+
           {isAdmin && (
-            <button onClick={() => setShowCreateForm((current) => !current)} className="btn-secondary py-2 flex-shrink-0">
+            <button
+              onClick={() => setShowCreateForm((current) => !current)}
+              className="btn-secondary py-2 sm:w-auto"
+            >
               {showCreateForm ? <ChevronUp size={16} /> : <Plus size={16} />}
-              <span className="hidden sm:inline">Nouveau</span>
+              <span>Nouveau match</span>
             </button>
           )}
         </div>
 
         {showCreateForm && (
-          <form onSubmit={createMatch} className="border-t border-gray-700 pt-3 grid grid-cols-2 gap-3">
+          <form onSubmit={createMatch} className="grid grid-cols-1 gap-3 border-t border-gray-700 pt-3 md:grid-cols-2">
             <div>
               <label className="label">Équipe locale *</label>
-              <select className="select" value={form.home_team_id} onChange={(event) => setForm((current) => ({ ...current, home_team_id: event.target.value }))} required>
+              <select
+                className="select"
+                value={form.home_team_id}
+                onChange={(event) => setForm((current) => ({ ...current, home_team_id: event.target.value }))}
+                required
+              >
                 <option value="">—</option>
-                {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
               </select>
             </div>
+
             <div>
-              <label className="label">Équipe visiteur *</label>
-              <select className="select" value={form.away_team_id} onChange={(event) => setForm((current) => ({ ...current, away_team_id: event.target.value }))} required>
+              <label className="label">Équipe visiteuse *</label>
+              <select
+                className="select"
+                value={form.away_team_id}
+                onChange={(event) => setForm((current) => ({ ...current, away_team_id: event.target.value }))}
+                required
+              >
                 <option value="">—</option>
-                {teams.filter((team) => String(team.id) !== String(form.home_team_id)).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+                {teams
+                  .filter((team) => String(team.id) !== String(form.home_team_id))
+                  .map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
               </select>
             </div>
-            <div className="col-span-2">
+
+            <div className="md:col-span-2">
               <label className="label">Date et heure *</label>
-              <input type="datetime-local" className="input" value={form.date} onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))} required />
+              <input
+                type="datetime-local"
+                className="input"
+                value={form.date}
+                onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))}
+                required
+              />
             </div>
-            <button type="submit" className="col-span-2 btn-primary justify-center">Créer le match</button>
+
+            <button type="submit" className="btn-primary justify-center md:col-span-2">
+              Créer le match
+            </button>
           </form>
         )}
       </div>
@@ -448,191 +666,147 @@ export default function GameSheet() {
       {selectedMatch && (
         <>
           {isMatchLocked && (
-            <div className="card text-center py-8 space-y-2">
+            <div className="card space-y-2 py-8 text-center">
               <div className="text-3xl">🔒</div>
               <div className="font-semibold text-white">Feuille verrouillée</div>
               <div className="text-sm text-gray-500">
                 {matchData?.validated
-                  ? 'Ce match a déjà été validé par l’administrateur.'
-                  : 'Ce match n’est accessible que le jour de la partie.'}
+                  ? 'Ce match a déjà été validé.'
+                  : 'Ce match n’est accessible que pour la rencontre en cours.'}
               </div>
             </div>
           )}
 
           <div className="card">
-            {matchData?.validated && (
-              <div className="text-center mb-3">
-                <span className="text-xs bg-green-500/20 text-green-400 px-3 py-1 rounded-full">Match validé</span>
-              </div>
-            )}
-            <div className="flex items-center justify-center gap-6">
-              <div className="flex-1 text-center">
-                <div className="flex items-center justify-center gap-1.5 mb-1">
-                  {homeTeam && <div className="w-3 h-3 rounded-full" style={{ backgroundColor: homeTeam.color }} />}
-                  <span className="font-bold text-white text-sm">{homeTeam?.name || '—'}</span>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <div className="text-xs uppercase tracking-[0.3em] text-gray-500">Match sélectionné</div>
+                <div className="mt-2 text-lg font-bold text-white">
+                  {homeTeam?.name || '—'} vs {awayTeam?.name || '—'}
                 </div>
-                <div className="text-xs text-gray-500 mb-2">Local</div>
-                <span className="text-5xl font-black text-white tabular-nums">{homeScore}</span>
-              </div>
-              <span className="text-2xl text-gray-700">–</span>
-              <div className="flex-1 text-center">
-                <div className="flex items-center justify-center gap-1.5 mb-1">
-                  {awayTeam && <div className="w-3 h-3 rounded-full" style={{ backgroundColor: awayTeam.color }} />}
-                  <span className="font-bold text-white text-sm">{awayTeam?.name || '—'}</span>
+                <div className="mt-1 text-sm text-gray-400">
+                  {form.date?.replace('T', ' · ')} · {form.location}
                 </div>
-                <div className="text-xs text-gray-500 mb-2">Visiteur</div>
-                <span className="text-5xl font-black text-white tabular-nums">{awayScore}</span>
+              </div>
+
+              <div className="flex items-center gap-3 rounded-2xl border border-gray-700 bg-gray-800/70 px-4 py-3">
+                <div className="text-center">
+                  <div className="text-xs uppercase tracking-[0.2em] text-gray-500">Local</div>
+                  <div className="mt-1 text-4xl font-black text-white">{homeScore}</div>
+                </div>
+                <div className="text-2xl text-gray-700">—</div>
+                <div className="text-center">
+                  <div className="text-xs uppercase tracking-[0.2em] text-gray-500">Visiteur</div>
+                  <div className="mt-1 text-4xl font-black text-white">{awayScore}</div>
+                </div>
               </div>
             </div>
-            {homeScore === awayScore && homeScore > 0 ? (
-              <p className="text-center text-xs text-yellow-500 mt-3 font-medium">⚠️ Égalité — ajoutez un but en fusillade</p>
-            ) : (
-              <p className="text-center text-xs text-gray-600 mt-3">Score calculé automatiquement depuis les buts enregistrés</p>
+
+            {matchData?.validated && (
+              <div className="mt-4">
+                <span className="rounded-full bg-green-500/20 px-3 py-1 text-xs font-semibold text-green-400">
+                  Match validé
+                </span>
+              </div>
             )}
           </div>
 
-          {!isMatchLocked && (
-            <div className="card">
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-semibold text-white text-sm">Gardiens enregistrés</span>
-                <span className="text-xs text-gray-500 flex items-center gap-1"><Shield size={12} /> Utilisé pour la moyenne de buts contre</span>
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <TeamSheet
+              title="Locaux"
+              team={homeTeam}
+              goalieValue={form.home_goalie_id}
+              goalieChoices={homeGoalies}
+              goalieStats={homeGoalieStats}
+              goalsAgainst={awayScore}
+              rows={homeRows}
+              readOnly={isMatchLocked}
+              onGoalieChange={(value) => handleGoalieChange('home', value)}
+              onGoalieStatsChange={setHomeGoalieStats}
+              onRowChange={(index, row) =>
+                setHomeRows((current) => current.map((item, currentIndex) => (currentIndex === index ? row : item)))
+              }
+            />
+
+            <TeamSheet
+              title="Visiteurs"
+              team={awayTeam}
+              goalieValue={form.away_goalie_id}
+              goalieChoices={awayGoalies}
+              goalieStats={awayGoalieStats}
+              goalsAgainst={homeScore}
+              rows={awayRows}
+              readOnly={isMatchLocked}
+              onGoalieChange={(value) => handleGoalieChange('away', value)}
+              onGoalieStatsChange={setAwayGoalieStats}
+              onRowChange={(index, row) =>
+                setAwayRows((current) => current.map((item, currentIndex) => (currentIndex === index ? row : item)))
+              }
+            />
+          </div>
+
+          <div className="card space-y-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-white">
+              <Users size={16} />
+              Résumé rapide
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="rounded-xl border border-gray-700 bg-gray-800/70 p-4">
+                <div className="text-xs uppercase tracking-[0.2em] text-gray-500">Buts</div>
+                <div className="mt-1 text-2xl font-black text-white">{homeScore + awayScore}</div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <GoalieSelect
-                  label={`Gardien — ${homeTeam?.name || 'Local'}`}
-                  team={homeTeam}
-                  value={form.home_goalie_id}
-                  options={homeGoalies}
-                  onChange={(value) => setForm((current) => ({ ...current, home_goalie_id: value }))}
-                />
-                <GoalieSelect
-                  label={`Gardien — ${awayTeam?.name || 'Visiteur'}`}
-                  team={awayTeam}
-                  value={form.away_goalie_id}
-                  options={awayGoalies}
-                  onChange={(value) => setForm((current) => ({ ...current, away_goalie_id: value }))}
-                />
+              <div className="rounded-xl border border-gray-700 bg-gray-800/70 p-4">
+                <div className="text-xs uppercase tracking-[0.2em] text-gray-500">Punition locale</div>
+                <div className="mt-1 text-2xl font-black text-white">
+                  {homeRows.reduce((sum, row) => sum + toInt(row.pim), 0) + toInt(homeGoalieStats.pim)}
+                </div>
+              </div>
+              <div className="rounded-xl border border-gray-700 bg-gray-800/70 p-4">
+                <div className="text-xs uppercase tracking-[0.2em] text-gray-500">Punition visiteur</div>
+                <div className="mt-1 text-2xl font-black text-white">
+                  {awayRows.reduce((sum, row) => sum + toInt(row.pim), 0) + toInt(awayGoalieStats.pim)}
+                </div>
               </div>
             </div>
-          )}
+          </div>
 
           {!isMatchLocked && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-white text-sm">Buts enregistrés <span className="text-gray-500 font-normal">(pour les statistiques)</span></span>
-              </div>
-
-              {homeTeam && awayTeam && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => addGoalForTeam(homeTeam.id)}
-                    className="flex-1 py-3 rounded-xl border-2 font-bold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
-                    style={{ backgroundColor: `${homeTeam.color}25`, borderColor: `${homeTeam.color}70` }}
-                  >
-                    <Plus size={15} /> But — {homeTeam.name}
-                  </button>
-                  <button
-                    onClick={() => addGoalForTeam(awayTeam.id)}
-                    className="flex-1 py-3 rounded-xl border-2 font-bold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
-                    style={{ backgroundColor: `${awayTeam.color}25`, borderColor: `${awayTeam.color}70` }}
-                  >
-                    <Plus size={15} /> But — {awayTeam.name}
-                  </button>
-                </div>
-              )}
-
-              {goals.length === 0 ? (
-                <div className="text-center py-6 text-gray-600 text-sm">
-                  <Target size={24} className="mx-auto mb-2 opacity-30" />
-                  Aucun but enregistré
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {goals.map((goal, index) => (
-                    <GoalRow
-                      key={index}
-                      goal={goal}
-                      index={index}
-                      homeTeam={homeTeam}
-                      awayTeam={awayTeam}
-                      allPlayers={allPlayers}
-                      onChange={updateGoal}
-                      onRemove={removeGoal}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {!isMatchLocked && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-white text-sm">Penalites enregistrees <span className="text-gray-500 font-normal">(minutes de penalite)</span></span>
-              </div>
-
-              {homeTeam && awayTeam && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => addPenaltyForTeam(homeTeam.id)}
-                    className="flex-1 py-3 rounded-xl border-2 font-bold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
-                    style={{ backgroundColor: `${homeTeam.color}25`, borderColor: `${homeTeam.color}70` }}
-                  >
-                    <Plus size={15} /> Penalite — {homeTeam.name}
-                  </button>
-                  <button
-                    onClick={() => addPenaltyForTeam(awayTeam.id)}
-                    className="flex-1 py-3 rounded-xl border-2 font-bold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
-                    style={{ backgroundColor: `${awayTeam.color}25`, borderColor: `${awayTeam.color}70` }}
-                  >
-                    <Plus size={15} /> Penalite — {awayTeam.name}
-                  </button>
-                </div>
-              )}
-
-              {penalties.length === 0 ? (
-                <div className="text-center py-6 text-gray-600 text-sm">
-                  <Shield size={24} className="mx-auto mb-2 opacity-30" />
-                  Aucune penalite enregistree
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {penalties.map((penalty, index) => (
-                    <PenaltyRow
-                      key={`${penalty.team_id}-${index}`}
-                      penalty={penalty}
-                      index={index}
-                      homeTeam={homeTeam}
-                      awayTeam={awayTeam}
-                      allPlayers={allPlayers}
-                      onChange={updatePenalty}
-                      onRemove={removePenalty}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {!isMatchLocked && (
-            <div>
+            <div className="space-y-2">
               <label className="label">Notes (optionnel)</label>
-              <textarea className="input min-h-[60px] resize-none" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Notes sur le match..." />
+              <textarea
+                className="input min-h-[88px] resize-none"
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                placeholder="Notes sur le match..."
+              />
             </div>
           )}
 
           {!isMatchLocked && (
-            <div className="flex gap-3 justify-end pt-1 pb-6">
+            <div className="flex flex-col justify-end gap-3 pb-6 sm:flex-row">
               <button onClick={saveSheet} disabled={saving} className="btn-secondary">
-                {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+                <Save size={15} />
+                <span>{saving ? 'Sauvegarde...' : 'Sauvegarder'}</span>
               </button>
               {canEditGamesheet && (
                 <button onClick={validateMatch} disabled={saving} className="btn-success">
-                  <Check size={15} /> Valider et publier
+                  <Check size={15} />
+                  <span>Valider et publier</span>
                 </button>
               )}
             </div>
           )}
+
+          <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 text-sm text-gray-300">
+            <div className="flex items-center gap-2 font-semibold text-white">
+              <Shield size={15} />
+              Logique de remplacement conservée
+            </div>
+            <p className="mt-2">
+              La ligne <span className="font-semibold text-white">Remplaçant</span> reste disponible dans chaque équipe.
+              Le gardien peut aussi être défini sur <span className="font-semibold text-white">Remplaçant</span>.
+            </p>
+          </div>
         </>
       )}
     </div>

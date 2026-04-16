@@ -24,6 +24,70 @@ function captainCanManageMatch(user, matchLike) {
   return String(user.team_id) === String(matchLike.home_team_id) || String(user.team_id) === String(matchLike.away_team_id);
 }
 
+function pickAssist(pool, excluded) {
+  const index = pool.findIndex((candidate) => !excluded.has(candidate));
+  if (index === -1) return null;
+  const [value] = pool.splice(index, 1);
+  return value;
+}
+
+function buildSyntheticEventsFromPlayerStats(playerStats) {
+  const goals = [];
+  const penalties = [];
+  const byTeam = new Map();
+
+  for (const row of playerStats || []) {
+    const teamId = Number(row.team_id);
+    if (!teamId) continue;
+    if (!byTeam.has(teamId)) byTeam.set(teamId, []);
+    byTeam.get(teamId).push({
+      team_id: teamId,
+      player_id: row.player_id ? Number(row.player_id) : null,
+      goals: Number(row.goals || 0),
+      assists: Number(row.assists || 0),
+      pim: Number(row.pim || 0),
+    });
+  }
+
+  for (const [teamId, rows] of byTeam.entries()) {
+    const scorerPool = [];
+    const assistPool = [];
+
+    for (const row of rows) {
+      for (let i = 0; i < row.goals; i += 1) scorerPool.push(row.player_id);
+      for (let i = 0; i < row.assists; i += 1) assistPool.push(row.player_id);
+      if (row.pim > 0) {
+        penalties.push({
+          team_id: teamId,
+          player_id: row.player_id,
+          period: 1,
+          time_in_period: null,
+          minutes: row.pim,
+          infraction: null,
+        });
+      }
+    }
+
+    for (const scorerId of scorerPool) {
+      const excluded = new Set([scorerId]);
+      const assist1 = pickAssist(assistPool, excluded);
+      if (assist1 !== null) excluded.add(assist1);
+      const assist2 = pickAssist(assistPool, excluded);
+
+      goals.push({
+        team_id: teamId,
+        scorer_id: scorerId,
+        assist1_id: assist1,
+        assist2_id: assist2,
+        period: 1,
+        time_in_period: null,
+      });
+    }
+  }
+
+  return { goals, penalties };
+}
+
 router.get('/', (req, res) => {
   const db = getDB();
   const { status, team_id, season_id, limit } = req.query;
@@ -124,6 +188,7 @@ router.post('/:id/gamesheet', authenticate, requireGamesheetAccess, (req, res) =
   const {
     goals,
     penalties,
+    player_stats,
     home_score,
     away_score,
     notes,
@@ -138,27 +203,39 @@ router.post('/:id/gamesheet', authenticate, requireGamesheetAccess, (req, res) =
   if (!match) return res.status(404).json({ error: 'Match introuvable' });
 
   const submitSheet = db.transaction(() => {
-    // Clear existing goals
     db.prepare('DELETE FROM goals WHERE match_id = ?').run(matchId);
     db.prepare('DELETE FROM penalties WHERE match_id = ?').run(matchId);
 
-    // Insert goals
-    if (goals && goals.length > 0) {
+    const reconstructed = player_stats?.length
+      ? buildSyntheticEventsFromPlayerStats(player_stats)
+      : {
+          goals: goals || [],
+          penalties: penalties || [],
+        };
+
+    const computedHomeScore = reconstructed.goals.filter(
+      (goal) => String(goal.team_id) === String(match.home_team_id)
+    ).length;
+    const computedAwayScore = reconstructed.goals.filter(
+      (goal) => String(goal.team_id) === String(match.away_team_id)
+    ).length;
+
+    if (reconstructed.goals.length > 0) {
       const insertGoal = db.prepare(`
         INSERT INTO goals (match_id, team_id, scorer_id, assist1_id, assist2_id, period, time_in_period)
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
-      for (const g of goals) {
+      for (const g of reconstructed.goals) {
         insertGoal.run(matchId, g.team_id, g.scorer_id || null, g.assist1_id || null, g.assist2_id || null, g.period || 1, g.time_in_period || null);
       }
     }
 
-    if (penalties && penalties.length > 0) {
+    if (reconstructed.penalties.length > 0) {
       const insertPenalty = db.prepare(`
         INSERT INTO penalties (match_id, team_id, player_id, period, time_in_period, minutes, infraction)
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
-      for (const penalty of penalties) {
+      for (const penalty of reconstructed.penalties) {
         insertPenalty.run(
           matchId,
           penalty.team_id,
@@ -171,14 +248,13 @@ router.post('/:id/gamesheet', authenticate, requireGamesheetAccess, (req, res) =
       }
     }
 
-    // Update match
     db.prepare(`
       UPDATE matches
       SET home_score=?, away_score=?, status='completed', notes=?, home_goalie_id=?, away_goalie_id=?, home_goalie_is_sub=?, away_goalie_is_sub=?
       WHERE id=?
     `).run(
-      home_score || 0,
-      away_score || 0,
+      player_stats ? computedHomeScore : (home_score || 0),
+      player_stats ? computedAwayScore : (away_score || 0),
       notes || null,
       home_goalie_id || null,
       away_goalie_id || null,
