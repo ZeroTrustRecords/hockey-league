@@ -181,7 +181,7 @@ function TeamSheet({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-700 bg-gray-900">
-      <div className="bg-black px-5 py-4 text-center">
+      <div className="px-5 py-4 text-center" style={headerStyle}>
         <div className="text-xs font-semibold uppercase tracking-[0.35em] text-gray-400">{title}</div>
         <div className="mt-2 text-2xl font-black uppercase text-white">{team?.name || 'Équipe'}</div>
       </div>
