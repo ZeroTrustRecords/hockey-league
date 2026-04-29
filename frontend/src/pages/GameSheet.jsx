@@ -172,7 +172,7 @@ function StatInput({ value, onChange, disabled = false }) {
       value={value}
       disabled={disabled}
       onChange={(event) => onChange(Math.max(0, Number(event.target.value || 0)))}
-      className="w-16 rounded-lg border border-gray-700 bg-gray-800 px-2 py-2 text-center text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+      className="gamesheet-input disabled:cursor-not-allowed disabled:opacity-45"
     />
   );
 }
@@ -196,9 +196,9 @@ function TeamSheet({
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-700 bg-gray-900">
-      <div className="px-5 py-4 text-center" style={headerStyle}>
-        <div className="text-xs font-semibold uppercase tracking-[0.35em] text-gray-400">{title}</div>
+    <div className="gamesheet-card">
+      <div className="gamesheet-header px-5 py-5 text-center" style={headerStyle}>
+        <div className="text-xs font-black uppercase tracking-[0.42em] text-white/70">{title}</div>
         <div className="mt-2 text-2xl font-black uppercase text-white">{team?.name || 'Équipe'}</div>
       </div>
 

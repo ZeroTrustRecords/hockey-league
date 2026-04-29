@@ -18,8 +18,8 @@ function SortIcon({ field, current, dir }) {
 
 function Bar({ value, max }) {
   return (
-    <div className="h-0.5 bg-gray-800 rounded-full overflow-hidden mt-1">
-      <div className="h-full bg-gray-500 rounded-full" style={{ width: `${max > 0 ? (value / max) * 100 : 0}%` }} />
+    <div className="h-1 bg-slate-800 rounded-full overflow-hidden mt-1">
+      <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-amber-300" style={{ width: `${max > 0 ? (value / max) * 100 : 0}%` }} />
     </div>
   );
 }
@@ -28,9 +28,9 @@ function LeaderCard({ title, subtitle, icon: Icon, players = [], statKey, unit }
   const max = players[0]?.[statKey] || 1;
 
   return (
-    <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
+    <div className="lhma-surface rounded-3xl p-5">
       <div className="flex items-center gap-2 mb-1">
-        <Icon size={14} className="text-gray-500" />
+        <Icon size={14} className="text-sky-300/70" />
         <span className="text-sm font-semibold text-white">{title}</span>
       </div>
       <p className="text-xs text-gray-500 mb-4">{subtitle}</p>
@@ -39,7 +39,7 @@ function LeaderCard({ title, subtitle, icon: Icon, players = [], statKey, unit }
         {players.map((player, index) => (
           <div key={player.id}>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs text-gray-700 w-3">{index + 1}</span>
+              <span className="text-xs text-slate-500 w-3">{index + 1}</span>
               <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: player.team_color }} />
               <Link to={`/players/${player.id}`} className={`flex-1 min-w-0 text-sm truncate transition-colors hover:text-white ${index === 0 ? 'text-white font-semibold' : 'text-gray-400'}`}>
                 {player.first_name} {player.last_name}
@@ -48,8 +48,8 @@ function LeaderCard({ title, subtitle, icon: Icon, players = [], statKey, unit }
                 {player[statKey]} <span className="text-xs font-normal">{unit}</span>
               </span>
             </div>
-            <div className="ml-5 h-0.5 bg-gray-800 rounded-full overflow-hidden">
-              <div className="h-full bg-gray-500 rounded-full" style={{ width: `${(player[statKey] / max) * 100}%` }} />
+            <div className="ml-5 h-1 bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-amber-300" style={{ width: `${(player[statKey] / max) * 100}%` }} />
             </div>
           </div>
         ))}
@@ -236,22 +236,22 @@ export default function Stats() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="lhma-surface rounded-3xl p-4">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Phase</div>
           <div className="text-lg font-black text-white">{summary.phaseLabel}</div>
           <div className="text-xs text-gray-500 mt-1">Lecture active des statistiques</div>
         </div>
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="lhma-surface rounded-3xl p-4">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Patineurs</div>
           <div className="text-2xl font-black text-white">{summary.playerCount}</div>
           <div className="text-xs text-gray-500 mt-1">Joueurs visibles apres filtres</div>
         </div>
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="lhma-surface rounded-3xl p-4">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Gardiens</div>
           <div className="text-2xl font-black text-white">{summary.goalieCount}</div>
           <div className="text-xs text-gray-500 mt-1">Moyennes disponibles</div>
         </div>
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="lhma-surface rounded-3xl p-4">
           <div className="text-xs uppercase tracking-[0.2em] text-gray-600 mb-2">Contexte</div>
           <div className="text-lg font-black text-white truncate">{selectedSeason?.name || activeSeason?.name || 'Aucune saison'}</div>
           <div className="text-xs text-gray-500 mt-1">Saison actuellement affichee</div>
@@ -266,7 +266,7 @@ export default function Stats() {
         </div>
       )}
 
-      <div className="flex gap-1 bg-gray-900 rounded-xl p-1 border border-gray-800 w-fit">
+      <div className="flex gap-1 rounded-2xl p-1 border border-slate-700/70 bg-slate-950/60 w-fit shadow-inner">
         <button onClick={() => setTab('players')} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === 'players' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
           Joueurs
         </button>
@@ -303,7 +303,7 @@ export default function Stats() {
             <span className="text-xs text-gray-500">{filteredPlayers.length} joueur{filteredPlayers.length !== 1 ? 's' : ''} affiche{filteredPlayers.length !== 1 ? 's' : ''}</span>
           </div>
 
-          <div className="bg-gray-900 rounded-3xl border border-gray-800 overflow-x-auto">
+          <div className="lhma-surface rounded-3xl overflow-x-auto">
             <div className="px-5 py-4 border-b border-gray-800">
               <h2 className="text-lg font-bold text-white">Classement des joueurs</h2>
               <p className="text-sm text-gray-500 mt-1">Trie les colonnes pour comparer la production offensive sous tous les angles.</p>
@@ -394,7 +394,7 @@ export default function Stats() {
       )}
 
       {tab === 'teams' && (
-        <div className="bg-gray-900 rounded-3xl border border-gray-800 overflow-x-auto">
+        <div className="lhma-surface rounded-3xl overflow-x-auto">
           <div className="px-5 py-4 border-b border-gray-800">
             <h2 className="text-lg font-bold text-white">Portrait des equipes</h2>
             <p className="text-sm text-gray-500 mt-1">Production, rendement defensif et tendances recentes de chaque club.</p>
@@ -464,7 +464,7 @@ export default function Stats() {
       )}
 
       {tab === 'goalies' && (
-        <div className="bg-gray-900 rounded-3xl border border-gray-800 overflow-x-auto">
+        <div className="lhma-surface rounded-3xl overflow-x-auto">
           <div className="px-5 py-4 border-b border-gray-800">
             <h2 className="text-lg font-bold text-white">Portrait des gardiens</h2>
             <p className="text-sm text-gray-500 mt-1">Moyenne de buts alloues et charge de travail de chaque gardien partant.</p>

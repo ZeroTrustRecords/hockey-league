@@ -142,14 +142,14 @@ function BottomNav({ user, isAdmin, isMarqueur, unreadCount, onMoreOpen }) {
   ];
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-gray-950 border-t border-gray-800 flex">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-slate-700/60 bg-slate-950/92 backdrop-blur-xl shadow-[0_-18px_40px_rgba(0,0,0,0.28)] flex">
       {bottomItems.map(item => {
         const isActive = item.exact
           ? location.pathname === item.to
           : location.pathname.startsWith(item.to);
         return (
           <NavLink key={item.to} to={item.to}
-            className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-[10px] transition-colors relative ${isActive ? 'text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}>
+            className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-[10px] font-semibold transition-colors relative ${isActive ? 'text-sky-300' : 'text-slate-500 hover:text-slate-300'}`}>
             <item.icon size={20} />
             <span>{item.label}</span>
             {item.badge && unreadCount > 0 && (
@@ -161,7 +161,7 @@ function BottomNav({ user, isAdmin, isMarqueur, unreadCount, onMoreOpen }) {
         );
       })}
       <button onClick={onMoreOpen}
-        className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-[10px] text-gray-500 hover:text-gray-300 transition-colors">
+        className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-[10px] font-semibold text-slate-500 hover:text-slate-300 transition-colors">
         <MoreHorizontal size={20} />
         <span>Plus</span>
       </button>
@@ -185,7 +185,7 @@ function MoreDrawer({ user, isAdmin, isMarqueur, unreadCount, onClose, onLoginOp
   return (
     <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-gray-900 rounded-t-2xl border-t border-gray-700">
+      <div className="relative rounded-t-[2rem] border-t border-slate-700/70 bg-slate-950/95 shadow-2xl backdrop-blur-xl">
 
         {/* Header: user info (if logged in) OR login button (if not) */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-800">
@@ -218,10 +218,10 @@ function MoreDrawer({ user, isAdmin, isMarqueur, unreadCount, onClose, onLoginOp
               : location.pathname.startsWith(item.to);
             return (
               <Link key={item.to} to={item.to} onClick={onClose}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors relative ${
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-colors relative ${
                   isActive
-                    ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                    : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                    ? 'bg-blue-500/20 text-sky-200 border border-blue-400/30'
+                    : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}>
                 <item.icon size={22} />
                 <span className="text-[11px] font-medium text-center leading-tight">{item.label}</span>
@@ -280,19 +280,19 @@ export default function Layout() {
 
   // ── Desktop sidebar ─────────────────────────────────────────────────────────
   const sidebar = (
-    <div className="flex flex-col h-full bg-gray-900 border-r border-gray-800" style={{ borderTop: '4px solid #3b82f6' }}>
+    <div className="flex flex-col h-full border-r border-slate-800/80 bg-slate-950/92 backdrop-blur-xl" style={{ borderTop: '4px solid #3b82f6' }}>
       {/* Logo */}
-      <div className="p-4 border-b border-gray-800">
+      <div className="p-4 border-b border-slate-800/80">
         <div className="flex items-center gap-3">
           <div
-            className="w-12 h-12 rounded-xl bg-white p-1.5 flex items-center justify-center flex-shrink-0 shadow-lg"
+            className="w-12 h-12 rounded-2xl bg-white p-1.5 flex items-center justify-center flex-shrink-0 shadow-lg ring-1 ring-white/40"
             style={{ boxShadow: '0 4px 14px 0 rgba(30, 64, 175, 0.35)' }}
           >
             <img src="/lhma-logo.png" alt="Logo LHMA" className="w-full h-full object-contain" />
           </div>
           <div className="min-w-0">
-            <div className="font-bold text-white text-sm leading-tight tracking-wide">LHMA</div>
-            <div className="text-blue-400 text-xs font-medium uppercase tracking-wider">Ligue de Hockey</div>
+            <div className="font-black text-white text-sm leading-tight tracking-wide">LHMA</div>
+            <div className="text-sky-300 text-xs font-bold uppercase tracking-wider">Ligue de Hockey</div>
           </div>
         </div>
       </div>
@@ -307,7 +307,7 @@ export default function Layout() {
       </nav>
 
       {/* Footer: user card if logged in, login button if not */}
-      <div className="p-3 border-t border-gray-800">
+      <div className="p-3 border-t border-slate-800/80">
         {user ? (
           <div className="flex items-center gap-3 p-2 rounded-lg"
             style={{ background: 'linear-gradient(135deg, rgba(37,99,235,0.15) 0%, rgba(17,24,39,0.8) 100%)' }}>
@@ -337,7 +337,7 @@ export default function Layout() {
   );
 
   return (
-    <div className="flex h-screen bg-gray-950 overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-slate-950">
       {/* Desktop sidebar */}
       <div className="hidden lg:flex w-64 flex-shrink-0 flex-col">
         {sidebar}
@@ -347,12 +347,12 @@ export default function Layout() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {/* Mobile top bar — no hamburger */}
-        <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-800 flex-shrink-0">
+        <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-slate-800/80 bg-slate-950/92 backdrop-blur-xl flex-shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-lg bg-white p-1 flex items-center justify-center shadow-md shadow-blue-950/30">
               <img src="/lhma-logo.png" alt="Logo LHMA" className="w-full h-full object-contain" />
             </div>
-            <span className="font-bold text-sm text-white">LHMA</span>
+            <span className="font-black text-sm text-white tracking-wide">LHMA</span>
           </div>
 
           {user ? (
