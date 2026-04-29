@@ -189,7 +189,7 @@ function TeamSheet({
   onGoalieChange,
   onGoalieStatsChange,
   onRowChange,
-  onRowAbsentToggle,
+  onRowPresentToggle,
 }) {
   const headerStyle = {
     backgroundColor: team?.color || '#111827',
@@ -279,7 +279,7 @@ function TeamSheet({
       <div className="border-t border-gray-700">
         <div className="grid grid-cols-[minmax(0,1fr)_72px_80px_80px_80px_80px] bg-gray-100/95 text-[11px] font-bold uppercase tracking-[0.2em] text-gray-600">
           <div className="border-r border-gray-300 px-4 py-3 text-left text-gray-900">Joueurs</div>
-          <div className="border-r border-gray-300 px-2 py-3 text-center">Abs</div>
+          <div className="border-r border-gray-300 px-2 py-3 text-center">Pr</div>
           <div className="border-r border-gray-300 px-2 py-3 text-center">B</div>
           <div className="border-r border-gray-300 px-2 py-3 text-center">P</div>
           <div className="border-r border-gray-300 px-2 py-3 text-center">PTS</div>
@@ -320,15 +320,15 @@ function TeamSheet({
                     row.absent ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
                   }`}
                 >
-                  {row.absent ? 'Oui' : 'Non'}
+                  {row.absent ? 'Non' : 'Oui'}
                 </span>
               ) : (
                 <label className="inline-flex cursor-pointer items-center justify-center">
                   <input
                     type="checkbox"
-                    checked={!!row.absent}
-                    onChange={(event) => onRowAbsentToggle(index, event.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-rose-500 focus:ring-rose-500"
+                    checked={!row.absent}
+                    onChange={(event) => onRowPresentToggle(index, event.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
                   />
                 </label>
               )}
@@ -806,10 +806,12 @@ export default function GameSheet() {
               onRowChange={(index, row) =>
                 setHomeRows((current) => current.map((item, currentIndex) => (currentIndex === index ? row : item)))
               }
-              onRowAbsentToggle={(index, absent) =>
+              onRowPresentToggle={(index, present) =>
                 setHomeRows((current) =>
                   current.map((item, currentIndex) =>
-                    currentIndex === index ? { ...item, absent, goals: 0, assists: 0, pim: 0 } : item
+                    currentIndex === index
+                      ? { ...item, absent: !present, goals: present ? item.goals : 0, assists: present ? item.assists : 0, pim: present ? item.pim : 0 }
+                      : item
                   )
                 )
               }
@@ -829,10 +831,12 @@ export default function GameSheet() {
               onRowChange={(index, row) =>
                 setAwayRows((current) => current.map((item, currentIndex) => (currentIndex === index ? row : item)))
               }
-              onRowAbsentToggle={(index, absent) =>
+              onRowPresentToggle={(index, present) =>
                 setAwayRows((current) =>
                   current.map((item, currentIndex) =>
-                    currentIndex === index ? { ...item, absent, goals: 0, assists: 0, pim: 0 } : item
+                    currentIndex === index
+                      ? { ...item, absent: !present, goals: present ? item.goals : 0, assists: present ? item.assists : 0, pim: present ? item.pim : 0 }
+                      : item
                   )
                 )
               }
