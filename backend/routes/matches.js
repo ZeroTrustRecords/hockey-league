@@ -147,7 +147,14 @@ router.get('/:id', (req, res) => {
     ORDER BY id ASC
   `).all(req.params.id);
 
-  res.json({ ...match, goals, penalties, attendance });
+  const attendanceTouched = db.prepare(`
+    SELECT 1
+    FROM attendance
+    WHERE match_id = ?
+    LIMIT 1
+  `).get(req.params.id);
+
+  res.json({ ...match, goals, penalties, attendance, attendance_touched: !!attendanceTouched });
 });
 
 router.post('/', authenticate, requireCaptainOrAdmin, (req, res) => {

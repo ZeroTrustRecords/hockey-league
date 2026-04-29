@@ -113,11 +113,11 @@ function buildAttendanceLookup(attendance) {
   return absent;
 }
 
-function buildSkaterRows(players, teamId, lookup, attendanceLookup) {
+function buildSkaterRows(players, teamId, lookup, attendanceLookup, attendanceTouched = false) {
   const skaters = teamActivePlayers(players, teamId).filter((player) => player.position !== 'G');
   const rows = skaters.map((player) => {
     const stats = lookup.get(String(player.id)) || { goals: 0, assists: 0, pim: 0 };
-    const absent = attendanceLookup?.has(String(player.id)) || false;
+    const absent = !attendanceTouched || attendanceLookup?.has(String(player.id)) || false;
     return {
       player_id: String(player.id),
       label: `${player.first_name} ${player.last_name}`,
@@ -469,8 +469,8 @@ export default function GameSheet() {
         home_goalie_id: homeGoalieValue,
         away_goalie_id: awayGoalieValue,
       });
-      setHomeRows(buildSkaterRows(allPlayers, match.home_team_id, homeLookup, attendanceLookup));
-      setAwayRows(buildSkaterRows(allPlayers, match.away_team_id, awayLookup, attendanceLookup));
+      setHomeRows(buildSkaterRows(allPlayers, match.home_team_id, homeLookup, attendanceLookup, match.attendance_touched));
+      setAwayRows(buildSkaterRows(allPlayers, match.away_team_id, awayLookup, attendanceLookup, match.attendance_touched));
       setHomeGoalieStats(buildGoalieStats(homeGoalieValue, homeLookup));
       setAwayGoalieStats(buildGoalieStats(awayGoalieValue, awayLookup));
       setSourceGoals(loadedGoals);
