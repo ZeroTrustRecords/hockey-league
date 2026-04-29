@@ -140,7 +140,14 @@ router.get('/:id', (req, res) => {
     ORDER BY pn.period, pn.time_in_period, pn.id
   `).all(req.params.id);
 
-  res.json({ ...match, goals, penalties });
+  const attendance = db.prepare(`
+    SELECT player_id, status
+    FROM attendance
+    WHERE match_id = ?
+    ORDER BY id ASC
+  `).all(req.params.id);
+
+  res.json({ ...match, goals, penalties, attendance });
 });
 
 router.post('/', authenticate, requireCaptainOrAdmin, (req, res) => {
@@ -189,6 +196,7 @@ router.post('/:id/gamesheet', authenticate, requireGamesheetAccess, (req, res) =
     goals,
     penalties,
     player_stats,
+    attendance,
     home_score,
     away_score,
     notes,
@@ -205,6 +213,7 @@ router.post('/:id/gamesheet', authenticate, requireGamesheetAccess, (req, res) =
   const submitSheet = db.transaction(() => {
     db.prepare('DELETE FROM goals WHERE match_id = ?').run(matchId);
     db.prepare('DELETE FROM penalties WHERE match_id = ?').run(matchId);
+    db.prepare('DELETE FROM attendance WHERE match_id = ?').run(matchId);
 
     const reconstructed = player_stats?.length
       ? buildSyntheticEventsFromPlayerStats(player_stats)
@@ -245,6 +254,17 @@ router.post('/:id/gamesheet', authenticate, requireGamesheetAccess, (req, res) =
           penalty.minutes || 2,
           penalty.infraction || null
         );
+      }
+    }
+
+    if (attendance && attendance.length > 0) {
+      const insertAttendance = db.prepare(`
+        INSERT INTO attendance (match_id, player_id, status)
+        VALUES (?, ?, ?)
+      `);
+      for (const entry of attendance) {
+        if (!entry.player_id || entry.status !== 'absent') continue;
+        insertAttendance.run(matchId, entry.player_id, 'absent');
       }
     }
 

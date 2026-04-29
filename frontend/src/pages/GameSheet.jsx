@@ -101,17 +101,31 @@ function buildTeamStatLookup(players, teamId, goals, penalties) {
   return lookup;
 }
 
-function buildSkaterRows(players, teamId, lookup) {
+function buildAttendanceLookup(attendance) {
+  const absent = new Set();
+
+  for (const entry of attendance || []) {
+    if (entry?.player_id && entry?.status === 'absent') {
+      absent.add(String(entry.player_id));
+    }
+  }
+
+  return absent;
+}
+
+function buildSkaterRows(players, teamId, lookup, attendanceLookup) {
   const skaters = teamActivePlayers(players, teamId).filter((player) => player.position !== 'G');
   const rows = skaters.map((player) => {
     const stats = lookup.get(String(player.id)) || { goals: 0, assists: 0, pim: 0 };
+    const absent = attendanceLookup?.has(String(player.id)) || false;
     return {
       player_id: String(player.id),
       label: `${player.first_name} ${player.last_name}`,
       jersey: player.number || '—',
-      goals: stats.goals || 0,
-      assists: stats.assists || 0,
-      pim: stats.pim || 0,
+      goals: absent ? 0 : (stats.goals || 0),
+      assists: absent ? 0 : (stats.assists || 0),
+      pim: absent ? 0 : (stats.pim || 0),
+      absent,
       replacement: false,
     };
   });
@@ -124,6 +138,7 @@ function buildSkaterRows(players, teamId, lookup) {
     goals: replacementStats.goals || 0,
     assists: replacementStats.assists || 0,
     pim: replacementStats.pim || 0,
+    absent: false,
     replacement: true,
   });
 
@@ -174,6 +189,7 @@ function TeamSheet({
   onGoalieChange,
   onGoalieStatsChange,
   onRowChange,
+  onRowAbsentToggle,
 }) {
   const headerStyle = {
     backgroundColor: team?.color || '#111827',
@@ -261,8 +277,9 @@ function TeamSheet({
       </div>
 
       <div className="border-t border-gray-700">
-        <div className="grid grid-cols-[minmax(0,1fr)_80px_80px_80px_80px] bg-gray-100/95 text-[11px] font-bold uppercase tracking-[0.2em] text-gray-600">
+        <div className="grid grid-cols-[minmax(0,1fr)_72px_80px_80px_80px_80px] bg-gray-100/95 text-[11px] font-bold uppercase tracking-[0.2em] text-gray-600">
           <div className="border-r border-gray-300 px-4 py-3 text-left text-gray-900">Joueurs</div>
+          <div className="border-r border-gray-300 px-2 py-3 text-center">Abs</div>
           <div className="border-r border-gray-300 px-2 py-3 text-center">B</div>
           <div className="border-r border-gray-300 px-2 py-3 text-center">P</div>
           <div className="border-r border-gray-300 px-2 py-3 text-center">PTS</div>
@@ -272,36 +289,88 @@ function TeamSheet({
         {rows.map((row, index) => (
           <div
             key={`${row.player_id || 'sub'}-${index}`}
-            className="grid grid-cols-[minmax(0,1fr)_80px_80px_80px_80px] border-t border-gray-300 bg-white"
+            className={`grid grid-cols-[minmax(0,1fr)_72px_80px_80px_80px_80px] border-t border-gray-300 ${
+              row.absent ? 'bg-gray-100' : 'bg-white'
+            }`}
           >
-            <div className={`border-r border-gray-300 px-4 py-3 ${row.replacement ? 'bg-gray-50' : ''}`}>
-              <div className={`text-[15px] leading-5 font-bold ${row.replacement ? 'text-gray-800' : 'text-sky-700'}`}>
+            <div
+              className={`border-r border-gray-300 px-4 py-3 ${
+                row.replacement ? 'bg-gray-50' : row.absent ? 'bg-gray-100' : ''
+              }`}
+            >
+              <div
+                className={`text-[15px] leading-5 font-bold ${
+                  row.replacement ? 'text-gray-800' : row.absent ? 'text-gray-500 line-through' : 'text-sky-700'
+                }`}
+              >
                 {row.label}
               </div>
-              {!row.replacement && <div className="mt-0.5 text-sm font-semibold text-gray-600">#{row.jersey}</div>}
+              {!row.replacement && (
+                <div className={`mt-0.5 text-sm font-semibold ${row.absent ? 'text-gray-400' : 'text-gray-600'}`}>
+                  #{row.jersey}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-center border-r border-gray-300 px-2 py-3">
+              {row.replacement ? (
+                <span className="text-xs font-semibold text-gray-400">â€”</span>
+              ) : readOnly ? (
+                <span
+                  className={`inline-flex min-w-[42px] justify-center rounded-full px-2 py-1 text-xs font-bold ${
+                    row.absent ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+                  }`}
+                >
+                  {row.absent ? 'Oui' : 'Non'}
+                </span>
+              ) : (
+                <label className="inline-flex cursor-pointer items-center justify-center">
+                  <input
+                    type="checkbox"
+                    checked={!!row.absent}
+                    onChange={(event) => onRowAbsentToggle(index, event.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-rose-500 focus:ring-rose-500"
+                  />
+                </label>
+              )}
             </div>
             <div className="flex items-center justify-center border-r border-gray-300 px-2 py-3">
               {readOnly ? (
                 <span className="text-sm font-semibold text-gray-900">{row.goals || '-'}</span>
               ) : (
-                <StatInput value={row.goals} onChange={(value) => onRowChange(index, { ...row, goals: value })} />
+                <StatInput
+                  value={row.goals}
+                  onChange={(value) => onRowChange(index, { ...row, goals: value })}
+                  disabled={row.absent}
+                />
               )}
             </div>
             <div className="flex items-center justify-center border-r border-gray-300 px-2 py-3">
               {readOnly ? (
                 <span className="text-sm font-semibold text-gray-900">{row.assists || '-'}</span>
               ) : (
-                <StatInput value={row.assists} onChange={(value) => onRowChange(index, { ...row, assists: value })} />
+                <StatInput
+                  value={row.assists}
+                  onChange={(value) => onRowChange(index, { ...row, assists: value })}
+                  disabled={row.absent}
+                />
               )}
             </div>
-            <div className="flex items-center justify-center border-r border-gray-300 bg-amber-50 px-2 py-3 text-base font-black text-gray-900">
+            <div
+              className={`flex items-center justify-center border-r border-gray-300 px-2 py-3 text-base font-black ${
+                row.absent ? 'bg-gray-100 text-gray-500' : 'bg-amber-50 text-gray-900'
+              }`}
+            >
               {row.goals + row.assists || '-'}
             </div>
             <div className="flex items-center justify-center px-2 py-3">
               {readOnly ? (
                 <span className="text-sm font-semibold text-gray-900">{row.pim || '-'}</span>
               ) : (
-                <StatInput value={row.pim} onChange={(value) => onRowChange(index, { ...row, pim: value })} />
+                <StatInput
+                  value={row.pim}
+                  onChange={(value) => onRowChange(index, { ...row, pim: value })}
+                  disabled={row.absent}
+                />
               )}
             </div>
           </div>
@@ -387,6 +456,7 @@ export default function GameSheet() {
 
       const loadedGoals = match.goals || [];
       const loadedPenalties = match.penalties || [];
+      const attendanceLookup = buildAttendanceLookup(match.attendance || []);
       const homeLookup = buildTeamStatLookup(allPlayers, match.home_team_id, loadedGoals, loadedPenalties);
       const awayLookup = buildTeamStatLookup(allPlayers, match.away_team_id, loadedGoals, loadedPenalties);
 
@@ -399,8 +469,8 @@ export default function GameSheet() {
         home_goalie_id: homeGoalieValue,
         away_goalie_id: awayGoalieValue,
       });
-      setHomeRows(buildSkaterRows(allPlayers, match.home_team_id, homeLookup));
-      setAwayRows(buildSkaterRows(allPlayers, match.away_team_id, awayLookup));
+      setHomeRows(buildSkaterRows(allPlayers, match.home_team_id, homeLookup, attendanceLookup));
+      setAwayRows(buildSkaterRows(allPlayers, match.away_team_id, awayLookup, attendanceLookup));
       setHomeGoalieStats(buildGoalieStats(homeGoalieValue, homeLookup));
       setAwayGoalieStats(buildGoalieStats(awayGoalieValue, awayLookup));
       setSourceGoals(loadedGoals);
@@ -475,6 +545,7 @@ export default function GameSheet() {
 
     const pushTeamRows = (teamId, teamRows, goalieValue, goalieStats) => {
       for (const row of teamRows) {
+        if (row.absent) continue;
         const goals = toInt(row.goals);
         const assists = toInt(row.assists);
         const pim = toInt(row.pim);
@@ -513,12 +584,21 @@ export default function GameSheet() {
     return rows;
   };
 
+  const buildAttendancePayload = () =>
+    [...homeRows, ...awayRows]
+      .filter((row) => row.player_id && row.absent)
+      .map((row) => ({
+        player_id: Number(row.player_id),
+        status: 'absent',
+      }));
+
   const buildGamesheetPayload = () => {
     const homeGoalie = normalizeGoalieSelection(form.home_goalie_id);
     const awayGoalie = normalizeGoalieSelection(form.away_goalie_id);
 
     return {
       player_stats: buildPlayerStatsPayload(),
+      attendance: buildAttendancePayload(),
       home_score: homeScore,
       away_score: awayScore,
       notes,
@@ -726,6 +806,13 @@ export default function GameSheet() {
               onRowChange={(index, row) =>
                 setHomeRows((current) => current.map((item, currentIndex) => (currentIndex === index ? row : item)))
               }
+              onRowAbsentToggle={(index, absent) =>
+                setHomeRows((current) =>
+                  current.map((item, currentIndex) =>
+                    currentIndex === index ? { ...item, absent, goals: 0, assists: 0, pim: 0 } : item
+                  )
+                )
+              }
             />
 
             <TeamSheet
@@ -741,6 +828,13 @@ export default function GameSheet() {
               onGoalieStatsChange={setAwayGoalieStats}
               onRowChange={(index, row) =>
                 setAwayRows((current) => current.map((item, currentIndex) => (currentIndex === index ? row : item)))
+              }
+              onRowAbsentToggle={(index, absent) =>
+                setAwayRows((current) =>
+                  current.map((item, currentIndex) =>
+                    currentIndex === index ? { ...item, absent, goals: 0, assists: 0, pim: 0 } : item
+                  )
+                )
               }
             />
           </div>
